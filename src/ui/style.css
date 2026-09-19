@@ -104,9 +104,6 @@ button {
   background: var(--faint);
   flex: 0 0 auto;
 }
-.dot.up {
-  background: #10b981;
-}
 .dot.down {
   background: var(--red);
 }

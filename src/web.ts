@@ -285,7 +285,6 @@ export function serve(
   listen: { hostname: string; port: number },
   page: HTMLBundle,
 ) {
-  const handleDeps: HandleDeps = deps;
   const server = Bun.serve({
     hostname: listen.hostname,
     port: listen.port,
@@ -306,7 +305,7 @@ export function serve(
           ? undefined
           : new Response("websocket upgrade failed", { status: 400 });
       }
-      return handle(req, handleDeps);
+      return handle(req, deps);
     },
     websocket: {
       open(ws) {

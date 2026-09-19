@@ -69,17 +69,15 @@ function setSnapshot(snap: Snapshot) {
   models.value = snap.models;
 }
 
-// A fetched snapshot reaches the listeners as a `refresh` message, so the
-// code that still renders by hand sees it apart from the socket's own
-// snapshot (which also carries the running send and the reconnect case).
-export type StoreMessage = WsMessage | { type: "refresh"; data: Snapshot };
-type Listener = (msg: StoreMessage) => void;
+// The socket's messages reach the code that renders by hand through
+// listen(); a fetched snapshot updates the signals only.
+type Listener = (msg: WsMessage) => void;
 const listeners = new Set<Listener>();
 export function listen(fn: Listener): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
-const emit = (msg: StoreMessage) => {
+const emit = (msg: WsMessage) => {
   for (const fn of listeners) fn(msg);
 };
 
@@ -88,7 +86,6 @@ export function refreshSnapshot(): Promise<Snapshot | null> {
     .then((r) => r.json())
     .then((snap: Snapshot) => {
       setSnapshot(snap);
-      emit({ type: "refresh", data: snap });
       return snap;
     })
     .catch(() => null);
