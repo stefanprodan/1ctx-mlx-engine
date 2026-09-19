@@ -14,9 +14,9 @@ ssh_() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "$@"; }
 
 make build
 scp -q bin/mlx-spy "$HOST:~/.mlx-spy/bin/mlx-spy.new"
-# a swap plus a kickstart: launchd sends SIGTERM (chats in flight are
-# marked interrupted, the db closes) and starts the new binary; nothing
-# is started by hand over ssh, so the session never hangs on a child
+# a swap plus a kickstart: launchd sends SIGTERM (the db closes) and
+# starts the new binary; nothing is started by hand over ssh, so the
+# session never hangs on a child
 ssh_ "mv ~/.mlx-spy/bin/mlx-spy.new ~/.mlx-spy/bin/mlx-spy && launchctl kickstart -k gui/$(id -u)/$LABEL"
 for _ in $(seq 1 20); do
   sleep 1

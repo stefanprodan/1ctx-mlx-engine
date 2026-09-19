@@ -32,8 +32,7 @@
       "!*.bun-build",
       "!.idea/",
       "!plans",
-      "!.preview",
-      "!test/fixtures/openrouter/models.json"
+      "!.preview"
     ]
   }
 }

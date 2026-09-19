@@ -4,27 +4,22 @@
 // The one WebSocket every page shares and the signals fed by it. A
 // snapshot arrives on connect and a sample every second; the socket comes
 // back two seconds after a close. Components read the signals; code that
-// still handles messages by hand (the views not yet moved to Preact)
-// subscribes with listen(). Nothing here touches the DOM.
+// handles messages by hand subscribes with listen(). Nothing here touches
+// the DOM.
 
 import { computed, signal } from "@preact/signals";
 import type { ActionEvent, ActionName } from "../actions.ts";
-import type { RemoteModel } from "../config.ts";
 import type { Pull } from "../pulls.ts";
 import type { Sample } from "../sample.ts";
 import type { snapshot as snapshotOf, WsMessage } from "../web.ts";
 
 export type Snapshot = ReturnType<typeof snapshotOf>;
-export type Page = "monitor" | "requests" | "chat";
+export type Page = "monitor" | "requests";
 export type Connection = "connecting" | "live" | "reconnecting";
 
-// one bundle serves three paths; the page is the one the path names
+// one bundle serves both paths; the page is the one the path names
 export const pageOf = (pathname: string): Page =>
-  pathname === "/requests"
-    ? "requests"
-    : pathname === "/chat" || pathname.startsWith("/chat/")
-      ? "chat"
-      : "monitor";
+  pathname === "/requests" ? "requests" : "monitor";
 
 export const connection = signal<Connection>("connecting");
 export const connected = computed(() => connection.value === "live");
@@ -37,9 +32,6 @@ export const sample = signal<Sample | null>(null);
 // times a minute. Its value comes from snapshots: a sample whose picture
 // differs triggers the fetch of one.
 export const models = signal<Sample["models"]>([]);
-// the hosted models the user added on the chat's Settings page: the
-// snapshot's list, replaced by every `remoteModels` message
-export const remoteModels = signal<RemoteModel[]>([]);
 export const event = signal<ActionEvent | null>(null);
 // The action in flight: this tab's, or the one the server reports in a
 // snapshot (another tab's). Every control is disabled while it is set.
@@ -71,7 +63,6 @@ function setSnapshot(snap: Snapshot) {
   // release the buttons early
   if (snap.running || !localAction) busy.value = snap.running;
   pulls.value = snap.pulls;
-  remoteModels.value = snap.remoteModels;
   const key = modelsKeyOf(snap.models);
   if (key === modelsKey) return;
   modelsKey = key;
@@ -124,8 +115,6 @@ export function connect() {
       void refreshSnapshot();
     } else if (msg.type === "pull") {
       applyPull(msg.data);
-    } else if (msg.type === "remoteModels") {
-      remoteModels.value = msg.data;
     }
     emit(msg);
   };

@@ -6,21 +6,9 @@
 // src/engine/, not a rewrite. Names are normalised here: adapters translate
 // their server's counter names into these fields.
 
-import type { MessageStats } from "../chats.ts";
-
 export type EngineId = "mlxserve" | "omlx";
 
-// Where a chat's tokens come from: the engine mlx-spy monitors, or a
-// hosted provider that runs many requests at once. The monitor knows only
-// the engine; the chat runner knows every provider.
-export type ProviderId = "mlxserve" | "openrouter";
-export const PROVIDERS: readonly ProviderId[] = ["mlxserve", "openrouter"];
-export function isProviderId(value: unknown): value is ProviderId {
-  return value === "mlxserve" || value === "openrouter";
-}
-
 export type Capability =
-  | "chat"
   | "load"
   | "unload"
   | "default"
@@ -95,95 +83,12 @@ export type CacheLimits = {
   diskBytes: number;
 };
 
-export type ChatTool = {
-  name: string;
-  description: string;
-  parameters: object;
-};
-
-export type ToolCall = { id: string; name: string; arguments: string };
-
-// One item of OpenRouter's reasoning_details: reasoning.text (with the
-// signature an Anthropic upstream needs back), reasoning.summary or
-// reasoning.encrypted (OpenAI's opaque blob). Kept whole and sent back as
-// received, since the upstream verifies the sequence.
-export type ReasoningDetail = {
-  type: string;
-  index?: number;
-  [field: string]: unknown;
-};
-
-export type ChatMessageIn =
-  | { role: "system" | "user"; content: string }
-  | {
-      role: "assistant";
-      content: string | null;
-      reasoning?: string;
-      reasoningDetails?: ReasoningDetail[];
-      toolCalls?: ToolCall[];
-    }
-  | { role: "tool"; toolCallId: string; content: string };
-
-export type ChatRequest = {
-  model: string;
-  messages: ChatMessageIn[];
-  thinking: boolean;
-  reasoningEffort?: string | null;
-  temperature?: number | null;
-  topP?: number | null;
-  maxTokens?: number | null;
-  tools?: ChatTool[];
-  // OpenAI's prompt_cache_key: an engine that evicts its prefix cache per
-  // workload keys on it, so one chat's turns are grouped and another client's
-  // batch cannot push the conversation out. Omitted when not set.
-  cacheKey?: string | null;
-};
-
-export type ChatEvent =
-  | { kind: "reasoning"; text: string }
-  // a streamed piece of reasoning_details; pieces with one index are one
-  // item (openrouter.ts mergeReasoningDetail)
-  | { kind: "reasoningDetail"; item: ReasoningDetail }
-  | { kind: "content"; text: string }
-  | {
-      kind: "toolCallDelta";
-      index?: number;
-      id?: string;
-      name?: string;
-      arguments?: string;
-    }
-  | { kind: "toolCalls"; calls: ToolCall[] }
-  | { kind: "finish"; reason: string; details: string | null }
-  | { kind: "usage"; stats: MessageStats }
-  | { kind: "error"; message: string };
-
-// A model a chat may name under a provider; the window is what compaction
-// and the context line use, null when the provider did not say.
-export type ChatModel = {
-  id: string;
-  contextLength: number | null;
-};
-
-// The contract the chat runner needs, narrower than Engine: the engine
-// adapter satisfies it through mlxServeProvider(); a hosted provider has
-// nothing else (no metrics, no load or unload, no cache dirs).
-export interface ChatProvider {
-  readonly id: ProviderId;
-  // sends this provider runs at once; admission counts against it
-  readonly limit: number;
-  models(): ChatModel[];
-  chat(req: ChatRequest, signal: AbortSignal): AsyncIterable<ChatEvent>;
-}
-
 export interface Engine {
   readonly id: EngineId;
   readonly url: string;
   health(): Promise<boolean>;
   models(): Promise<ModelInfo[]>;
   metrics(): Promise<EngineMetrics>;
-  // Optional at the base contract so monitoring-only adapters stay valid;
-  // engines advertise "chat" only when this method is implemented.
-  chat?(req: ChatRequest, signal: AbortSignal): AsyncIterable<ChatEvent>;
   load(id: string, asDefault: boolean): Promise<void>;
   unload(id: string): Promise<void>;
   // walk the model directory again for checkpoints added since the engine

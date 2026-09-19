@@ -7,12 +7,8 @@ import {
   DASH,
   diskSize,
   gb,
-  group,
   num,
   orderModels,
-  secs,
-  tps,
-  when,
 } from "../../src/ui/format.ts";
 
 describe("format", () => {
@@ -34,41 +30,6 @@ describe("format", () => {
     expect(count(999)).toBe("999");
     expect(count(12_345)).toBe("12.3K");
     expect(count(1_234_567)).toBe("1.23M");
-  });
-
-  test("secs and tps", () => {
-    expect(secs(4_200)).toBe("4.2 s");
-    expect(secs(12_400)).toBe("12 s");
-    expect(secs(65_000)).toBe("1 min 5 s");
-    expect(tps(1200, 10_000)).toBe("120 tok/s");
-    expect(tps(1200, 0)).toBe("-");
-  });
-
-  test("when and group against a fixed clock", () => {
-    const now = new Date(2026, 8, 9, 15, 30).getTime(); // a Wednesday
-    const hour = 3_600_000;
-    const day = 24 * hour;
-    const clock = new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    expect(when(now - 30_000, now)).toBe("now");
-    expect(when(now - 2 * hour, now)).toBe(clock.format(now - 2 * hour));
-    expect(when(now - 2 * day, now)).toBe(
-      new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(
-        now - 2 * day,
-      ),
-    );
-    expect(when(now - 10 * day, now)).toBe(
-      new Intl.DateTimeFormat(undefined, {
-        day: "numeric",
-        month: "short",
-      }).format(now - 10 * day),
-    );
-    expect(group(now - 2 * hour, now)).toBe("Today");
-    expect(group(now - day, now)).toBe("Yesterday");
-    expect(group(now - 3 * day, now)).toBe("This week");
-    expect(group(now - 10 * day, now)).toBe("Earlier");
   });
 });
 
