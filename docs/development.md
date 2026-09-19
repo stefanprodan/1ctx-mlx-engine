@@ -13,10 +13,6 @@ make build VERSION=v1.2.3                         # inject a release version
 make install-bin                                  # build and install to ~/.local/bin
 ```
 
-The install applies a tracked [beautiful-mermaid patch](beautiful-mermaid-patch.md)
-for flowchart labels declared after their first reference. That document
-records the patch's scope, maintenance workflow, and removal criteria.
-
 `package.json` stays at `0.0.0-dev`. A normal source or binary build reports
 `v0.0.0-dev`; `make build VERSION=v1.2.3` uses Bun's build-time definition
 to embed `v1.2.3` without editing the package file.
@@ -36,36 +32,25 @@ The page is bundled by Bun from `src/ui/index.html`: once at startup in
 the compiled binary, on demand when `MLX_SPY_DEV=1` is set, which
 `make dev` and `make preview` do; then a CSS edit hot-reloads and an edit
 to the client's TypeScript reloads the page. The client is Preact with
-signals (`src/ui/main.tsx`, `store.ts`, `shell/`, `monitor/`, `requests/`,
-`chat/`), bundled like uPlot so the binary still has no runtime
-dependencies; highlight.js and beautiful-mermaid are bundled the same way
-on the server side (`src/highlight.ts`, `src/diagram.ts`). Logic lives in plain
-`.ts` modules that take data and return data (the tiles, the chart
-series, the chat's delta reducer and transcript tree) and is tested on
-recorded fixtures; components hold only what the DOM owns (uPlot,
-dialogs, timers, scroll). A new component gets a
-render-to-string check in `test/ui/` asserting the class names
-`style.css` depends on; a chat behaviour change starts with a recording
-under `test/fixtures/ws/` (see `scripts/record-ws.ts`). `make preview` (re)starts a
+signals (`src/ui/main.tsx`, `store.ts`, `shell/`, `monitor/`,
+`requests/`), bundled like uPlot so the binary still has no runtime
+dependencies. Logic lives in plain `.ts` modules that take data and
+return data (the tiles, the chart series, the request bar) and is tested
+on recorded fixtures; components hold only what the DOM owns (uPlot,
+dialogs, timers). A new component gets a render-to-string check in
+`test/ui/` asserting the class names `style.css` depends on.
+`make preview` (re)starts a
 detached instance on `127.0.0.1:11236` against the engine named in
 `scripts/studio.env` (`make preview-stop`, `make preview-log`,
 `make preview-clean` to also wipe its db and log).
 
-The chat's `websearch` tool reads its provider keys from
-`../secrets/{exa,firecrawl}.key` relative to the binary's directory
-(`~/.local/secrets/` after `make install-bin`) and, when run from source,
-from `.preview/secrets/` in the repository, which is git-ignored. The
-model downloader reads a Hugging Face token from `hf.key` in the same
-directory, for gated repositories and the Hub's higher rate limits, and
-the chat's OpenRouter provider its API key from `openrouter.key` (absent,
-the picker has no OpenRouter group and the Settings page says so). Each
-file holds the bare key; the start log says `exa key: <path>` or `exa
-key: none`, and the same for firecrawl, hf and openrouter. The files are
-read once at start, so a change needs a restart, and a keyless check
-needs the file moved away. The OpenRouter adapter is tested on frames
-recorded from the live API in `test/fixtures/openrouter/` (the public
-catalog, a tool-calling stream, a plain stream and a refused request);
-record new ones with `curl` and the key file, and never commit a key.
+The model downloader reads a Hugging Face token from `hf.key` in
+`../secrets/` relative to the binary's directory (`~/.local/secrets/`
+after `make install-bin`) and, when run from source, from
+`.preview/secrets/` in the repository, which is git-ignored. It buys
+gated repositories and the Hub's higher rate limits. The file holds the
+bare token; the start log says `hf key: <path>` or `hf key: none`. It is
+read once at start, so a change needs a restart.
 
 Downloads land in `--model-dir`, `~/.mlx-spy/models` by default and
 `.preview/models/` for the preview; point it at the engine's own model
@@ -85,5 +70,5 @@ before changing anything; it is written for humans too.
 
 `bun test` runs the suites under `test/`. Parsers and rate math are tested
 on fixtures recorded from a live engine (`test/fixtures/`): `/metrics.json`
-and `/v1/models` bodies, and a recorded chat stream. Record new ones with
-`curl` and never record `/props`.
+and `/v1/models` bodies. Record new ones with `curl` and never record
+`/props`.
