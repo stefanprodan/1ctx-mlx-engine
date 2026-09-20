@@ -6,6 +6,7 @@
 // subscriber is in place.
 
 import { render } from "preact";
+import { Engine } from "./engine/Engine.tsx";
 import { Monitor } from "./monitor/Monitor.tsx";
 import { Requests } from "./requests/Requests.tsx";
 import { Footer } from "./shell/Footer.tsx";
@@ -21,6 +22,11 @@ if (page === "requests") {
   $("view-monitor").hidden = true;
   $("view-requests").hidden = false;
   render(<Requests />, $("view-requests"));
+} else if (page === "engine") {
+  document.title = "mlx-spy · engine";
+  $("view-monitor").hidden = true;
+  $("view-engine").hidden = false;
+  render(<Engine />, $("view-engine"));
 } else {
   render(<Monitor />, $("view-monitor"));
 }

@@ -37,6 +37,7 @@ them. A single Bun binary, no dependencies.
 ## Docs
 
 - [Monitor and Requests](docs/monitor.md)
+- [Engine](docs/engine.md)
 - [API](docs/api.md)
 - [Development](docs/development.md)
 

@@ -2,6 +2,9 @@
 # The local preview: mlx-spy from source against the Studio's engine, on
 # 127.0.0.1:11236, detached, with its pid, db and log under .preview/
 # (`clean` stops it and removes them).
+# PREVIEW_ENGINE=http://127.0.0.1:11234 points it at this machine instead,
+# which the Engine page needs: managing mlx-serve is local-only. Then
+# PREVIEW_MODEL_DIR names the model directory (default .preview/models).
 # MLX_SPY_DEV=1 turns on Bun's dev server: style.css hot-reloads in the
 # browser, an edit under src/ui/ reloads the page; --watch restarts the
 # process on server-side TypeScript changes.
@@ -27,12 +30,16 @@ stop() {
 }
 
 start() {
-  [ -f scripts/studio.env ] || { echo "scripts/studio.env missing; copy studio.env.example" >&2; exit 2; }
-  . scripts/studio.env
+  local engine=${PREVIEW_ENGINE:-}
+  if [ -z "$engine" ]; then
+    [ -f scripts/studio.env ] || { echo "scripts/studio.env missing; copy studio.env.example" >&2; exit 2; }
+    . scripts/studio.env
+    engine="http://$STUDIO_HOST:11234"
+  fi
   mkdir -p "$DIR"
-  MLX_SPY_DEV=1 nohup bun --watch src/main.ts --engine "http://$STUDIO_HOST:11234" \
+  MLX_SPY_DEV=1 nohup bun --watch src/main.ts --engine "$engine" \
     --listen "127.0.0.1:$PORT" --db "$DIR/mlx-spy.db" \
-    --model-dir "$DIR/models" >"$LOG" 2>&1 &
+    --model-dir "${PREVIEW_MODEL_DIR:-$DIR/models}" >"$LOG" 2>&1 &
   echo $! >"$PID"
   for _ in $(seq 1 50); do
     if curl -sf -o /dev/null "$URL/api/snapshot"; then

@@ -61,6 +61,10 @@ full model id, the start time and the outcome; a phone hides most columns
 and the panel is where they are. The bin in the History head deletes the
 stored requests and the last request in the bar.
 
+## Engine
+
+The third page manages the engine itself: see [engine.md](engine.md).
+
 ## Memory numbers
 
 Memory is shown in binary GB, the unit About This Mac uses; only the host

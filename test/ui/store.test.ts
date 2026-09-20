@@ -20,6 +20,7 @@ describe("store", () => {
   test("pageOf names the view from the path", () => {
     expect(pageOf("/")).toBe("monitor");
     expect(pageOf("/requests")).toBe("requests");
+    expect(pageOf("/engine")).toBe("engine");
     expect(pageOf("/requests/")).toBe("monitor");
   });
 

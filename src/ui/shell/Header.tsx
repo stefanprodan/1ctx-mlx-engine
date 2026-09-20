@@ -7,6 +7,7 @@ import type { Page } from "../store.ts";
 const PAGES: { page: Page; href: string; label: string }[] = [
   { page: "monitor", href: "/", label: "Monitor" },
   { page: "requests", href: "/requests", label: "Requests" },
+  { page: "engine", href: "/engine", label: "Engine" },
 ];
 
 // The wordmark and the nav; each page carries the connection pill in its

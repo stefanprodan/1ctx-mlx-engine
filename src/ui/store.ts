@@ -14,12 +14,16 @@ import type { Sample } from "../sample.ts";
 import type { snapshot as snapshotOf, WsMessage } from "../web.ts";
 
 export type Snapshot = ReturnType<typeof snapshotOf>;
-export type Page = "monitor" | "requests";
+export type Page = "monitor" | "requests" | "engine";
 export type Connection = "connecting" | "live" | "reconnecting";
 
-// one bundle serves both paths; the page is the one the path names
+// one bundle serves every path; the page is the one the path names
 export const pageOf = (pathname: string): Page =>
-  pathname === "/requests" ? "requests" : "monitor";
+  pathname === "/requests"
+    ? "requests"
+    : pathname === "/engine"
+      ? "engine"
+      : "monitor";
 
 export const connection = signal<Connection>("connecting");
 export const connected = computed(() => connection.value === "live");
