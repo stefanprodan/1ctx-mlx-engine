@@ -12,7 +12,8 @@ export type Capability =
   | "default"
   | "restart"
   | "diskClear"
-  | "rescan";
+  | "rescan"
+  | "benchmark";
 
 export type ModelInfo = {
   id: string;
@@ -21,6 +22,8 @@ export type ModelInfo = {
   bytesResident: number;
   bytesOnDisk: number;
   contextLength: number | null;
+  // the engine's word for the weights' precision ("4-bit"), null when unsaid
+  quantization: string | null;
   capabilities: string[]; // engine words: chat, tool_use, vision, ...
   // undefined when the engine does not expose which model is its default
   isDefault?: boolean;

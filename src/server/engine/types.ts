@@ -67,6 +67,18 @@ export type EngineProps = {
   limits: CacheLimits | null;
 };
 
+// What the engine measured for one chat request, from the `timings` of its
+// answer. Token counts and milliseconds, as the engine states them.
+export type ChatTimings = {
+  promptN: number;
+  cachedN: number;
+  promptMs: number;
+  predictedN: number;
+  predictedMs: number;
+  tokenizeMs: number;
+  finishReason: string | null;
+};
+
 // one timestamped read of the metrics, what the rate math compares
 export type Reading = { t: number; metrics: EngineMetrics };
 
@@ -86,6 +98,16 @@ export interface Engine {
   // walk the model directory again for checkpoints added since the engine
   // started; engines advertise "rescan" only when this is implemented
   rescan?(): Promise<void>;
+  // One non-streaming chat request, for the benchmark only: never the
+  // sampler, only from a button, under the shared lock. The body is the
+  // caller's; the answer's text is dropped and its timings kept. Aborting
+  // the signal cancels the generation in the engine. Engines advertise
+  // "benchmark" only when their answer carries timings.
+  chat?(body: unknown, signal: AbortSignal): Promise<ChatTimings>;
+  // How many tokens the default model's tokenizer makes of a text; the
+  // benchmark sizes its prompts with it. Same terms as chat(), and it needs
+  // a default model resident, which a run has just loaded.
+  tokenize?(content: string, signal: AbortSignal): Promise<number>;
   capabilities(): Set<Capability>;
   // disk tier locations, sized by the host probes
   cacheDirs(): string[];

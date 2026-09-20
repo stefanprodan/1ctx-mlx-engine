@@ -41,6 +41,7 @@ export const HOST_NOTES: Record<BindHost, string> = {
   "0.0.0.0": "any interface",
   "127.0.0.1": "loopback only",
 };
+export const HOSTS: BindHost[] = ["0.0.0.0", "127.0.0.1"];
 export const KV_QUANTS: KvQuant[] = ["off", "4", "8", "turbo2", "turbo4"];
 export const LOG_LEVELS: LogLevel[] = ["info", "warn", "error", "debug"];
 export const MAX_MODEL_DIRS = 8;

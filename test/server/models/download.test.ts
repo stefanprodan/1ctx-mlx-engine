@@ -544,6 +544,29 @@ describe("Downloader", () => {
     await settled(r, download.id);
   });
 
+  test("nothing starts while a benchmark is measuring", async () => {
+    const { r } = runner({ blocked: () => "A benchmark is running" });
+    await expect(r.start(REPO)).rejects.toMatchObject({
+      status: 409,
+      message: "A benchmark is running",
+    });
+    expect(r.list()).toEqual([]);
+  });
+
+  test("a benchmark that began while the Hub answered stops the download", async () => {
+    hub.listingDelayMs = 100;
+    let measuring = false;
+    const { r } = runner({
+      blocked: () => (measuring ? "A benchmark is running" : null),
+    });
+    const starting = r.start(REPO);
+    expect(r.busy()).toBe(true);
+    measuring = true;
+    await expect(starting).rejects.toMatchObject({ status: 409 });
+    expect(r.list()).toEqual([]);
+    expect(r.busy()).toBe(false);
+  });
+
   test("refuses bad ids, unknown repos and a full disk", async () => {
     const { r } = runner({ freeSpace: () => 1000 });
     await expect(r.start("nope")).rejects.toMatchObject({

@@ -1,0 +1,252 @@
+@layer tokens, base, pages;
+
+@layer pages {
+  /* the run card: one line of controls, or the run's progress */
+  .bench-run {
+    padding: 16px;
+  }
+  .bench-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    /* the select's height, which the running state has nothing as tall as */
+    min-height: 34px;
+  }
+  .bench-line .select {
+    flex: 0 1 auto;
+  }
+  .bench-model {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--val);
+  }
+  /* the note keeps the card's height in both states */
+  .bench-note {
+    margin: 12px 0 0;
+    min-height: 18px;
+    font-size: 12.5px;
+    color: var(--faint);
+  }
+  .bench-note .warn {
+    color: var(--amber);
+  }
+
+  /* the runs: the requests table's cells, plus a tick and the deltas */
+  /* fixed: every column keeps its width and the model cell takes what is
+     left, so a long name ellipsizes instead of pushing the figures out */
+  #benchmarks {
+    table-layout: fixed;
+    width: 100%;
+  }
+  #benchmarks td.pick,
+  #benchmarks th.pick {
+    width: 40px;
+    padding-left: 16px;
+  }
+  /* drawn here: Safari on iOS paints a native checkbox as a black box on a
+     dark page */
+  #benchmarks td.pick input {
+    appearance: none;
+    display: grid;
+    place-content: center;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border: 1px solid var(--faint);
+    border-radius: 4px;
+    background: var(--inset);
+    cursor: pointer;
+  }
+  #benchmarks td.pick input:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  #benchmarks td.pick input:checked::after {
+    content: "";
+    width: 8px;
+    height: 4px;
+    border-left: 2px solid #0d1a2c;
+    border-bottom: 2px solid #0d1a2c;
+    transform: translateY(-1px) rotate(-45deg);
+  }
+  #benchmarks td.pick input:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  #benchmarks td.pick input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  /* a run: the model, and under it one quiet line of when and what */
+  #benchmarks th.run {
+    text-align: left;
+    padding-left: 26px;
+  }
+  #benchmarks td.run {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .run-cell {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    row-gap: 3px;
+  }
+  /* over both lines, so it sits level with the checkbox */
+  #benchmarks td.run .chev {
+    grid-row: 1 / span 2;
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    border-right: 1.5px solid var(--faint);
+    border-bottom: 1.5px solid var(--faint);
+    transform: rotate(-45deg);
+    transition: transform 0.12s;
+  }
+  #benchmarks tr.open td.run .chev {
+    transform: rotate(45deg);
+    border-color: var(--accent);
+  }
+  #benchmarks td.run .name {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--val);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #benchmarks td.run .meta {
+    grid-column: 2;
+    font-size: 12px;
+    color: var(--faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #benchmarks td.run .note {
+    color: var(--amber);
+  }
+  /* the figures are what the page is for: the tiles' bold mono values */
+  #benchmarks th.fig {
+    width: 15%;
+  }
+  #benchmarks td.fig {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--val);
+    vertical-align: middle;
+  }
+  #benchmarks td.fig .delta {
+    display: block;
+    margin-top: 2px;
+    font-family: var(--sans, inherit);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+  #benchmarks td.fig .delta.better {
+    color: var(--green);
+  }
+  #benchmarks td.fig .delta.worse {
+    color: var(--amber);
+  }
+  #benchmarks tbody tr:not(.detail) {
+    cursor: pointer;
+  }
+  .turns-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 8px 0;
+  }
+  .turns-head .k {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--cap);
+  }
+  .turns {
+    margin-top: 4px;
+  }
+  .turns th {
+    padding-top: 6px;
+  }
+  .turns td.warn {
+    color: var(--amber);
+  }
+  .bench-foot {
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+  @media (max-width: 860px) {
+    .turns .wide {
+      display: none;
+    }
+  }
+  @media (max-width: 600px) {
+    /* a phone keeps the two rates; the opened row has the rest */
+    #benchmarks .warmPrefillTps,
+    #benchmarks .coldLatencyMs {
+      display: none;
+    }
+    #benchmarks td.fig,
+    #benchmarks th.fig {
+      width: 24%;
+      font-size: 13px;
+    }
+    #benchmarks th.fig {
+      font-size: 10px;
+    }
+    /* the time and the status are what tells two runs apart */
+    #benchmarks td.run .day,
+    #benchmarks td.run .preset {
+      display: none;
+    }
+    .bench-run {
+      padding: 12px;
+    }
+    .bench-line .select {
+      flex: 1 0 100%;
+    }
+    /* the running card: the model gives way to Cancel */
+    .bench-model {
+      flex: 1 1 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #benchmarks td.pick,
+    #benchmarks th.pick {
+      width: 30px;
+      padding-left: 10px;
+      padding-right: 2px;
+    }
+    #benchmarks th.run {
+      padding-left: 22px;
+    }
+    .turns td,
+    .turns th {
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+    .turns-head {
+      margin-left: 4px;
+    }
+    /* nearly always the ceiling; the opened row's report has it */
+    .turns .gen {
+      display: none;
+    }
+  }
+
+  /* last: the most specific selectors on these cells */
+  #benchmarks tr.open td {
+    border-bottom: 0;
+  }
+  #benchmarks tbody tr:not(.detail):hover td {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}

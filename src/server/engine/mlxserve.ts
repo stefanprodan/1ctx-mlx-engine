@@ -10,12 +10,16 @@
 // idle engine, which is the bug that motivated 1ctx-mlx-engine, so props() is
 // asked only while a model is resident and then only once per engine process.
 // load/unload are explicit user actions, never called from the sampler.
+// chat() and tokenize() are the benchmark's: /v1/chat/completions and
+// /tokenize, only from a button, only under the shared lock; chat() is the
+// one call here that makes the engine work.
 
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { EngineConfig } from "../../shared/engine.ts";
 import type { Capability, ModelInfo } from "../../shared/models.ts";
 import type {
+  ChatTimings,
   Engine,
   EngineMetrics,
   EngineProps,
@@ -89,10 +93,41 @@ export function parseModels(body: any): ModelInfo[] {
       bytesOnDisk: num(m.bytes_on_disk),
       contextLength:
         typeof m.context_length === "number" ? m.context_length : null,
+      quantization:
+        typeof m.meta?.quantization === "string" ? m.meta.quantization : null,
       capabilities: Array.isArray(m.capabilities)
         ? m.capabilities.filter((c: unknown) => typeof c === "string")
         : [],
     }));
+}
+
+// Pure: a /v1/chat/completions answer → what the engine measured. The
+// llama.cpp-style `timings` object is on the chat path only (not on
+// /v1/completions); an answer without it cannot be benchmarked. Exported
+// for tests.
+export function parseTimings(body: any): ChatTimings {
+  const t = body?.timings;
+  if (typeof t !== "object" || t === null) {
+    throw new Error("/v1/chat/completions: no timings");
+  }
+  // a missing figure read as 0 would end as a wrong rate, not as an error
+  const field = (name: string): number => {
+    const value = t[name];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+      throw new Error(`/v1/chat/completions: bad timings.${name}`);
+    }
+    return value;
+  };
+  const finish = body?.choices?.[0]?.finish_reason;
+  return {
+    promptN: field("prompt_n"),
+    cachedN: field("cached_n"),
+    promptMs: field("prompt_ms"),
+    predictedN: field("predicted_n"),
+    predictedMs: field("predicted_ms"),
+    tokenizeMs: field("tokenize_ms"),
+    finishReason: typeof finish === "string" ? finish : null,
+  };
 }
 
 // Pure: the /props body → the facts worth keeping. The engine reports much
@@ -205,6 +240,40 @@ export class MlxServe implements Engine {
     await this.post("/v1/models/rescan", {});
   }
 
+  // No timeout of its own: a cold prefill of a long prompt on a large
+  // model takes minutes. The caller's signal is the way out, and the engine
+  // cancels the slot when the connection drops.
+  async chat(body: unknown, signal: AbortSignal): Promise<ChatTimings> {
+    const path = "/v1/chat/completions";
+    const res = await fetch(this.url + path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`${path}: HTTP ${res.status} ${text}`.trim());
+    }
+    return parseTimings(await res.json());
+  }
+
+  // Raw text, no chat template. It runs on the default model, so the
+  // caller loads its model as the default first (the engine would otherwise
+  // cold-load one, as /props does).
+  async tokenize(content: string, signal: AbortSignal): Promise<number> {
+    const res = await fetch(`${this.url}/tokenize`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content }),
+      signal,
+    });
+    if (!res.ok) throw new Error(`/tokenize: HTTP ${res.status}`);
+    const body = (await res.json()) as { tokens?: unknown };
+    if (!Array.isArray(body.tokens)) throw new Error("/tokenize: no tokens");
+    return body.tokens.length;
+  }
+
   capabilities(): Set<Capability> {
     return new Set([
       "load",
@@ -213,6 +282,7 @@ export class MlxServe implements Engine {
       "restart",
       "diskClear",
       "rescan",
+      "benchmark",
     ]);
   }
 

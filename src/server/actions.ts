@@ -100,8 +100,8 @@ export class Actions {
     return () => this.listeners.delete(fn);
   }
 
-  running(): ActionName | null {
-    return this.lock.running() as ActionName | null;
+  running(): ActionName | "benchmark" | null {
+    return this.lock.running() as ActionName | "benchmark" | null;
   }
 
   // Validates, runs, logs. Throws ActionError with the status to answer.
@@ -222,15 +222,12 @@ export class Actions {
         return fav === model ? "daily driver" : "no daily driver";
       }
       case "free":
-        return this.restart();
+        return this.restartEngine();
       case "diskClear": {
         // as mlxctl does: restart first so the engine holds no handle on the
         // tier and does not rebuild its index over vanishing files
-        await this.restart();
-        let removed = 0;
-        for (const root of this.deps.engine.cacheDirs()) {
-          removed += await this.clearDir(root);
-        }
+        await this.restartEngine();
+        const removed = await this.clearDiskTier();
         return `restarted, removed ${removed} cache dir${removed === 1 ? "" : "s"}`;
       }
       case "historyClear": {
@@ -246,7 +243,18 @@ export class Actions {
     }
   }
 
-  private async restart(): Promise<string> {
+  // The two below take no lock: they are for run() above and for a caller
+  // that already holds the shared lock (the benchmark, whose whole run is
+  // one operation; the lock is not reentrant).
+  async clearDiskTier(): Promise<number> {
+    let removed = 0;
+    for (const root of this.deps.engine.cacheDirs()) {
+      removed += await this.clearDir(root);
+    }
+    return removed;
+  }
+
+  async restartEngine(): Promise<string> {
     const label = this.deps.engine.serviceLabel();
     if (!label) throw new ActionError(403, "engine is not a launchd service");
     const target = `gui/${this.uid}/${label}`;

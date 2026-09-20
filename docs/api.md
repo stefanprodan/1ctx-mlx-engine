@@ -13,12 +13,13 @@ from the dashboard's own host. Every JSON response carries
 | `GET /` | Monitor: tiles, charts, models, runtime |
 | `GET /requests` | The request in flight and the last 50 finished ones |
 | `GET /engine` | 1ctx-mlx-engine's own service, the mlx-serve install and its configuration |
+| `GET /benchmark` | Run a benchmark on a model and compare the runs |
 
 ## Monitoring
 
 | Route | Answer |
 |---|---|
-| `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads and the model directory |
+| `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads, the benchmark in progress and the model directory |
 | `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
 
@@ -99,7 +100,70 @@ and `speedBps` the rate over the last seconds, both only while running.
 Errors are 400 (not a repository id), 403 (gated or private, no token),
 404 (unknown repository or download), 409 (see above) or 502 (the Hub did not
 answer). A download that needs more disk than the model directory has free,
-plus 1 GB, fails at start with the numbers in `error`.
+plus 1 GB, fails at start with the numbers in `error`. A start answers 409
+while a benchmark runs.
+
+## Benchmarks
+
+A benchmark replays a generated agentic session against the engine and keeps
+what the engine measured. It measures the engine, not the model: the
+session is scripted (a long system prompt with tool schemas, then turns
+that each append a tool call and its result), no answer is checked, and
+the figures come from the `timings` of the engine's own answers. Every
+model gets the same prompts, so two quantizations of a model, two engine
+builds or two configurations compare. A real client sends the model's own
+output back, which the cache already holds, so its cache hit rate is a
+little higher than the one reported here.
+
+A run is one operation under the lock the actions and the engine manager
+share: every other action answers 409 until it ends. It first loads the model and sizes every piece of the session with the
+model's own tokenizer, so the prompts land on their token targets whatever
+the tokenizer. Then, three times over: restart the engine, delete the SSD cache
+tier, load the model as the default, one discarded request, and the turns.
+The model stays loaded at the end.
+
+| Route | Body | Answer |
+|---|---|---|
+| `GET /api/benchmarks` | | the runs, newest first |
+| `POST /api/benchmarks` | `{model, preset}`: `20K` (5 turns, to about 20k tokens), `40K` (8 turns, to about 40k) or `60K` (10 turns, to about 60k) | 202, the run. 403 unless the engine is on this host, managed by 1ctx-mlx-engine, up and idle, and no download is running; 409 while anything holds the lock |
+| `GET /api/benchmarks/<id>` | | `{benchmark, turns}` |
+| `POST /api/benchmarks/<id>/cancel` | | `{ok: true}`; the request in flight is aborted, which stops the generation in the engine. 409 when it is not running |
+| `DELETE /api/benchmarks/<id>` | | `{ok: true}`. 409 for the run in progress |
+
+A run is `{id, status, phase, error, model, quantization, preset, turns,
+repetitions, maxTokens, schema, scriptHash, firstPromptTokens, appVersion,
+engineVersion, engineArgs, chip, memoryBytes, os, summary, suspect,
+peakMemoryBytes, peakActiveBytes, startedAt, finishedAt}`. `status` is
+`running`, `done`, `failed` (the reason in `error`), `cancelled` or
+`interrupted` (1ctx-mlx-engine went away mid-run); `phase` is where it is
+or where it ended: `fit`, `prepare`, `warmup`, `turns`, `finish`. Two runs
+compare when both are `done` and their `scriptHash` is the same: it covers
+the last turn's whole request and the sizes after a small context window
+shrank them. The peaks are the engine process footprint and MLX's active
+memory, sampled once a second from the run's first restart on.
+
+`summary` holds the figures, each `{median, spreadPct}` (half the range
+over the median, in percent) over the repetitions and `null` where nothing was observed: `coldLatencyMs` and
+`coldPrefillTps` (the first turn, nothing cached), `warmLatencyMs` and
+`warmPrefillTps` (the later turns; a turn that prefilled under 256 tokens
+is left out of the rate), `decodeTps` with `decodeFirstTps` and
+`decodeLastTps` (the slope with depth; a turn that generated under 64
+tokens is left out of these two), `cachePct` (cached over prompt
+tokens, later turns), and `contextTokens`, the deepest prompt. Prefill
+rates are over the tokens that were not cached. The latency is the
+engine's tokenize plus prefill time; the engine reports no time to first
+token per request, and queue time is not in it.
+
+`suspect` lists why a finished run should not be trusted as it stands:
+`cold turn hit the cache`, `cache did not hold` (a turn from the third on found under 90%
+of the previous prompt cached; the second turn is the first with tool
+messages, which the engine renders differently from the tool schemas on, a
+cost that shows in `cachePct`), `little was generated` (under a quarter of what the turns
+allowed, too little for a decode rate; a turn that stops at a tool call is
+normal and no reason), `prompt size drifted`, `other requests ran`.
+
+A turn is `{repetition, turn, promptN, cachedN, promptMs, predictedN,
+predictedMs, tokenizeMs, finishReason}`, as the engine stated them.
 
 ## Engine management
 
@@ -135,5 +199,8 @@ arrives on the socket.
 `/api/snapshot`), then `{type: "sample"}` once a second, `{type: "event"}` when
 an action finishes in any tab, `{type: "download"}` with the download as `data`
 on every change of a download's state and twice a second while one runs,
+`{type: "benchmark"}` with `{benchmark, repetition, turn, done}` (`done`
+being the turns measured so far) on every step of a run and once more when
+it has ended,
 and `{type: "engine"}` with the engine page state as `data` on every change
 of the manager's state and twice a second during an engine download.

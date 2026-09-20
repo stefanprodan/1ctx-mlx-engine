@@ -72,6 +72,11 @@ stored requests and the last request in the bar.
 
 The third page manages the engine itself: see [engine.md](engine.md).
 
+## Benchmark
+
+The fourth page measures the engine on a scripted agent session: see
+[benchmark.md](benchmark.md).
+
 ## Memory numbers
 
 Memory is shown in binary GB, the unit About This Mac uses; only the host

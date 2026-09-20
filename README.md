@@ -37,6 +37,11 @@ behind them. A single binary, no dependencies.
 
 - Install, upgrade, roll back and configure mlx-serve as a LaunchAgent.
 
+**Benchmark**
+
+- Replay a scripted agent session against a model from empty caches:
+  prefill, decode, cache hit rate and peak memory, run against run.
+
 ## Install
 
 On macOS 26 or later, on Apple Silicon:
@@ -72,6 +77,7 @@ remove `~/.1ctx-mlx-engine`. The models are not in it and stay.
 
 - [Monitor and Requests](docs/monitor.md)
 - [Engine](docs/engine.md)
+- [Benchmark](docs/benchmark.md)
 - [API](docs/api.md)
 - [Development](docs/development.md)
 

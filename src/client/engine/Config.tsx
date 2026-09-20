@@ -6,10 +6,11 @@
 // the engine's own default and its placeholder names that default. The
 // foot holds Apply and Revert, or what Install will do with the form.
 
-import type { EngineState, KvQuant, LogLevel } from "../../shared/engine.ts";
+import type { EngineState } from "../../shared/engine.ts";
 import { abbreviateHome } from "../../shared/paths.ts";
 import { confirm } from "../shell/Confirm.tsx";
-import { type Form, HOST_NOTES, KV_QUANTS, LOG_LEVELS } from "./config.ts";
+import { Select } from "../shell/Select.tsx";
+import { HOST_NOTES, HOSTS, KV_QUANTS, LOG_LEVELS } from "./config.ts";
 import { Dirs, describedBy, Flag, Row, Text } from "./Fields.tsx";
 import { lockedWhy } from "./release.ts";
 import {
@@ -129,23 +130,17 @@ export function Config({ engine }: { engine: EngineState | null }) {
     <section class="card">
       <Row id="cfg-listener" label="Listener" fields={["host", "port"]}>
         <span class="pair">
-          <select
+          <Select
             name="host"
             class={select("host")}
-            aria-label="Listener host"
-            aria-invalid={
-              issues.value.some((i) => i.field === "host") ? "true" : undefined
-            }
-            aria-describedby={describedBy("host")}
+            label="Listener host"
+            invalid={issues.value.some((i) => i.field === "host")}
+            describedBy={describedBy("host")}
             value={f.host}
+            options={HOSTS}
             disabled={off}
-            onChange={(ev) =>
-              edit({ host: ev.currentTarget.value as Form["host"] })
-            }
-          >
-            <option>0.0.0.0</option>
-            <option>127.0.0.1</option>
-          </select>
+            onChange={(host) => edit({ host })}
+          />
           <small>{HOST_NOTES[f.host]}</small>
         </span>
         <Text
@@ -277,20 +272,15 @@ export function Config({ engine }: { engine: EngineState | null }) {
         fields={["kvQuant", "mtp", "pld", "noVision"]}
       >
         <span class="pair">
-          <select
+          <Select
             name="kvQuant"
             class={select("kvQuant")}
-            aria-label="KV cache quantization"
+            label="KV cache quantization"
             value={f.kvQuant}
+            options={KV_QUANTS}
             disabled={off}
-            onChange={(ev) =>
-              edit({ kvQuant: ev.currentTarget.value as KvQuant })
-            }
-          >
-            {KV_QUANTS.map((q) => (
-              <option key={q}>{q}</option>
-            ))}
-          </select>
+            onChange={(kvQuant) => edit({ kvQuant })}
+          />
           <small>KV quant</small>
         </span>
         <Flag field="mtp" label="MTP" off={off} />
@@ -299,20 +289,15 @@ export function Config({ engine }: { engine: EngineState | null }) {
       </Row>
 
       <Row id="cfg-log" label="Log level" fields={["logLevel"]}>
-        <select
+        <Select
           name="logLevel"
           class={select("logLevel")}
-          aria-label="Log level"
+          label="Log level"
           value={f.logLevel}
+          options={LOG_LEVELS}
           disabled={off}
-          onChange={(ev) =>
-            edit({ logLevel: ev.currentTarget.value as LogLevel })
-          }
-        >
-          {LOG_LEVELS.map((l) => (
-            <option key={l}>{l}</option>
-          ))}
-        </select>
+          onChange={(logLevel) => edit({ logLevel })}
+        />
       </Row>
 
       <Row id="cfg-extra" label="Extra args" fields={["extraArgs"]}>

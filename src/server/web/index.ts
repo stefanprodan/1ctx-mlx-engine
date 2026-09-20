@@ -13,6 +13,7 @@ import { ActionError } from "../actions.ts";
 import { EngineManagerError } from "../engine/manager/index.ts";
 import { diskSpace } from "../host/info.ts";
 import { DownloadError } from "../models/error.ts";
+import { benchmarksRoute } from "./benchmarks.ts";
 import type { HandleDeps, WebDeps } from "./deps.ts";
 import { downloadsRoute } from "./downloads.ts";
 import { engineRoute, selfRestartRoute } from "./engine.ts";
@@ -53,6 +54,7 @@ export function snapshot(deps: HandleDeps): Snapshot {
     disk: deps.sampler.currentDisk(),
     events: deps.actions.events,
     running: deps.actions.running(),
+    benchmark: deps.benchmarks?.active() ?? null,
     downloads: deps.downloads?.list() ?? [],
     modelDir: deps.modelDir ?? null,
   };
@@ -100,6 +102,12 @@ export async function handle(
       url.pathname.startsWith("/api/downloads/")
     ) {
       return await downloadsRoute(req, deps);
+    }
+    if (
+      url.pathname === "/api/benchmarks" ||
+      url.pathname.startsWith("/api/benchmarks/")
+    ) {
+      return await benchmarksRoute(req, deps);
     }
     if (req.method !== "GET") {
       return json({ error: "method not allowed" }, 405);
@@ -157,6 +165,7 @@ export function serve(
       "/": page,
       "/requests": page,
       "/engine": page,
+      "/benchmark": page,
     },
     fetch(req, server) {
       if (new URL(req.url).pathname === "/ws") {
@@ -192,6 +201,9 @@ export function serve(
   const unsubscribeDownloads = deps.downloads.onEvent((download) =>
     publish({ type: "download", data: download }),
   );
+  const unsubscribeBenchmarks = deps.benchmarks.onProgress((progress) =>
+    publish({ type: "benchmark", data: progress }),
+  );
   return {
     server,
     publishEngine(state: EnginePageState) {
@@ -201,6 +213,7 @@ export function serve(
       unsubscribe();
       unsubscribeEvents();
       unsubscribeDownloads();
+      unsubscribeBenchmarks();
       server.stop(true);
     },
   };

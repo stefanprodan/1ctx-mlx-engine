@@ -4,7 +4,9 @@ import {
   parseMetrics,
   parseModels,
   parseProps,
+  parseTimings,
 } from "../../../src/server/engine/mlxserve.ts";
+import chatFixture from "../../fixtures/chat-timings.json";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
 import propsFixture from "../../fixtures/props.json";
@@ -143,5 +145,36 @@ describe("the adapter over HTTP", () => {
     expect(await engine.models()).toHaveLength(3);
     expect((await engine.metrics()).counters.promptTokens).toBe(42781);
     await server.stop(true);
+  });
+});
+
+describe("parseTimings", () => {
+  test("reads what the engine measured for a chat request", () => {
+    expect(parseTimings(chatFixture)).toEqual({
+      promptN: 15067,
+      cachedN: 12840,
+      promptMs: 210.927,
+      predictedN: 256,
+      predictedMs: 1445.61,
+      tokenizeMs: 3.723,
+      finishReason: "length",
+    });
+  });
+
+  test("an answer without timings cannot be benchmarked", () => {
+    expect(() => parseTimings({ choices: [] })).toThrow("no timings");
+    expect(() => parseTimings(null)).toThrow("no timings");
+  });
+
+  test("a missing or impossible figure is an error, never a 0", () => {
+    const { timings } = chatFixture;
+    const without = { ...timings, predicted_ms: undefined };
+    expect(() => parseTimings({ ...chatFixture, timings: without })).toThrow(
+      "bad timings.predicted_ms",
+    );
+    const negative = { ...timings, cached_n: -1 };
+    expect(() => parseTimings({ ...chatFixture, timings: negative })).toThrow(
+      "bad timings.cached_n",
+    );
   });
 });

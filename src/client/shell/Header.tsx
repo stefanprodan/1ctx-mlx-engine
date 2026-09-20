@@ -9,6 +9,7 @@ const PAGES: { page: Page; href: string; label: string }[] = [
   { page: "monitor", href: "/", label: "Monitor" },
   { page: "requests", href: "/requests", label: "Requests" },
   { page: "engine", href: "/engine", label: "Engine" },
+  { page: "benchmark", href: "/benchmark", label: "Benchmark" },
 ];
 
 // The wordmark and the nav; each page carries the connection pill in its
@@ -18,7 +19,7 @@ export function Header({ page }: { page: Page }) {
     <>
       <div class="wordmark">
         <Mark />
-        1ctx MLX
+        <span class="word">1ctx MLX</span>
       </div>
       <nav class="menu">
         {PAGES.map((p) => (

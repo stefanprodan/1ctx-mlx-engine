@@ -415,6 +415,9 @@ describe("the sections", () => {
     expect(cfgHead).toContain("locked while mlx-serve is being upgraded");
     const cfg = render(<Config engine={e} />);
     expect(cfg).not.toMatch(/<(input|select|textarea)(?![^>]* disabled)[^>]*>/);
+    // the selects are buttons: all three, and none of them live
+    expect(cfg.match(/<button[^>]* role="combobox"[^>]*>/g)).toHaveLength(3);
+    expect(cfg).not.toMatch(/<button(?![^>]* disabled)[^>]* role="combobox"/);
   });
 
   test("stopped: Start, no numbers; a stale stopped yields to the sampler", () => {
