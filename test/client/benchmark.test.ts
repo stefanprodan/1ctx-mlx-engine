@@ -3,6 +3,7 @@
 
 import { expect, test } from "bun:test";
 import {
+  COLD_LATENCY,
   COLUMNS,
   comparable,
   delta,
@@ -72,7 +73,7 @@ test("a figure reads at the precision its size deserves", () => {
 
 test("the delta is against the baseline and says which way is better", () => {
   const decode = COLUMNS.find((c) => c.key === "decodeTps")!;
-  const cold = COLUMNS.find((c) => c.key === "coldLatencyMs")!;
+  const cold = COLD_LATENCY;
   expect(delta(fig(110), fig(100))).toBeCloseTo(10, 6);
   expect(delta(fig(null), fig(100))).toBeNull();
   expect(delta(fig(100), fig(0))).toBeNull();

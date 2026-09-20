@@ -50,6 +50,12 @@
   }
 
   /* the runs: the requests table's cells, plus a tick and the deltas */
+  /* fixed: every column keeps its width and the model cell takes what is
+     left, so a long name ellipsizes instead of pushing the figures out */
+  #benchmarks {
+    table-layout: fixed;
+    width: 100%;
+  }
   #benchmarks td.pick,
   #benchmarks th.pick {
     width: 28px;
@@ -89,12 +95,76 @@
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
-  #benchmarks td.model .note {
+  /* a run: the model, and under it one quiet line of when and what */
+  #benchmarks th.run {
+    text-align: left;
+    padding-left: 30px;
+  }
+  #benchmarks td.run {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .run-cell {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    row-gap: 3px;
+  }
+  #benchmarks td.run .chev {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    border-right: 1.5px solid var(--faint);
+    border-bottom: 1.5px solid var(--faint);
+    transform: rotate(-45deg);
+    transition: transform 0.12s;
+  }
+  #benchmarks tr.open td.run .chev {
+    transform: rotate(45deg);
+    border-color: var(--accent);
+  }
+  #benchmarks td.run .name {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--val);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #benchmarks td.run .meta {
+    grid-column: 2;
+    font-size: 12px;
+    color: var(--faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #benchmarks td.run .note {
     color: var(--amber);
+  }
+  #benchmarks th .unit {
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--faint);
+  }
+  /* the figures are what the page is for: the tiles' bold mono values */
+  #benchmarks th.fig {
+    width: 15%;
+  }
+  #benchmarks td.fig {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--val);
+    vertical-align: middle;
   }
   #benchmarks td.fig .delta {
     display: block;
+    margin-top: 2px;
+    font-family: var(--sans, inherit);
     font-size: 11px;
+    font-weight: 500;
     color: var(--faint);
   }
   #benchmarks td.fig .delta.better {
@@ -132,17 +202,28 @@
     justify-content: flex-end;
   }
   @media (max-width: 860px) {
-    #benchmarks .build,
-    #benchmarks .preset,
-    #benchmarks .peak,
     .turns .wide {
       display: none;
     }
   }
   @media (max-width: 600px) {
-    #benchmarks .coldLatencyMs,
+    /* a phone keeps the two rates; the opened row has the rest */
     #benchmarks .warmPrefillTps,
-    #benchmarks .cachePct {
+    #benchmarks .cachePct,
+    #benchmarks th .unit {
+      display: none;
+    }
+    #benchmarks td.fig,
+    #benchmarks th.fig {
+      width: 24%;
+      font-size: 13px;
+    }
+    #benchmarks th.fig {
+      font-size: 10px;
+    }
+    /* the time and the status are what tells two runs apart */
+    #benchmarks td.run .day,
+    #benchmarks td.run .preset {
       display: none;
     }
     .bench-run {
@@ -163,22 +244,14 @@
       flex: 1 1 0;
       min-width: 0;
     }
-    /* the time is enough to tell runs apart; the day is in the opened row */
-    #benchmarks td.when .day {
-      display: none;
-    }
     #benchmarks td.pick,
     #benchmarks th.pick {
       width: 24px;
       padding-left: 2px;
     }
-    #benchmarks td.model {
-      max-width: 96px;
+    #benchmarks th.run {
+      padding-left: 26px;
     }
-    #benchmarks td.model .note {
-      display: none;
-    }
-    /* the turns: the share of the prompt that was cached says it all */
     .turns td,
     .turns th {
       padding-left: 4px;

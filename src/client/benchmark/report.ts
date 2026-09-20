@@ -24,8 +24,9 @@ export type Column = {
   higherIsBetter: boolean;
 };
 
+// The row shows the four figures the page is for; the rest is in the
+// opened row.
 export const COLUMNS: Column[] = [
-  { key: "coldLatencyMs", label: "Cold", unit: "ms", higherIsBetter: false },
   {
     key: "coldPrefillTps",
     label: "Prefill",
@@ -41,6 +42,13 @@ export const COLUMNS: Column[] = [
   { key: "decodeTps", label: "Decode", unit: "tok/s", higherIsBetter: true },
   { key: "cachePct", label: "Cache", unit: "%", higherIsBetter: true },
 ];
+
+export const COLD_LATENCY: Column = {
+  key: "coldLatencyMs",
+  label: "Cold",
+  unit: "ms",
+  higherIsBetter: false,
+};
 
 export const modelName = (id: string) => id.split("/").pop() ?? id;
 

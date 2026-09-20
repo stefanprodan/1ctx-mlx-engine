@@ -70,24 +70,26 @@ function RunRow({
           onChange={() => togglePick(run.id)}
         />
       </td>
-      <td class="when">
-        <span class="chev" />
-        <span class="fin">
-          <span class="day">{fmtDay.format(run.startedAt)}, </span>
-          {fmtTime.format(run.startedAt)}
-        </span>
-      </td>
-      <td class="model" title={run.model}>
-        {modelName(run.model)}
-        {note && (
-          <span class="note" title={statusDetail(run) ?? undefined}>
-            {" "}
-            · {note}
+      <td class="run">
+        {/* the grid lives inside: a cell that is a grid drops out of the row */}
+        <div class="run-cell">
+          <span class="chev" />
+          <span class="name" title={run.model}>
+            {modelName(run.model)}
           </span>
-        )}
+          <span class="meta">
+            <span class="day">{fmtDay.format(run.startedAt)}, </span>
+            {fmtTime.format(run.startedAt)}
+            <span class="preset"> · {run.preset}</span>
+            {note && (
+              <span class="note" title={statusDetail(run) ?? undefined}>
+                {" "}
+                · {note}
+              </span>
+            )}
+          </span>
+        </div>
       </td>
-      <td class="num build">{run.engineVersion ?? DASH}</td>
-      <td class="num preset">{run.preset}</td>
       {COLUMNS.map((column) => {
         const figure = run.summary?.[column.key];
         const change = baseline
@@ -102,9 +104,6 @@ function RunRow({
           </td>
         );
       })}
-      <td class="num peak">
-        {run.peakMemoryBytes ? sizeText(run.peakMemoryBytes) : DASH}
-      </td>
     </tr>
   );
 }
@@ -124,11 +123,9 @@ function Detail({ run }: { run: Benchmark }) {
   const s = run.summary;
   const facts: [string, string][] = [
     ["Model", run.model + (run.quantization ? ` (${run.quantization})` : "")],
-    [
-      "Started",
-      `${fmtDay.format(run.startedAt)}, ${fmtTime.format(run.startedAt)}`,
-    ],
     ["Context", s?.contextTokens ? `${s.contextTokens} tokens` : DASH],
+    ["Engine", `mlx-serve ${run.engineVersion ?? DASH}`],
+    ["Cold latency", value(s?.coldLatencyMs, "ms")],
     ["Warm latency", value(s?.warmLatencyMs, "ms")],
     ["Decode, first turn", value(s?.decodeFirstTps, "tok/s")],
     ["Decode, last turn", value(s?.decodeLastTps, "tok/s")],
@@ -137,6 +134,10 @@ function Detail({ run }: { run: Benchmark }) {
       s?.decodeTps.spreadPct == null
         ? DASH
         : `±${s.decodeTps.spreadPct.toFixed(1)}% decode`,
+    ],
+    [
+      "Memory, peak",
+      run.peakMemoryBytes ? sizeText(run.peakMemoryBytes) : DASH,
     ],
     [
       "MLX active, peak",
@@ -148,7 +149,7 @@ function Detail({ run }: { run: Benchmark }) {
   if (why) facts.splice(1, 0, [run.error ? "Error" : "Suspect", why]);
   return (
     <tr class="detail">
-      <td colSpan={COLUMNS.length + 6}>
+      <td colSpan={COLUMNS.length + 2}>
         <div class="dgrid">
           {facts.map(([label, text]) => (
             <div class="d" key={label}>
@@ -195,16 +196,13 @@ export function Runs() {
         <thead>
           <tr>
             <th class="pick" />
-            <th class="when">Started</th>
-            <th class="model">Model</th>
-            <th class="build">Engine</th>
-            <th class="preset">Preset</th>
+            <th class="run">Model</th>
             {COLUMNS.map((column) => (
               <th class={`fig ${column.key}`} key={column.key}>
                 {column.label}
+                {column.unit === "tok/s" && <span class="unit"> tok/s</span>}
               </th>
             ))}
-            <th class="peak">Peak</th>
           </tr>
         </thead>
         <tbody>
