@@ -16,6 +16,7 @@ import { hostInfo, macosVersion, osMajor } from "./host/info.ts";
 import { isLocalUrl } from "./host/local.ts";
 import { ExclusiveLock } from "./lib/lock.ts";
 import { createFileSink, createLog } from "./lib/log.ts";
+import { DEFAULT_PORT, tailscaleAddress } from "./lib/net.ts";
 import { loadKey, secretsDir } from "./lib/secrets.ts";
 import { Downloader } from "./models/download.ts";
 import { DownloadStore } from "./models/store.ts";
@@ -23,7 +24,7 @@ import { History } from "./monitor/history.ts";
 import { takeSample } from "./monitor/sample.ts";
 import { Sampler } from "./monitor/sampler.ts";
 import { SERVICE_LABEL } from "./service/service.ts";
-import { DEFAULT_PORT, serve, tailscaleAddress } from "./web/index.ts";
+import { serve } from "./web/index.ts";
 
 // Rates need two readings; one second matches the sampler's tick.
 const ONCE_WINDOW_MS = 1000;

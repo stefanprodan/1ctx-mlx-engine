@@ -7,11 +7,8 @@ import type {
 } from "../../../src/server/engine/types.ts";
 import { DownloadError } from "../../../src/server/models/error.ts";
 import { History } from "../../../src/server/monitor/history.ts";
-import {
-  handle,
-  snapshot,
-  type WebDeps,
-} from "../../../src/server/web/index.ts";
+import type { WebDeps } from "../../../src/server/web/deps.ts";
+import { handle, snapshot } from "../../../src/server/web/index.ts";
 import type {
   CacheLimits,
   Capability,

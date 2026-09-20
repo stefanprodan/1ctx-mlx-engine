@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { type Options, optionsToArgs, parseCli } from "../cli.ts";
 import { parseLaunchdArgs } from "../engine/config.ts";
 import { macosVersion, osMajor } from "../host/info.ts";
-import { tailscaleAddress } from "../web/index.ts";
+import { tailscaleAddress } from "../lib/net.ts";
 import {
   bootout,
   bootstrap,
