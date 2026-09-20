@@ -35,7 +35,7 @@ make deploy-studio  # build, install and restart on the Mac Studio
 1. `scripts/preview.sh status`. If it is not up, `make preview`. It runs the
    source on `http://127.0.0.1:11236` against this machine's engine
    (`127.0.0.1:11234`) and the real model directory,
-   `~/.1ctx-mlx-engine/models`, with its pid, db and log under `.preview/`.
+   `~/models`, with its pid, db and log under `.preview/`.
    Never start the server by hand in the background. Development needs no
    other host: when nothing is installed, the Engine page installs mlx-serve
    here (a real LaunchAgent, a real build under

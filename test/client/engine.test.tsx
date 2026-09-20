@@ -41,7 +41,7 @@ import { abbreviateHome, expandHome } from "../../src/shared/paths.ts";
 import { sample, startedAt } from "./helpers.ts";
 
 const HOME = "/Users/me";
-const PINNED = `${HOME}/.1ctx-mlx-engine/models`;
+const PINNED = `${HOME}/models`;
 
 const config = (over: Partial<EngineConfig> = {}): EngineConfig => ({
   host: "127.0.0.1",
@@ -138,7 +138,7 @@ beforeEach(resetEngineState);
 
 describe("the form model", () => {
   test("paths are shown with ~ and stored absolute", () => {
-    expect(abbreviateHome(PINNED, HOME)).toBe("~/.1ctx-mlx-engine/models");
+    expect(abbreviateHome(PINNED, HOME)).toBe("~/models");
     expect(abbreviateHome("/Volumes/x", HOME)).toBe("/Volumes/x");
     expect(abbreviateHome(`${HOME}er/x`, HOME)).toBe(`${HOME}er/x`);
     expect(expandHome("~/models", HOME)).toBe(`${HOME}/models`);
@@ -186,7 +186,7 @@ describe("the form model", () => {
       ...applied,
       prefixCacheMem: "24GB",
       mtp: true,
-      modelDirs: ["~/.1ctx-mlx-engine/models", "/b", ""],
+      modelDirs: ["~/models", "/b", ""],
     };
     expect([...changedFields(edited, applied)].sort()).toEqual([
       "modelDirs",
@@ -293,7 +293,7 @@ describe("the sections", () => {
     // Apply and Revert wait for a change; the pinned directory has no
     // remove button
     expect(disabledCount(cfg)).toBe(2);
-    expect(cfg).toContain('value="~/.1ctx-mlx-engine/models"');
+    expect(cfg).toContain('value="~/models"');
     expect(cfg).not.toContain("Remove model directory 1");
     expect(cfg).toContain('placeholder="auto"');
   });

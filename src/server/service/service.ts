@@ -129,7 +129,7 @@ function installOptions(argv: string[], home: string): Options {
     options.dbPath = join(home, ".1ctx-mlx-engine", "engine.db");
   }
   if (!hasFlag(argv, "--model-dir")) {
-    options.modelDir = join(home, ".1ctx-mlx-engine", "models");
+    options.modelDir = join(home, "models");
   }
   if (!hasFlag(argv, "--log-file")) {
     options.logFile = join(home, ".1ctx-mlx-engine", "1ctx-mlx-engine.log");

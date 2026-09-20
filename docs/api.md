@@ -68,7 +68,7 @@ Errors are `{"error": "<sentence>"}` with 400 (bad input), 403
 ## Downloads
 
 1ctx-mlx-engine downloads a model from the Hugging Face Hub itself, into
-`--model-dir` (`~/.1ctx-mlx-engine/models` by default) as `<owner>/<name>/`,
+`--model-dir` (`~/models` by default) as `<owner>/<name>/`,
 one download at a time from a queue kept in its database. Every file streams
 into `<file>.1ctx-part` and resumes with a Range request after a cut, a retry, a
 cancel or a restart of 1ctx-mlx-engine; LFS files are checked against the

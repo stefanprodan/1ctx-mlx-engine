@@ -73,7 +73,7 @@ and the Hub's higher rate limits. The file holds the bare token; the start
 log says `hf key: <path>` or `hf key: none`. It is read once at start, so a
 change needs a restart.
 
-Downloads land in `--model-dir`, `~/.1ctx-mlx-engine/models` by default, for
+Downloads land in `--model-dir`, `~/models` by default, for
 the preview too (`.preview/models/` when it watches a remote engine); point
 it at the engine's own model directory for a downloaded model to be served.
 The downloader is tested against a fake Hub in

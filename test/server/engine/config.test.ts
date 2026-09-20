@@ -14,7 +14,7 @@ import { parseProps } from "../../../src/server/engine/mlxserve.ts";
 import type { EngineConfig } from "../../../src/shared/engine.ts";
 import propsFixture from "../../fixtures/props.json";
 
-const PINNED = "/Users/x/.1ctx-mlx-engine/models";
+const PINNED = "/Users/x/models";
 
 function config(over: Partial<EngineConfig> = {}): EngineConfig {
   return { ...DEFAULTS(PINNED, "http://127.0.0.1:11234"), ...over };

@@ -17,7 +17,10 @@ export const BUILD = process.env.ONECTX_MLX_BUILD_ID || null;
 
 export const DEFAULT_ENGINE = "http://127.0.0.1:11234";
 export const DEFAULT_DB = join(homedir(), ".1ctx-mlx-engine", "engine.db");
-export const DEFAULT_MODEL_DIR = join(homedir(), ".1ctx-mlx-engine", "models");
+// Outside the data directory: models are the user's, tens of gigabytes that
+// other MLX tools read too, and removing ~/.1ctx-mlx-engine must not take
+// them along.
+export const DEFAULT_MODEL_DIR = join(homedir(), "models");
 export const DEFAULT_RETENTION_DAYS = 7;
 
 export const HELP = `\x1b[1m1ctx-mlx-engine\x1b[0m - monitor and control an LLM inference server
@@ -37,9 +40,7 @@ export const HELP = `\x1b[1m1ctx-mlx-engine\x1b[0m - monitor and control an LLM 
                        nothing)
   --retention <days>   history retention (default: ${DEFAULT_RETENTION_DAYS})
   --model-dir <path>   where downloads from the Hugging Face Hub land, as
-                       <owner>/<name> directories (default:
-                       ~/.1ctx-mlx-engine/models; point it at the
-                       engine's model directory)
+                       <owner>/<name> directories (default: ~/models)
   --hot-cache-max <n>  hot cache budget per model, e.g. 16GB (default: read
                        from the engine's launchd plist when local)
   --disk-cache-max <n> SSD cache tier budget per model, e.g. 50GB (same)

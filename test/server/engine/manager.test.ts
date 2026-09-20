@@ -101,7 +101,7 @@ async function harness(options: HarnessOptions = {}) {
   roots.push(root);
   const home = join(root, "home");
   const engineRoot = join(root, "engine");
-  const pinned = join(home, ".1ctx-mlx-engine", "models");
+  const pinned = join(home, "models");
   const history = new History(":memory:");
   const store = new EngineStore(history.db);
   const lock = new ExclusiveLock();
