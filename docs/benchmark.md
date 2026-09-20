@@ -82,7 +82,7 @@ when its numbers should not be trusted as they stand:
 | cold turn hit the cache | the first turn found more cached than the template's opening tokens |
 | cache did not hold | a turn from the third on found under 90% of the previous prompt cached |
 | turn ended early | a turn stopped before 256 tokens, usually at a tool call; it is left out of the first and last decode rates |
-| prompt size drifted | the first prompt is over 5% off its target |
+| prompt size drifted | the first prompt is over 10% off its target |
 | other requests ran | the engine served somebody else during the run |
 
 A suspect run is kept and shown: a cache that does not hold is a finding.

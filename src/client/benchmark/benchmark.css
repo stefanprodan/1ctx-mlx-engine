@@ -10,6 +10,8 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    /* the select's height, which the running state has nothing as tall as */
+    min-height: 34px;
   }
   .bench-line select {
     background: var(--inset);

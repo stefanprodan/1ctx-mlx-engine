@@ -40,8 +40,9 @@ const MIN_DECODE_TOKENS = 64;
 
 // The pieces are sized with the tokenizer, but the template's own tokens
 // and its rendering of the tool schemas are only known once it has run:
-// a few hundred tokens on a 15k prompt.
-const DRIFT_LIMIT = 0.05;
+// a few hundred tokens, 3 to 5% of the first prompt. The rates are per
+// token, so the limit only has to catch a fit that went wrong.
+const DRIFT_LIMIT = 0.1;
 
 export type Expectations = {
   // the first request's token target, null when the fit did not run

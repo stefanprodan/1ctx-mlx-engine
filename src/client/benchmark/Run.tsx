@@ -119,6 +119,8 @@ export function Run() {
           Run
         </button>
       </div>
+      {/* the progress bar's place, so the card keeps its height */}
+      <div class="bar off" />
       <p class="bench-note">
         {failure.value ? (
           <span class="warn">{failure.value}</span>
