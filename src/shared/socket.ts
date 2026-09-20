@@ -5,6 +5,7 @@
 // server both read these, so neither imports the other.
 
 import type { ActionEvent, ActionName } from "./actions.ts";
+import type { BenchmarkProgress } from "./benchmark.ts";
 import type { Download } from "./downloads.ts";
 import type { EngineMode, EnginePageState } from "./engine.ts";
 import type { DiskDir, DiskSpace, HostInfo } from "./host.ts";
@@ -31,7 +32,10 @@ export type Snapshot = {
   models: ModelInfo[];
   disk: DiskDir[];
   events: ActionEvent[];
-  running: ActionName | null;
+  // what holds the lock the actions, the manager and the benchmark share
+  running: ActionName | "benchmark" | null;
+  // the benchmark in progress; finished ones come from /api/benchmarks
+  benchmark: BenchmarkProgress | null;
   downloads: Download[];
   modelDir: string | null;
 };
@@ -41,4 +45,6 @@ export type WsMessage =
   | { type: "sample"; data: Sample }
   | { type: "event"; data: ActionEvent }
   | { type: "download"; data: Download }
+  // every step of the run in progress, and once more when it has ended
+  | { type: "benchmark"; data: BenchmarkProgress }
   | { type: "engine"; data: EnginePageState };

@@ -6,6 +6,7 @@
 import type { HostInfo } from "../../shared/host.ts";
 import type { CacheLimits } from "../../shared/models.ts";
 import type { Actions } from "../actions.ts";
+import type { BenchmarkRunner } from "../benchmark/runner.ts";
 import type { EngineManager } from "../engine/manager/index.ts";
 import type { Engine } from "../engine/types.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
@@ -19,6 +20,7 @@ export type WebDeps = {
   history: History;
   actions: Actions;
   downloads: Downloader;
+  benchmarks: BenchmarkRunner;
   manager?: EngineManager;
   selfRestart?: {
     isLaunchd: () => boolean;
@@ -40,7 +42,11 @@ export type WebDeps = {
 
 // handle() also serves focused tests that do not exercise downloads.
 // Production serve() requires the runner through WebDeps.
-export type HandleDeps = Omit<WebDeps, "downloads" | "modelDir"> & {
+export type HandleDeps = Omit<
+  WebDeps,
+  "downloads" | "benchmarks" | "modelDir"
+> & {
   downloads?: Downloader;
+  benchmarks?: BenchmarkRunner;
   modelDir?: string | null;
 };

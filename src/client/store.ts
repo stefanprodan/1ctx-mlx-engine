@@ -9,12 +9,13 @@
 
 import { computed, signal } from "@preact/signals";
 import type { ActionEvent, ActionName } from "../shared/actions.ts";
+import type { BenchmarkProgress } from "../shared/benchmark.ts";
 import type { Download } from "../shared/downloads.ts";
 import type { EngineMode } from "../shared/engine.ts";
 import type { Sample } from "../shared/sample.ts";
 import type { Snapshot, WsMessage } from "../shared/socket.ts";
 
-export type Page = "monitor" | "requests" | "engine";
+export type Page = "monitor" | "requests" | "engine" | "benchmark";
 export type Connection = "connecting" | "live" | "reconnecting";
 
 // one bundle serves every path; the page is the one the path names
@@ -23,7 +24,9 @@ export const pageOf = (pathname: string): Page =>
     ? "requests"
     : pathname === "/engine"
       ? "engine"
-      : "monitor";
+      : pathname === "/benchmark"
+        ? "benchmark"
+        : "monitor";
 
 export const connection = signal<Connection>("connecting");
 export const connected = computed(() => connection.value === "live");
@@ -39,7 +42,7 @@ export const models = signal<Sample["models"]>([]);
 export const event = signal<ActionEvent | null>(null);
 // The action in flight: this tab's, or the one the server reports in a
 // snapshot (another tab's). Every control is disabled while it is set.
-export const busy = signal<ActionName | null>(null);
+export const busy = signal<ActionName | "benchmark" | null>(null);
 let localAction = false;
 export function setBusy(action: ActionName | null) {
   localAction = action !== null;
@@ -52,6 +55,21 @@ export const version = computed(() => snapshot.value?.version ?? null);
 // engine that is merely down says offline.
 export const engineMode = signal<EngineMode | null>(null);
 export const absent = computed(() => engineMode.value === "absent");
+// The benchmark in progress: the snapshot's, then every benchmark message.
+// The last message of a run carries its final status and clears this; the
+// count tells the Benchmark page to read the finished runs again.
+export const benchmark = signal<BenchmarkProgress | null>(null);
+export const benchmarksEnded = signal(0);
+export function applyBenchmark(progress: BenchmarkProgress) {
+  if (progress.benchmark.status === "running") {
+    benchmark.value = progress;
+    busy.value = "benchmark";
+    return;
+  }
+  benchmark.value = null;
+  benchmarksEnded.value++;
+  void refreshSnapshot();
+}
 // The downloads, newest first: the snapshot's list, then every download
 // message replaces its row (or adds one on top).
 export const downloads = signal<Download[]>([]);
@@ -115,6 +133,7 @@ function setSnapshot(snap: Snapshot) {
   // release the buttons early
   if (snap.running || !localAction) busy.value = snap.running;
   downloads.value = snap.downloads;
+  benchmark.value = snap.benchmark;
   const key = modelsKeyOf(snap.models);
   if (key === modelsKey) return;
   modelsKey = key;
@@ -166,6 +185,8 @@ export function connect() {
       void refreshSnapshot();
     } else if (msg.type === "download") {
       applyDownload(msg.data);
+    } else if (msg.type === "benchmark") {
+      applyBenchmark(msg.data);
     } else if (msg.type === "engine") {
       engineMode.value = msg.data.engine.mode;
     }

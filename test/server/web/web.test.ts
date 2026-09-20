@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { BenchmarkError } from "../../../src/server/benchmark/runner.ts";
 import { DEFAULTS } from "../../../src/server/engine/config.ts";
 import { EngineManagerError } from "../../../src/server/engine/manager/index.ts";
 import type {
@@ -449,5 +450,78 @@ describe("engine management routes", () => {
     expect(busy.exits).toEqual([]);
     expect(plain.exits).toEqual([]);
     plain.history.close();
+  });
+});
+
+describe("benchmarks API", () => {
+  const benchmark = { id: 7, status: "running", model: MODEL };
+  const progress = { benchmark, repetition: 1, turn: 2, done: [] };
+  function fakeBenchmarks() {
+    const calls: string[] = [];
+    return {
+      calls,
+      active: () => progress,
+      list: () => [benchmark],
+      start: (value: unknown) => {
+        calls.push(`start ${JSON.stringify(value)}`);
+        return benchmark;
+      },
+      detail: (id: number) => {
+        if (id !== 7) throw new BenchmarkError(404, "Benchmark not found");
+        return { benchmark, turns: [] };
+      },
+      cancel: (id: number) => {
+        calls.push(`cancel ${id}`);
+      },
+      remove: (id: number) => {
+        calls.push(`remove ${id}`);
+        throw new BenchmarkError(409, "The benchmark is still running");
+      },
+    };
+  }
+
+  test("lists, starts, reads, cancels and refuses a delete", async () => {
+    const s = setup();
+    const runner = fakeBenchmarks();
+    const deps = { ...s.deps, benchmarks: runner } as unknown as WebDeps;
+    expect(snapshot(deps).benchmark).toEqual(progress as never);
+    expect(snapshot(s.deps).benchmark).toBeNull();
+
+    const list = await response(deps, "/api/benchmarks");
+    expect(await list.json()).toEqual([benchmark]);
+    const started = await response(deps, "/api/benchmarks", "POST", {
+      model: MODEL,
+      preset: "agent",
+    });
+    expect(started.status).toBe(202);
+    expect(runner.calls).toEqual([
+      `start {"model":"${MODEL}","preset":"agent"}`,
+    ]);
+    const one = await response(deps, "/api/benchmarks/7");
+    expect(await one.json()).toEqual({ benchmark, turns: [] });
+    expect((await response(deps, "/api/benchmarks/8")).status).toBe(404);
+    const cancelled = await response(deps, "/api/benchmarks/7/cancel", "POST");
+    expect(await cancelled.json()).toEqual({ ok: true });
+    const removed = await response(deps, "/api/benchmarks/7", "DELETE");
+    expect(removed.status).toBe(409);
+    expect(await removed.json()).toEqual({
+      error: "The benchmark is still running",
+    });
+    expect((await response(deps, "/api/benchmarks", "PUT")).status).toBe(405);
+    // without a runner the routes are not there
+    expect((await response(s.deps, "/api/benchmarks")).status).toBe(404);
+  });
+
+  test("a start from another origin is refused", async () => {
+    const s = setup();
+    const deps = {
+      ...s.deps,
+      benchmarks: fakeBenchmarks(),
+    } as unknown as WebDeps;
+    const res = await handle(
+      request("/api/benchmarks", "POST", { model: MODEL }, "http://evil"),
+      deps,
+    );
+    expect(res.status).toBe(403);
   });
 });

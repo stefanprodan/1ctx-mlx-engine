@@ -100,8 +100,8 @@ export class Actions {
     return () => this.listeners.delete(fn);
   }
 
-  running(): ActionName | null {
-    return this.lock.running() as ActionName | null;
+  running(): ActionName | "benchmark" | null {
+    return this.lock.running() as ActionName | "benchmark" | null;
   }
 
   // Validates, runs, logs. Throws ActionError with the status to answer.

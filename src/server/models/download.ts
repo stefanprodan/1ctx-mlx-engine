@@ -49,6 +49,8 @@ export type DownloaderDeps = {
   engine: Engine;
   refreshModels: () => Promise<unknown>;
   log: Log;
+  // why nothing may start now (a benchmark is measuring), null when it may
+  blocked?: () => string | null;
   now?: () => number;
   // tests: a fake Hub, no wait between retries
   hub?: string;
@@ -127,6 +129,8 @@ export class Downloader {
     if (!repo) {
       throw new DownloadError(400, "repo must be <owner>/<name> or a Hub URL");
     }
+    const blocked = this.deps.blocked?.();
+    if (blocked) throw new DownloadError(409, blocked);
     const open = this.deps.store.findOpen(repo);
     if (
       this.starting.has(repo) ||

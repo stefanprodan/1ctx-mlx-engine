@@ -6,6 +6,8 @@ import { dirname, join } from "node:path";
 import page from "../client/index.html";
 import type { EnginePageState } from "../shared/engine.ts";
 import { Actions } from "./actions.ts";
+import { BenchmarkRunner, LOCK_LABEL } from "./benchmark/runner.ts";
+import { BenchmarkStore } from "./benchmark/store.ts";
 import { BUILD, type Options, VERSION } from "./cli.ts";
 import { cacheLimits, configToArgs, limitsFromArgs } from "./engine/config.ts";
 import { EngineManager } from "./engine/manager/index.ts";
@@ -139,6 +141,9 @@ export async function runApp(
     engine,
     refreshModels: () => sampler.refreshModels(),
     log,
+    // a download moves gigabytes through the same disk and memory bus
+    blocked: () =>
+      lock.running() === LOCK_LABEL ? "A benchmark is running" : null,
   });
   let publishEngine: ((state: EnginePageState) => void) | null = null;
   const manager = new EngineManager({
@@ -156,6 +161,45 @@ export async function runApp(
     token: githubToken,
     publish: (state) => publishEngine?.(state),
   });
+  const host = await hostInfo();
+  const benchmarks = new BenchmarkRunner({
+    engine,
+    store: new BenchmarkStore(history.db),
+    lock,
+    sampler,
+    prepare: {
+      restart: () => actions.restartEngine(),
+      clearDisk: () => actions.clearDiskTier(),
+    },
+    // The run restarts the engine and deletes its cache, so it needs what
+    // every managing route needs, checked here and not only by the page;
+    // and an engine doing anything else would not be measured alone.
+    refusal: () => {
+      if (!local) return "A benchmark only runs on an engine on this host";
+      if (manager.state().mode !== "managed") {
+        return "A benchmark only runs on an engine 1ctx-mlx-engine manages";
+      }
+      if (downloads.running()) return "A download is running";
+      const latest = history.latest();
+      if (!latest?.engineUp) return "The engine is not running";
+      if (latest.requestsRunning + latest.requestsWaiting > 0) {
+        return "The engine is serving a request";
+      }
+      return null;
+    },
+    facts: () => {
+      const applied = store.config().applied;
+      return {
+        appVersion: VERSION,
+        engineVersion: manager.state().active?.version ?? null,
+        engineArgs: applied ? configToArgs(applied, "off") : [],
+        chip: host.chip,
+        memoryBytes: host.memTotal,
+        os: host.os,
+      };
+    },
+    log,
+  });
   const web = serve(
     {
       engine,
@@ -163,6 +207,7 @@ export async function runApp(
       history,
       actions,
       downloads,
+      benchmarks,
       manager,
       selfRestart: {
         // launchd names the job in the environment of what it starts. A
@@ -176,7 +221,7 @@ export async function runApp(
       build: BUILD,
       local,
       currentLimits,
-      host: await hostInfo(),
+      host,
       modelDir: options.modelDir,
     },
     { hostname, port },
