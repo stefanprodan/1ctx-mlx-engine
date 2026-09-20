@@ -164,7 +164,7 @@ plist). Tell the user what changed; the flags are their policy.
 | Database | `~/.mlx-spy/mlx-spy.db` (WAL mode, so `-shm` and `-wal` files sit next to it) |
 | Log | `~/.mlx-spy/mlx-spy.log` (stdout and stderr of the agent, appended) |
 | Working dir | `~/.mlx-spy` |
-| Secrets | `~/.mlx-spy/secrets/` (mode 700, files mode 600): `hf.key`, a Hugging Face token for gated repos and faster downloads, written from the shell's `HF_TOKEN` on 2026-09-09; the boot log's `hf key:` line names the file found, or `none`. The `exa.key`, `firecrawl.key` and `openrouter.key` files left from the chat are unread since 2026-09-20 and can be deleted |
+| Secrets | `~/.mlx-spy/secrets/` (mode 700, files mode 600): `hf.key`, a Hugging Face token for gated repos and faster downloads, written from the shell's `HF_TOKEN` on 2026-09-09; the boot log's `hf key:` line names the file found, or `none`. `hf.key` is the only key file; the `exa.key`, `firecrawl.key` and `openrouter.key` left from the chat were deleted on 2026-09-20 |
 
 Checks:
 
