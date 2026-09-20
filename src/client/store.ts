@@ -58,7 +58,7 @@ export function applyDownload(download: Download) {
 }
 
 // The page is the bundle the tab loaded; the server behind the socket can
-// be replaced under it (a deploy, a brew upgrade and Restart). The first
+// be replaced under it (a deploy, an upgrade). The first
 // snapshot's build is the one this bundle came from, so a later snapshot
 // with another build means the code on screen is old. Pure, for the test.
 export const replaced = (

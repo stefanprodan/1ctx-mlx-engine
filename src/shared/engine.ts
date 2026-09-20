@@ -150,11 +150,13 @@ export type EngineState = {
   failure: Failure | null;
 };
 
-// 1ctx-mlx-engine's own section. brew is true when the binary runs from a
-// Homebrew prefix; a dev build says so by being false.
+// What a build from source reports; the page labels it and the manager
+// offers it no release.
+export const DEV_VERSION = "v0.0.0-dev";
+
+// 1ctx-mlx-engine's own section.
 export type SelfState = {
   version: string;
-  brew: boolean;
   startedAt: number;
   rssBytes: number;
   cpuPct: number;

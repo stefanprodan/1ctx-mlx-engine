@@ -114,7 +114,6 @@ const pageState = (over: Partial<EngineState> = {}): EnginePageState => ({
   engine: engineState(over),
   self: {
     version: "v0.1.0",
-    brew: true,
     startedAt: startedAt - 3_600_000,
     rssBytes: 84 * 2 ** 20,
     cpuPct: 0.6,
@@ -506,14 +505,18 @@ describe("the sections", () => {
     ).not.toMatch(/ disabled/);
   });
 
-  test("1ctx-mlx-engine: a dev build says so, the brew command is text", () => {
+  test("1ctx-mlx-engine: only a dev build says so", () => {
+    const dev = { ...pageState().self, version: "v0.0.0-dev" };
+    expect(render(<Self self={dev} />)).toContain("<small>dev build</small>");
+    expect(render(<Self self={pageState().self} />)).not.toContain("dev build");
+  });
+
+  test("1ctx-mlx-engine: the update command is text", () => {
     const self = {
       ...pageState().self,
-      brew: false,
       offered: release({ tag: "v0.2.0", version: "0.2.0" }),
     };
     const html = render(<Self self={self} />);
-    expect(html).toContain("<small>dev build</small>");
     expect(html).toContain(
       "84 MB <small>MEM</small> / 0.6% <small>CPU</small>",
     );

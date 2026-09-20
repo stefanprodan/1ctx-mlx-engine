@@ -70,7 +70,6 @@ export type EngineManagerDeps = {
   token?: string | null;
   home?: string;
   root?: string;
-  execPath?: string;
   now?: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
   fetch?: typeof globalThis.fetch;

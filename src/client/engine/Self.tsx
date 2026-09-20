@@ -5,7 +5,7 @@
 // line. Its job is always on the host serving this page, so it is gated
 // by the manager's lock and never by where mlx-serve is.
 
-import type { SelfState } from "../../shared/engine.ts";
+import { DEV_VERSION, type SelfState } from "../../shared/engine.ts";
 import { DASH, duration, num } from "../format.ts";
 import { Copy } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
@@ -81,7 +81,7 @@ export function Self({ self }: { self: SelfState | null }) {
           <dt>Version</dt>
           <dd class={self ? undefined : "none"}>
             {self?.version ?? DASH}
-            {self && <small>{self.brew ? "from the tap" : "dev build"}</small>}
+            {self?.version === DEV_VERSION && <small>dev build</small>}
           </dd>
         </dl>
         <dl>

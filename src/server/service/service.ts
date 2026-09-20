@@ -16,7 +16,7 @@ import {
   print as printLaunchd,
   reload,
 } from "./launchd.ts";
-import { agentBinary, type PlistSpec, plistPath } from "./plist.ts";
+import { type PlistSpec, plistPath } from "./plist.ts";
 
 export const SERVICE_LABEL = "com.stefanprodan.1ctx-mlx-engine";
 const SERVICE_PORT = 11235;
@@ -145,7 +145,7 @@ function serviceSpec(
   const crashLog = join(home, ".1ctx-mlx-engine", "launchd.log");
   return {
     label: SERVICE_LABEL,
-    programArguments: [agentBinary(execPath), ...optionsToArgs(options)],
+    programArguments: [execPath, ...optionsToArgs(options)],
     workingDirectory: join(home, ".1ctx-mlx-engine"),
     environmentVariables: {
       HOME: home,

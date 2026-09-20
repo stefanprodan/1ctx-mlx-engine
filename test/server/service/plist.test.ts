@@ -3,7 +3,6 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  agentBinary,
   type PlistSpec,
   plistPath,
   renderPlist,
@@ -59,23 +58,6 @@ describe("plist paths", () => {
   test("builds a user LaunchAgents path", () => {
     expect(plistPath("com.example.self", "/Users/test/")).toBe(
       "/Users/test/Library/LaunchAgents/com.example.self.plist",
-    );
-  });
-
-  test("maps any Homebrew Cellar prefix to opt", () => {
-    expect(
-      agentBinary(
-        "/opt/homebrew/Cellar/1ctx-mlx-engine/1.2.3/bin/1ctx-mlx-engine",
-      ),
-    ).toBe("/opt/homebrew/opt/1ctx-mlx-engine/bin/1ctx-mlx-engine");
-    expect(
-      agentBinary("/custom/brew/Cellar/1ctx-mlx-engine/2/bin/1ctx-mlx-engine"),
-    ).toBe("/custom/brew/opt/1ctx-mlx-engine/bin/1ctx-mlx-engine");
-    expect(
-      agentBinary("/Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine"),
-    ).toBe("/Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine");
-    expect(agentBinary("/opt/homebrew/bin/1ctx-mlx-engine")).toBe(
-      "/opt/homebrew/bin/1ctx-mlx-engine",
     );
   });
 });

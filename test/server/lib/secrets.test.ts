@@ -36,12 +36,12 @@ describe("key files", () => {
     }
   });
 
-  test("resolves source and Homebrew secret directories", () => {
+  test("resolves source and installed secret directories", () => {
     expect(secretsDirFor("/r/src/main.ts", "/Users/x")).toBe(
       "/r/.preview/secrets",
     );
-    // a compiled binary reports /$bunfs/root/<name> as Bun.main, whatever
-    // Cellar version it was launched from; the keys must not follow it
+    // a compiled binary reports /$bunfs/root/<name> as Bun.main, wherever
+    // it was launched from; the keys must not follow it
     expect(secretsDirFor("/$bunfs/root/1ctx-mlx-engine", "/Users/x")).toBe(
       "/Users/x/.1ctx-mlx-engine/secrets",
     );

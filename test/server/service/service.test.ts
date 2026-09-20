@@ -59,7 +59,7 @@ function harness() {
   };
   const deps: ServiceDeps = {
     home: "/Users/test",
-    execPath: "/opt/homebrew/Cellar/1ctx-mlx-engine/1.2.3/bin/1ctx-mlx-engine",
+    execPath: "/Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine",
     osVersion: () => "macOS 26.6 (25G83)",
     defaultHostname: () => "127.0.0.1",
     write: (line) => output.push(line),
@@ -103,9 +103,7 @@ describe("service install", () => {
     ]);
     const path = `/Users/test/Library/LaunchAgents/${SERVICE_LABEL}.plist`;
     const xml = new TextDecoder().decode(h.files.get(path));
-    expect(xml).toContain(
-      "/opt/homebrew/opt/1ctx-mlx-engine/bin/1ctx-mlx-engine",
-    );
+    expect(xml).toContain("/Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine");
     expect(xml).toContain("<string>--log-file</string>");
     expect(xml).toContain(
       "<string>/Users/test/.1ctx-mlx-engine/1ctx-mlx-engine.log</string>",
@@ -147,7 +145,7 @@ describe("service lifecycle", () => {
     expect(h.output[0]).toContain("state: running");
     expect(h.output[0]).toContain("pid: 42");
     expect(h.output[0]).toContain(
-      "binary: /opt/homebrew/opt/1ctx-mlx-engine/bin/1ctx-mlx-engine",
+      "binary: /Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine",
     );
     expect(h.output[0]).toContain("version: v1.2.3");
     expect(h.output[0]).toContain("url: http://127.0.0.1:11235");

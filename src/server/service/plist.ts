@@ -94,13 +94,3 @@ export function renderPlist(spec: PlistSpec): string {
 export function plistPath(label: string, home: string): string {
   return `${home.replace(/\/$/, "")}/Library/LaunchAgents/${label}.plist`;
 }
-
-export function agentBinary(execPath: string): string {
-  const match =
-    /^(.*)\/Cellar\/1ctx-mlx-engine\/[^/]+\/bin\/1ctx-mlx-engine$/.exec(
-      execPath,
-    );
-  return match
-    ? `${match[1]}/opt/1ctx-mlx-engine/bin/1ctx-mlx-engine`
-    : execPath;
-}
