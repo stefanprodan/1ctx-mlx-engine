@@ -197,3 +197,110 @@
     }
   }
 }
+
+@layer base {
+  /* the select: a button and a list drawn here, never the system's popup */
+  .select {
+    position: relative;
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .select > button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--val);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    /* a text input's own, so the two stand level in a row */
+    line-height: normal;
+    padding: 6px 9px;
+    text-align: left;
+  }
+  .select > button:hover:not(:disabled) {
+    border-color: var(--rule);
+  }
+  .select > button:focus-visible,
+  .select.open > button {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  .select > button:disabled {
+    opacity: 0.5;
+  }
+  .select .picked {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .select .caret {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    margin: -3px 2px 0 0;
+    border-right: 1.5px solid var(--cap);
+    border-bottom: 1.5px solid var(--cap);
+    transform: rotate(45deg);
+    transition: transform 0.12s;
+  }
+  .select.open .caret {
+    margin-top: 3px;
+    transform: rotate(-135deg);
+  }
+  .select > .list {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    max-width: min(90vw, 560px);
+    max-height: 264px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px;
+    background: #232527;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+  }
+  .select [role="option"] {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+  }
+  .select [role="option"].active {
+    background: #303336;
+    color: var(--val);
+  }
+  /* the chosen one: a tick, in the place a native list puts it */
+  .select [role="option"]::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 8px;
+    height: 4px;
+    margin-top: -3px;
+    border-left: 1.5px solid transparent;
+    border-bottom: 1.5px solid transparent;
+    transform: rotate(-45deg);
+  }
+  .select [role="option"][aria-selected="true"]::before {
+    border-color: var(--accent);
+  }
+}

@@ -165,7 +165,6 @@
     opacity: 1;
   }
   .setting input[type="text"],
-  .setting select,
   .setting textarea {
     background: var(--inset);
     border: 1px solid var(--line);
@@ -182,14 +181,12 @@
     width: 100%;
   }
   .setting input:focus,
-  .setting select:focus,
   .setting textarea:focus {
     outline: 2px solid var(--accent);
     outline-offset: -1px;
     border-color: var(--accent);
   }
   .setting input:disabled,
-  .setting select:disabled,
   .setting textarea:disabled {
     opacity: 0.5;
   }
@@ -197,12 +194,12 @@
      sit after the base input rule and match its specificity; the refusal
      comes last because a refused field is always an edited one. */
   .setting input.changed,
-  .setting select.changed,
+  .setting .select.changed > button,
   .setting textarea.changed {
     border-color: var(--amber);
   }
   .setting input[aria-invalid="true"],
-  .setting select[aria-invalid="true"],
+  .setting .select > button[aria-invalid="true"],
   .setting textarea[aria-invalid="true"] {
     border-color: #ff95a8;
   }
@@ -215,7 +212,7 @@
   .w7 {
     width: 104px;
   }
-  /* a select needs its widest option plus the native arrow */
+  /* a select needs its widest option plus the caret */
   .w9 {
     width: 132px;
   }

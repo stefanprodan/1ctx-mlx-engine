@@ -265,7 +265,8 @@ src/client/
   style/base.css     what more than one page uses: cards, section heads,
                      pills, buttons, tables, the request bar, facts
   shell/             Header.tsx, Footer.tsx, Pill.tsx, Confirm.tsx (the
-                     dialog with a promise API), shell.css
+                     dialog with a promise API), Select.tsx (the one select,
+                     a button and a listbox, never a native one), shell.css
   monitor/           Monitor.tsx (the page: range, series and tile memory
                      signals), Tiles.tsx, Charts.tsx (uPlot in a ref),
                      Models.tsx, Runtime.tsx, RangePicker.tsx, RequestBar.tsx,
