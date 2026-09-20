@@ -1,13 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { parseMetrics, parseModels } from "../src/engine/mlxserve.ts";
+import {
+  parseMetrics,
+  parseModels,
+} from "../../../src/server/engine/mlxserve.ts";
 import {
   buildSample,
   computeRates,
   EMPTY_LIVE,
   type Reading,
-} from "../src/sample.ts";
-import metricsFixture from "./fixtures/metrics.json";
-import modelsFixture from "./fixtures/models.json";
+} from "../../../src/server/monitor/sample.ts";
+import metricsFixture from "../../fixtures/metrics.json";
+import modelsFixture from "../../fixtures/models.json";
 
 // A reading derived from the fixture with counter/gauge overrides, so each
 // test states only what changes between the two ticks.

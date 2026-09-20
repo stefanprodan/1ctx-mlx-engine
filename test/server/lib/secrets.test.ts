@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadKey, secretsDirFor } from "../src/secrets.ts";
+import { loadKey, secretsDirFor } from "../../../src/server/lib/secrets.ts";
 
 describe("key files", () => {
   test("loads valid keys and rejects invalid files with their paths", () => {

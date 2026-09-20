@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { DASH } from "../../src/ui/format.ts";
-import { whole } from "../../src/ui/monitor/range.ts";
-import { appendLive, chipValue } from "../../src/ui/monitor/series.ts";
+import { DASH } from "../../src/client/format.ts";
+import { whole } from "../../src/client/monitor/range.ts";
+import { appendLive, chipValue } from "../../src/client/monitor/series.ts";
 import { sample, series, startedAt } from "./helpers.ts";
 
 describe("series", () => {

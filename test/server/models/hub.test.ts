@@ -9,8 +9,8 @@ import {
   parseRepoFiles,
   parseRepoId,
   resolveUrl,
-} from "../src/hub.ts";
-import hubModel from "./fixtures/hub-model.json";
+} from "../../../src/server/models/hub.ts";
+import hubModel from "../../fixtures/hub-model.json";
 
 describe("parseRepoId", () => {
   test("accepts ids and Hub URLs", () => {

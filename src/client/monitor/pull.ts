@@ -5,7 +5,7 @@
 // test/ui/pull.test.ts): which pulls the table shows, the dot, the bytes
 // and speed, the state word.
 
-import type { Pull } from "../../pulls.ts";
+import type { Pull } from "../../server/models/pulls.ts";
 import { gb } from "../format.ts";
 
 // A finished pull whose model the engine lists is that model's row now;

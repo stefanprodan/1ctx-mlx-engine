@@ -9,8 +9,8 @@
 
 import { signal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import type { Range, Series } from "../../history.ts";
-import type { Sample } from "../../sample.ts";
+import type { Range, Series } from "../../server/monitor/history.ts";
+import type { Sample } from "../../server/monitor/sample.ts";
 import { Download } from "../icons.tsx";
 import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";

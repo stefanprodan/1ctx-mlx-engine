@@ -4,8 +4,8 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname } from "node:path";
-import { parseLaunchdArgs } from "./engine/config.ts";
-import { rotateStopped } from "./log.ts";
+import { parseLaunchdArgs } from "../engine/config.ts";
+import { rotateStopped } from "../lib/log.ts";
 import {
   plistPath as defaultPlistPath,
   type PlistSpec,

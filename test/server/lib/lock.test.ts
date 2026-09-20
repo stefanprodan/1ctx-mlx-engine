@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { ExclusiveLock, LockBusyError } from "../src/lock.ts";
+import { ExclusiveLock, LockBusyError } from "../../../src/server/lib/lock.ts";
 
 describe("ExclusiveLock", () => {
   test("refuses a second holder while the first is running", async () => {

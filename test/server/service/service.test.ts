@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import type { LaunchdInfo } from "../src/launchd.ts";
-import { renderPlist } from "../src/plist.ts";
+import type { LaunchdInfo } from "../../../src/server/service/launchd.ts";
+import { renderPlist } from "../../../src/server/service/plist.ts";
 import {
   runService,
   SERVICE_LABEL,
   type ServiceDeps,
   type ServiceFiles,
   type ServiceLaunchd,
-} from "../src/service.ts";
+} from "../../../src/server/service/service.ts";
 
 function harness() {
   const events: string[] = [];

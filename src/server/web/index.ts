@@ -7,21 +7,21 @@
 
 import { networkInterfaces } from "node:os";
 import type { HTMLBundle } from "bun";
-import { ActionError, type ActionEvent, type Actions } from "./actions.ts";
-import { type EngineManager, EngineManagerError } from "./engine/install.ts";
+import { ActionError, type ActionEvent, type Actions } from "../actions.ts";
+import { type EngineManager, EngineManagerError } from "../engine/install.ts";
 import type {
   EngineConfig,
   EnginePageState,
   ServiceBody,
-} from "./engine/manage.ts";
-import type { CacheLimits, Engine } from "./engine/types.ts";
-import { type History, RANGES, type Range } from "./history.ts";
-import { diskSpace, type HostInfo } from "./host/info.ts";
-import type { ExclusiveLock } from "./lock.ts";
-import { PullError, type PullRunner } from "./pull.ts";
-import type { Pull } from "./pulls.ts";
-import type { Sample } from "./sample.ts";
-import type { Sampler } from "./sampler.ts";
+} from "../engine/manage.ts";
+import type { CacheLimits, Engine } from "../engine/types.ts";
+import { diskSpace, type HostInfo } from "../host/info.ts";
+import type { ExclusiveLock } from "../lib/lock.ts";
+import { PullError, type PullRunner } from "../models/pull.ts";
+import type { Pull } from "../models/pulls.ts";
+import { type History, RANGES, type Range } from "../monitor/history.ts";
+import type { Sample } from "../monitor/sample.ts";
+import type { Sampler } from "../monitor/sampler.ts";
 
 export const DEFAULT_PORT = 11235;
 const SAMPLES_TOPIC = "samples";

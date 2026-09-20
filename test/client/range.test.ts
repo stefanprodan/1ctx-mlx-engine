@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { DASH } from "../../src/ui/format.ts";
+import { DASH } from "../../src/client/format.ts";
 import {
   inView,
   inViewMean,
   rangeTotal,
   whole,
-} from "../../src/ui/monitor/range.ts";
+} from "../../src/client/monitor/range.ts";
 import { series } from "./helpers.ts";
 
 describe("range", () => {

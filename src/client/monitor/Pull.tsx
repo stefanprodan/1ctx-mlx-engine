@@ -8,7 +8,7 @@
 
 import { signal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import type { Pull } from "../../pulls.ts";
+import type { Pull } from "../../server/models/pulls.ts";
 import { Trash } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
 import { applyPull, pulls, snapshot } from "../store.ts";

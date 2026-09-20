@@ -11,7 +11,7 @@ import type {
   ConfigIssue,
   EngineConfig,
   EnginePageState,
-} from "../../engine/manage.ts";
+} from "../../server/engine/manage.ts";
 import {
   changedFields,
   type Form,

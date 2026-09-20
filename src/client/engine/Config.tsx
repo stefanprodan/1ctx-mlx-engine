@@ -12,7 +12,7 @@ import type {
   EngineState,
   KvQuant,
   LogLevel,
-} from "../../engine/manage.ts";
+} from "../../server/engine/manage.ts";
 import { Trash } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
 import {

@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { DEFAULTS } from "../../src/engine/config.ts";
-import type { InstallRecord } from "../../src/engine/manage.ts";
-import { EngineStore } from "../../src/engine/store.ts";
-import { History } from "../../src/history.ts";
+import { DEFAULTS } from "../../../src/server/engine/config.ts";
+import type { InstallRecord } from "../../../src/server/engine/manage.ts";
+import { EngineStore } from "../../../src/server/engine/store.ts";
+import { History } from "../../../src/server/monitor/history.ts";
 
 const PINNED = "/Users/x/.mlx-spy/models";
 

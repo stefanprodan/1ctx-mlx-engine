@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { osMajor } from "../../src/host/info.ts";
+import { osMajor } from "../../../src/server/host/info.ts";
 
 describe("osMajor", () => {
   test.each([

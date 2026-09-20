@@ -1,19 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { Actions } from "../src/actions.ts";
-import { parseMetrics, parseModels } from "../src/engine/mlxserve.ts";
+import { Actions } from "../../../src/server/actions.ts";
+import {
+  parseMetrics,
+  parseModels,
+} from "../../../src/server/engine/mlxserve.ts";
 import type {
   Capability,
   Engine,
   EngineMetrics,
   ModelInfo,
-} from "../src/engine/types.ts";
-import { History } from "../src/history.ts";
-import type { HostProbes } from "../src/host/types.ts";
-import type { Log } from "../src/log.ts";
-import { Sampler } from "../src/sampler.ts";
-import { handle, isRange, snapshot } from "../src/web.ts";
-import metricsFixture from "./fixtures/metrics.json";
-import modelsFixture from "./fixtures/models.json";
+} from "../../../src/server/engine/types.ts";
+import type { HostProbes } from "../../../src/server/host/types.ts";
+import type { Log } from "../../../src/server/lib/log.ts";
+import { History } from "../../../src/server/monitor/history.ts";
+import { Sampler } from "../../../src/server/monitor/sampler.ts";
+import { handle, isRange, snapshot } from "../../../src/server/web/index.ts";
+import metricsFixture from "../../fixtures/metrics.json";
+import modelsFixture from "../../fixtures/models.json";
 
 const testLog = (write: (line: string) => void): Log =>
   Object.assign(write, { warn: write, error: write });

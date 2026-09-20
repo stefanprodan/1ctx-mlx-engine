@@ -3,15 +3,8 @@
 
 import { beforeEach, describe, expect, test } from "bun:test";
 import { render } from "preact-render-to-string";
-import type {
-  EngineConfig,
-  EnginePageState,
-  EngineState,
-  Operation,
-  Release,
-} from "../../src/engine/manage.ts";
-import { Build } from "../../src/ui/engine/Build.tsx";
-import { Config, ConfigHead } from "../../src/ui/engine/Config.tsx";
+import { Build } from "../../src/client/engine/Build.tsx";
+import { Config, ConfigHead } from "../../src/client/engine/Config.tsx";
 import {
   abbreviate,
   changedFields,
@@ -19,7 +12,7 @@ import {
   refusalLine,
   toConfig,
   toForm,
-} from "../../src/ui/engine/config.ts";
+} from "../../src/client/engine/config.ts";
 import {
   cancellable,
   idleLine,
@@ -27,9 +20,9 @@ import {
   phaseLine,
   progressPct,
   servicePill,
-} from "../../src/ui/engine/release.ts";
-import { ServiceHead } from "../../src/ui/engine/Service.tsx";
-import { Spy, SpyHead } from "../../src/ui/engine/Spy.tsx";
+} from "../../src/client/engine/release.ts";
+import { ServiceHead } from "../../src/client/engine/Service.tsx";
+import { Spy, SpyHead } from "../../src/client/engine/Spy.tsx";
 import {
   changed,
   edit,
@@ -38,7 +31,14 @@ import {
   resetEngineState,
   revert,
   setPageState,
-} from "../../src/ui/engine/state.ts";
+} from "../../src/client/engine/state.ts";
+import type {
+  EngineConfig,
+  EnginePageState,
+  EngineState,
+  Operation,
+  Release,
+} from "../../src/server/engine/manage.ts";
 import { sample, startedAt } from "./helpers.ts";
 
 const HOME = "/Users/me";

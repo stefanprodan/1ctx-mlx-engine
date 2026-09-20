@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Sample } from "../../sample.ts";
+import type { Sample } from "../../server/monitor/sample.ts";
 import { count } from "../format.ts";
 
 export type RequestMemory = {

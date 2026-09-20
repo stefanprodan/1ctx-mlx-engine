@@ -4,9 +4,9 @@
 // Builders for the client tests: a sample, a last request and a series,
 // every field set, overridable.
 
-import type { Series } from "../../src/history.ts";
-import type { LastRequest } from "../../src/requests.ts";
-import type { Sample } from "../../src/sample.ts";
+import type { Series } from "../../src/server/monitor/history.ts";
+import type { LastRequest } from "../../src/server/monitor/requests.ts";
+import type { Sample } from "../../src/server/monitor/sample.ts";
 
 export const startedAt = new Date(2026, 8, 9, 10, 0, 0).getTime();
 export const stamp = (time: number) =>

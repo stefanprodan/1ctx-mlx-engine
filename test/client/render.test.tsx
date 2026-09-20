@@ -3,17 +3,14 @@
 
 import { describe, expect, test } from "bun:test";
 import { render } from "preact-render-to-string";
-import type { Pull } from "../../src/pulls.ts";
-import type { LastRequest } from "../../src/requests.ts";
-import type { Sample } from "../../src/sample.ts";
-import { Event } from "../../src/ui/monitor/Event.tsx";
-import { Models } from "../../src/ui/monitor/Models.tsx";
-import { RequestBar } from "../../src/ui/monitor/RequestBar.tsx";
-import { Runtime } from "../../src/ui/monitor/Runtime.tsx";
-import { Tiles } from "../../src/ui/monitor/Tiles.tsx";
-import { PLACEHOLDER, type Tile } from "../../src/ui/monitor/tiles.ts";
-import { Requests, requests } from "../../src/ui/requests/Requests.tsx";
-import type { Snapshot } from "../../src/ui/store.ts";
+import { Event } from "../../src/client/monitor/Event.tsx";
+import { Models } from "../../src/client/monitor/Models.tsx";
+import { RequestBar } from "../../src/client/monitor/RequestBar.tsx";
+import { Runtime } from "../../src/client/monitor/Runtime.tsx";
+import { Tiles } from "../../src/client/monitor/Tiles.tsx";
+import { PLACEHOLDER, type Tile } from "../../src/client/monitor/tiles.ts";
+import { Requests, requests } from "../../src/client/requests/Requests.tsx";
+import type { Snapshot } from "../../src/client/store.ts";
 import {
   busy,
   connection,
@@ -21,7 +18,10 @@ import {
   pulls,
   sample,
   snapshot,
-} from "../../src/ui/store.ts";
+} from "../../src/client/store.ts";
+import type { Pull } from "../../src/server/models/pulls.ts";
+import type { LastRequest } from "../../src/server/monitor/requests.ts";
+import type { Sample } from "../../src/server/monitor/sample.ts";
 
 const startedAt = new Date(2026, 8, 9, 10, 0, 0).getTime();
 const last: LastRequest = {

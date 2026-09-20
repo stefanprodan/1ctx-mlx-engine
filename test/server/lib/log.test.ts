@@ -5,7 +5,11 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFileSink, createLog, rotateStopped } from "../src/log.ts";
+import {
+  createFileSink,
+  createLog,
+  rotateStopped,
+} from "../../../src/server/lib/log.ts";
 
 describe("createLog", () => {
   test("writes timestamp, level, and message fields", () => {

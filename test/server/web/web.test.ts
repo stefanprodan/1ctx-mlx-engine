@@ -1,16 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULTS } from "../src/engine/config.ts";
-import { EngineManagerError } from "../src/engine/install.ts";
+import { DEFAULTS } from "../../../src/server/engine/config.ts";
+import { EngineManagerError } from "../../../src/server/engine/install.ts";
 import type {
   CacheLimits,
   Capability,
   Engine,
   EngineMetrics,
   ModelInfo,
-} from "../src/engine/types.ts";
-import { History } from "../src/history.ts";
-import { PullError } from "../src/pull.ts";
-import { handle, snapshot, type WebDeps } from "../src/web.ts";
+} from "../../../src/server/engine/types.ts";
+import { PullError } from "../../../src/server/models/pull.ts";
+import { History } from "../../../src/server/monitor/history.ts";
+import {
+  handle,
+  snapshot,
+  type WebDeps,
+} from "../../../src/server/web/index.ts";
 
 const MODEL = "org/model";
 const model: ModelInfo = {

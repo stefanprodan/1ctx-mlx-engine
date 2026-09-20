@@ -14,8 +14,8 @@ import {
   parseTag,
   parseVersionOutput,
   SPY_ASSET,
-} from "../../src/engine/release.ts";
-import releasesFixture from "../fixtures/releases.json";
+} from "../../../src/server/engine/release.ts";
+import releasesFixture from "../../fixtures/releases.json";
 
 describe("engine releases", () => {
   test("parses the recorded asset and skips drafts", () => {

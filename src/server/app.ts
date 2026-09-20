@@ -3,6 +3,7 @@
 
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import page from "../client/index.html";
 import { Actions } from "./actions.ts";
 import { BUILD, type Options, VERSION } from "./cli.ts";
 import { cacheLimits, configToArgs, limitsFromArgs } from "./engine/config.ts";
@@ -10,20 +11,19 @@ import { EngineManager } from "./engine/install.ts";
 import type { EnginePageState } from "./engine/manage.ts";
 import { MlxServe } from "./engine/mlxserve.ts";
 import { EngineStore } from "./engine/store.ts";
-import { History } from "./history.ts";
 import { createHostProbes } from "./host/index.ts";
 import { hostInfo, macosVersion, osMajor } from "./host/info.ts";
 import { isLocalUrl } from "./host/local.ts";
-import { ExclusiveLock } from "./lock.ts";
-import { createFileSink, createLog } from "./log.ts";
-import { PullRunner } from "./pull.ts";
-import { PullStore } from "./pulls.ts";
-import { takeSample } from "./sample.ts";
-import { Sampler } from "./sampler.ts";
-import { loadKey, secretsDir } from "./secrets.ts";
-import { SERVICE_LABEL } from "./service.ts";
-import page from "./ui/index.html";
-import { DEFAULT_PORT, serve, tailscaleAddress } from "./web.ts";
+import { ExclusiveLock } from "./lib/lock.ts";
+import { createFileSink, createLog } from "./lib/log.ts";
+import { loadKey, secretsDir } from "./lib/secrets.ts";
+import { PullRunner } from "./models/pull.ts";
+import { PullStore } from "./models/pulls.ts";
+import { History } from "./monitor/history.ts";
+import { takeSample } from "./monitor/sample.ts";
+import { Sampler } from "./monitor/sampler.ts";
+import { SERVICE_LABEL } from "./service/service.ts";
+import { DEFAULT_PORT, serve, tailscaleAddress } from "./web/index.ts";
 
 // Rates need two readings; one second matches the sampler's tick.
 const ONCE_WINDOW_MS = 1000;

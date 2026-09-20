@@ -13,7 +13,7 @@ import {
   reload,
   type Spawn,
   waitForExit,
-} from "../src/launchd.ts";
+} from "../../../src/server/service/launchd.ts";
 
 function result(code = 0, stdout = "", stderr = "") {
   return { code, stdout, stderr };

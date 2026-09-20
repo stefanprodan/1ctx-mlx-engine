@@ -11,7 +11,7 @@ import {
   orderModels,
   size,
   sizeText,
-} from "../../src/ui/format.ts";
+} from "../../src/client/format.ts";
 
 describe("format", () => {
   test("gb is binary and dashes a missing value", () => {

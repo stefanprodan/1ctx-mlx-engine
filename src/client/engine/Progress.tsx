@@ -5,7 +5,7 @@
 // can still mean something. Once the swap begins the only ways out are
 // forward or the rollback, and neither is a button.
 
-import type { Operation } from "../../engine/manage.ts";
+import type { Operation } from "../../server/engine/manage.ts";
 import {
   cancellable,
   operationTitle,

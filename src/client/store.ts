@@ -8,10 +8,10 @@
 // the DOM.
 
 import { computed, signal } from "@preact/signals";
-import type { ActionEvent, ActionName } from "../actions.ts";
-import type { Pull } from "../pulls.ts";
-import type { Sample } from "../sample.ts";
-import type { snapshot as snapshotOf, WsMessage } from "../web.ts";
+import type { ActionEvent, ActionName } from "../server/actions.ts";
+import type { Pull } from "../server/models/pulls.ts";
+import type { Sample } from "../server/monitor/sample.ts";
+import type { snapshot as snapshotOf, WsMessage } from "../server/web/index.ts";
 
 export type Snapshot = ReturnType<typeof snapshotOf>;
 export type Page = "monitor" | "requests" | "engine";

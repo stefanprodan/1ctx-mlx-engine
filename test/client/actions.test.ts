@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { ACTION_LABEL, confirmText } from "../../src/ui/monitor/actions.ts";
+import { ACTION_LABEL, confirmText } from "../../src/client/monitor/actions.ts";
 
 const ctx = {
   engineName: "mlx-serve",

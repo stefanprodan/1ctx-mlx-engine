@@ -11,10 +11,10 @@ import {
   parseLaunchdArgs,
   parseSize,
   validateConfig,
-} from "../../src/engine/config.ts";
-import type { EngineConfig } from "../../src/engine/manage.ts";
-import { parseProps } from "../../src/engine/mlxserve.ts";
-import propsFixture from "../fixtures/props.json";
+} from "../../../src/server/engine/config.ts";
+import type { EngineConfig } from "../../../src/server/engine/manage.ts";
+import { parseProps } from "../../../src/server/engine/mlxserve.ts";
+import propsFixture from "../../fixtures/props.json";
 
 const PINNED = "/Users/x/.mlx-spy/models";
 

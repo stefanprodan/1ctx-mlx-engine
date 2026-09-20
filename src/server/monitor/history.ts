@@ -7,7 +7,7 @@
 // version one so graphs survive reloads and every tab sees the same series.
 
 import { Database } from "bun:sqlite";
-import type { EngineCounters, EngineProps } from "./engine/types.ts";
+import type { EngineCounters, EngineProps } from "../engine/types.ts";
 import type { LastRequest } from "./requests.ts";
 import type { Sample } from "./sample.ts";
 

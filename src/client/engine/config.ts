@@ -12,7 +12,7 @@ import type {
   EngineConfig,
   KvQuant,
   LogLevel,
-} from "../../engine/manage.ts";
+} from "../../server/engine/manage.ts";
 
 export type Form = {
   host: BindHost;

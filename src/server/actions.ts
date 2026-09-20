@@ -14,10 +14,10 @@
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { Engine } from "./engine/types.ts";
-import type { History } from "./history.ts";
-import { ExclusiveLock, LockBusyError } from "./lock.ts";
-import type { Log } from "./log.ts";
-import type { Sampler } from "./sampler.ts";
+import { ExclusiveLock, LockBusyError } from "./lib/lock.ts";
+import type { Log } from "./lib/log.ts";
+import type { History } from "./monitor/history.ts";
+import type { Sampler } from "./monitor/sampler.ts";
 
 export const ACTION_NAMES = [
   "load",

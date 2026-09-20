@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { parseCli } from "../src/cli.ts";
+import { parseCli } from "../../src/server/cli.ts";
 
 function error(argv: string[]): string {
   const result = parseCli(argv);

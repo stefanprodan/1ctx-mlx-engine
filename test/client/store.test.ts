@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import type { ModelInfo } from "../../src/engine/types.ts";
-import { modelsKeyOf, pageOf, replaced } from "../../src/ui/store.ts";
+import { modelsKeyOf, pageOf, replaced } from "../../src/client/store.ts";
+import type { ModelInfo } from "../../src/server/engine/types.ts";
 
 const model = (over: Partial<ModelInfo> = {}): ModelInfo => ({
   id: "org/model",

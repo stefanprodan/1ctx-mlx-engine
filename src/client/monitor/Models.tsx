@@ -6,8 +6,8 @@
 // Activity is engine-wide (the engine does not say which model is busy)
 // and lives in the section head, see Monitor.tsx.
 
-import type { ActionName } from "../../actions.ts";
-import type { Capability, ModelInfo } from "../../engine/types.ts";
+import type { ActionName } from "../../server/actions.ts";
+import type { Capability, ModelInfo } from "../../server/engine/types.ts";
 import { orderModels, sizeText } from "../format.ts";
 import { busy, pulls, type Snapshot } from "../store.ts";
 import { runAction } from "./actions.ts";

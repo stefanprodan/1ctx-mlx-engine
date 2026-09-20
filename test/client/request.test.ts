@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { initialMemory, requestBar } from "../../src/ui/monitor/request.ts";
+import { initialMemory, requestBar } from "../../src/client/monitor/request.ts";
 
 import { lastRequest, sample, stamp, startedAt } from "./helpers.ts";
 

@@ -4,10 +4,10 @@ import {
   parseMetrics,
   parseModels,
   parseProps,
-} from "../src/engine/mlxserve.ts";
-import metricsFixture from "./fixtures/metrics.json";
-import modelsFixture from "./fixtures/models.json";
-import propsFixture from "./fixtures/props.json";
+} from "../../../src/server/engine/mlxserve.ts";
+import metricsFixture from "../../fixtures/metrics.json";
+import modelsFixture from "../../fixtures/models.json";
+import propsFixture from "../../fixtures/props.json";
 
 describe("parseMetrics", () => {
   const m = parseMetrics(metricsFixture);

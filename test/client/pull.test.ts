@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import type { Pull } from "../../src/pulls.ts";
 import {
   eta,
   pullDot,
@@ -10,7 +9,8 @@ import {
   pullPct,
   pullState,
   visiblePulls,
-} from "../../src/ui/monitor/pull.ts";
+} from "../../src/client/monitor/pull.ts";
+import type { Pull } from "../../src/server/models/pulls.ts";
 
 const GB = 2 ** 30;
 

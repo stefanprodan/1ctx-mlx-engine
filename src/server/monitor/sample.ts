@@ -11,15 +11,15 @@ import type {
   EngineMetrics,
   HistogramSummary,
   ModelInfo,
-} from "./engine/types.ts";
-import { cacheDirSizes } from "./host/disk.ts";
-import { isLocalUrl } from "./host/local.ts";
+} from "../engine/types.ts";
+import { cacheDirSizes } from "../host/disk.ts";
+import { isLocalUrl } from "../host/local.ts";
 import {
   type DiskDir,
   EMPTY_HOST,
   type HostProbes,
   type HostSnapshot,
-} from "./host/types.ts";
+} from "../host/types.ts";
 import {
   EMPTY_REQUESTS,
   type InFlight,

@@ -5,8 +5,8 @@
 // There are buttons only for a job mlx-spy wrote; an engine that is
 // remote, unmanaged or not installed has nothing here to press.
 
-import type { EngineState } from "../../engine/manage.ts";
-import type { Sample } from "../../sample.ts";
+import type { EngineState } from "../../server/engine/manage.ts";
+import type { Sample } from "../../server/monitor/sample.ts";
 import { confirm } from "../shell/Confirm.tsx";
 import { isStopped, servicePill } from "./release.ts";
 import { locked, service, uninstall } from "./state.ts";

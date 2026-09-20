@@ -3,9 +3,9 @@
 
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import pkg from "../package.json";
+import pkg from "../../package.json";
 import { parseSize } from "./engine/config.ts";
-import { DEFAULT_PORT } from "./web.ts";
+import { DEFAULT_PORT } from "./web/index.ts";
 
 const buildVersion = process.env.MLX_SPY_BUILD_VERSION;
 export const VERSION = buildVersion || `v${pkg.version}`;

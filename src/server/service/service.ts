@@ -4,9 +4,10 @@
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { type Options, optionsToArgs, parseCli } from "./cli.ts";
-import { parseLaunchdArgs } from "./engine/config.ts";
-import { macosVersion, osMajor } from "./host/info.ts";
+import { type Options, optionsToArgs, parseCli } from "../cli.ts";
+import { parseLaunchdArgs } from "../engine/config.ts";
+import { macosVersion, osMajor } from "../host/info.ts";
+import { tailscaleAddress } from "../web/index.ts";
 import {
   bootout,
   bootstrap,
@@ -16,7 +17,6 @@ import {
   reload,
 } from "./launchd.ts";
 import { agentBinary, type PlistSpec, plistPath } from "./plist.ts";
-import { tailscaleAddress } from "./web.ts";
 
 export const SERVICE_LABEL = "com.stefanprodan.mlx-spy";
 const SERVICE_PORT = 11235;

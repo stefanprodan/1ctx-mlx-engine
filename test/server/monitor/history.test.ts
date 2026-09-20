@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { DAY_MS, History, RING_SIZE } from "../src/history.ts";
-import type { Sample } from "../src/sample.ts";
+import {
+  DAY_MS,
+  History,
+  RING_SIZE,
+} from "../../../src/server/monitor/history.ts";
+import type { Sample } from "../../../src/server/monitor/sample.ts";
 
 function sample(t: number, over: Partial<Sample> = {}): Sample {
   return {

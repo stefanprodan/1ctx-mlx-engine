@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { LastRequest } from "../../requests.ts";
+import type { LastRequest } from "../../server/monitor/requests.ts";
 import { count, DASH } from "../format.ts";
 
 const fmtStamp = new Intl.DateTimeFormat(undefined, {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { DASH, size } from "../../src/ui/format.ts";
+import { DASH, size } from "../../src/client/format.ts";
 import {
   apply,
   disconnect,
@@ -11,7 +11,7 @@ import {
   seed,
   type Tile,
   tiles,
-} from "../../src/ui/monitor/tiles.ts";
+} from "../../src/client/monitor/tiles.ts";
 import { lastRequest, sample, series, stamp } from "./helpers.ts";
 
 const GB = 2 ** 30;
@@ -250,9 +250,11 @@ describe("tiles on a recorded engine reading", () => {
   // the ones the sampler writes
   test("the memory and weights tiles read the sampler's fields", async () => {
     const { parseMetrics, parseModels } = await import(
-      "../../src/engine/mlxserve.ts"
+      "../../src/server/engine/mlxserve.ts"
     );
-    const { buildSample, computeRates } = await import("../../src/sample.ts");
+    const { buildSample, computeRates } = await import(
+      "../../src/server/monitor/sample.ts"
+    );
     const metrics = await Bun.file("test/fixtures/metrics.json").json();
     const models = parseModels(
       await Bun.file("test/fixtures/models.json").json(),

@@ -23,6 +23,8 @@ import {
   truncate,
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
+import type { Engine } from "../engine/types.ts";
+import { diskSpace } from "../host/info.ts";
 import {
   abortPromise as aborted,
   DOWNLOAD_DISK_MARGIN,
@@ -30,9 +32,8 @@ import {
   describeError as describe,
   fetchRedirected,
   sleepWithSignal as sleep,
-} from "./download.ts";
-import type { Engine } from "./engine/types.ts";
-import { diskSpace } from "./host/info.ts";
+} from "../lib/fetch.ts";
+import type { Log } from "../lib/log.ts";
 import {
   fetchRepo,
   HubError,
@@ -41,7 +42,6 @@ import {
   parseRepoId,
   resolveUrl,
 } from "./hub.ts";
-import type { Log } from "./log.ts";
 import type { Pull, PullFile, PullStore } from "./pulls.ts";
 
 const RETRIES = 5;

@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { parseMetrics } from "../src/engine/mlxserve.ts";
+import { parseMetrics } from "../../../src/server/engine/mlxserve.ts";
 import {
   attributeModel,
   EMPTY_REQUESTS,
   type RequestState,
   trackRequests,
-} from "../src/requests.ts";
-import type { Reading } from "../src/sample.ts";
-import metricsFixture from "./fixtures/metrics.json";
+} from "../../../src/server/monitor/requests.ts";
+import type { Reading } from "../../../src/server/monitor/sample.ts";
+import metricsFixture from "../../fixtures/metrics.json";
 
 // A reading at t with gauge overrides and, for a completion, the counter
 // and histogram advances of the finished request.

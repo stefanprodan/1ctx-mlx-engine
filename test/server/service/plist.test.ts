@@ -7,7 +7,7 @@ import {
   type PlistSpec,
   plistPath,
   renderPlist,
-} from "../src/plist.ts";
+} from "../../../src/server/service/plist.ts";
 
 const spy: PlistSpec = {
   label: "com.example.spy&watch",

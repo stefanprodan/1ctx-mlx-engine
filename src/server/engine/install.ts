@@ -13,6 +13,8 @@ import {
 } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { diskSpace } from "../host/info.ts";
+import type { HostProbes } from "../host/types.ts";
 import {
   abortPromise,
   DOWNLOAD_DISK_MARGIN,
@@ -20,9 +22,10 @@ import {
   describeError,
   fetchRedirected,
   sleepWithSignal,
-} from "../download.ts";
-import { diskSpace } from "../host/info.ts";
-import type { HostProbes } from "../host/types.ts";
+} from "../lib/fetch.ts";
+import type { ExclusiveLock } from "../lib/lock.ts";
+import { LockBusyError } from "../lib/lock.ts";
+import type { Log } from "../lib/log.ts";
 import {
   atomicWrite,
   bootout,
@@ -32,11 +35,8 @@ import {
   print as launchdPrint,
   type ReloadDeps,
   reload,
-} from "../launchd.ts";
-import type { ExclusiveLock } from "../lock.ts";
-import { LockBusyError } from "../lock.ts";
-import type { Log } from "../log.ts";
-import { type PlistSpec, plistPath } from "../plist.ts";
+} from "../service/launchd.ts";
+import { type PlistSpec, plistPath } from "../service/plist.ts";
 import { configToArgs, DEFAULTS, validateConfig } from "./config.ts";
 import type {
   ConfigIssue,

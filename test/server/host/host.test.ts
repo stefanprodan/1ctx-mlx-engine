@@ -8,10 +8,13 @@ import {
 } from "node:fs";
 import { cpus, tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDarwinProbes, darwinHostInfo } from "../src/host/darwin.ts";
-import { cacheDirSizes } from "../src/host/disk.ts";
-import { NULL_PROBES } from "../src/host/index.ts";
-import { isLocalUrl } from "../src/host/local.ts";
+import {
+  createDarwinProbes,
+  darwinHostInfo,
+} from "../../../src/server/host/darwin.ts";
+import { cacheDirSizes } from "../../../src/server/host/disk.ts";
+import { NULL_PROBES } from "../../../src/server/host/index.ts";
+import { isLocalUrl } from "../../../src/server/host/local.ts";
 
 const onDarwin = process.platform === "darwin";
 

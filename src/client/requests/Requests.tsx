@@ -3,7 +3,7 @@
 
 import { signal } from "@preact/signals";
 import { useEffect, useState } from "preact/hooks";
-import type { LastRequest } from "../../requests.ts";
+import type { LastRequest } from "../../server/monitor/requests.ts";
 import { api } from "../api.ts";
 import { Trash } from "../icons.tsx";
 import { runAction } from "../monitor/actions.ts";

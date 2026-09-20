@@ -22,11 +22,11 @@ import type {
   Engine,
   EngineMetrics,
   ModelInfo,
-} from "../src/engine/types.ts";
-import { History } from "../src/history.ts";
-import type { Log } from "../src/log.ts";
-import { PullError, PullRunner } from "../src/pull.ts";
-import { type Pull, PullStore } from "../src/pulls.ts";
+} from "../../../src/server/engine/types.ts";
+import type { Log } from "../../../src/server/lib/log.ts";
+import { PullError, PullRunner } from "../../../src/server/models/pull.ts";
+import { type Pull, PullStore } from "../../../src/server/models/pulls.ts";
+import { History } from "../../../src/server/monitor/history.ts";
 
 const testLog = (write: (line: string) => void): Log =>
   Object.assign(write, { warn: write, error: write });
