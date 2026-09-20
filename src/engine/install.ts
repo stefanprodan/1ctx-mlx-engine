@@ -568,7 +568,16 @@ export class EngineManager {
 
   async reconcile(): Promise<EnginePageState> {
     const journal = this.deps.store.journal();
-    if (!journal || !this.deps.local) return this.pageState();
+    if (!journal || !this.deps.local) {
+      // launchd's view is cached, and the cache starts empty: read it once
+      // here, or a job that is stopped or crash-looping reads as nothing
+      // until the next operation. At start, never on the sampler's path.
+      if (this.deps.local && this.deps.store.managed()) {
+        await this.refreshService().catch(() => undefined);
+        return this.publish();
+      }
+      return this.pageState();
+    }
     this.deps.log.warn(
       `engine ${journal.op}: reconciling ${journal.step} for ${journal.tag ?? "configuration"}`,
     );
