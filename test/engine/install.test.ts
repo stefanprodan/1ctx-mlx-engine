@@ -137,7 +137,7 @@ async function harness(options: HarnessOptions = {}) {
       lastExitCode: 0,
     };
   };
-  const manager = new EngineManager({
+  const deps: ConstructorParameters<typeof EngineManager>[0] = {
     store,
     lock,
     engineUrl: "http://127.0.0.1:11234",
@@ -208,7 +208,10 @@ async function harness(options: HarnessOptions = {}) {
         await Bun.write(target, data);
       },
     },
-  });
+  };
+  const manager = new EngineManager(deps);
+  // a second manager over the same store: mlx-spy after a restart
+  const restarted = () => new EngineManager(deps);
   const config = DEFAULTS(pinned, "http://127.0.0.1:11234");
   const settled = async () => {
     for (let attempt = 0; attempt < 2_000; attempt++) {
@@ -226,6 +229,7 @@ async function harness(options: HarnessOptions = {}) {
     store,
     lock,
     manager,
+    restarted,
     config,
     tag,
     served,
@@ -576,6 +580,16 @@ describe("EngineManager upgrade and configuration", () => {
     expect(state.active?.tag).toBe(value.tag);
     expect(state.config.topK).toBe(40);
     expect(value.store.journal()).toBeNull();
+    value.history.close();
+  });
+
+  test("a restarted mlx-spy reads launchd once at start", async () => {
+    const value = await installed();
+    // a new process over the same store: the cache is empty
+    const again = value.restarted();
+    expect(again.state().service).toBeNull();
+    await again.reconcile();
+    expect(again.state().service?.state).toBe("running");
     value.history.close();
   });
 
