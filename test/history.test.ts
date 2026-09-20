@@ -196,6 +196,23 @@ describe("History", () => {
     h.close();
   });
 
+  test("the engine's last word about itself survives a restart", () => {
+    const h = new History(":memory:");
+    expect(h.loadEngineProps()).toBeNull();
+    const props = {
+      version: "26.9.5-pre-release.1",
+      limits: { hotBytes: 16 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 },
+    };
+    h.saveEngineProps(props);
+    expect(h.loadEngineProps()).toEqual(props);
+    // a later read with nothing to say must not wipe what is stored
+    h.saveEngineProps({ version: "26.9.6", limits: null });
+    expect(h.loadEngineProps()).toEqual({ version: "26.9.6", limits: null });
+    h.db.run("UPDATE meta SET value = 'not json' WHERE key = 'props'");
+    expect(h.loadEngineProps()).toBeNull();
+    h.close();
+  });
+
   test("engine-down samples store nulls, not zeros, for rates", () => {
     const h = new History(":memory:");
     h.push(

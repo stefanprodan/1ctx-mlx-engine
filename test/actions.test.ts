@@ -56,6 +56,9 @@ class ControlEngine implements Engine {
     m.loaded = loaded;
     m.state = loaded ? "ready" : "unloaded";
   }
+  async props() {
+    return { version: "26.9.5", limits: null };
+  }
   async load(id: string, asDefault: boolean) {
     this.calls.push(`load ${id} ${asDefault}`);
     if (this.failNext) throw new Error(this.failNext);

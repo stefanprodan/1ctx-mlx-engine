@@ -115,6 +115,9 @@ export function Runtime({
   const pid = s?.enginePid ?? null;
   const why = s && local && s.engineUp ? "no mlx-serve process found" : "";
   const h = snap?.host ?? null;
+  // the build the engine stated about itself; unknown until a model has
+  // been resident since mlx-spy started
+  const ver = snap?.engine.version ?? null;
   const cores =
     h && h.perfCores != null && h.effCores != null
       ? `${h.cpuCores} cores (${h.perfCores}P + ${h.effCores}E)`
@@ -135,6 +138,7 @@ export function Runtime({
           <dt>Engine</dt>
           <dd>
             <span>{snap ? engineName.value : ""}</span>
+            {ver && <small>{ver}</small>}
             <small>{pid == null ? "" : `pid ${pid}`}</small>
           </dd>
           <dt>URL</dt>

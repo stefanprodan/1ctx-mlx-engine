@@ -62,6 +62,8 @@ function setup() {
   const sampler = {
     currentModels: () => [model],
     currentDisk: () => [],
+    currentVersion: () => "26.9.5",
+    currentLimits: () => null,
     onSample: () => () => {},
   };
   const actions = {

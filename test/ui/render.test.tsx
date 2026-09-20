@@ -9,11 +9,19 @@ import type { Sample } from "../../src/sample.ts";
 import { Event } from "../../src/ui/monitor/Event.tsx";
 import { Models } from "../../src/ui/monitor/Models.tsx";
 import { RequestBar } from "../../src/ui/monitor/RequestBar.tsx";
+import { Runtime } from "../../src/ui/monitor/Runtime.tsx";
 import { Tiles } from "../../src/ui/monitor/Tiles.tsx";
 import { PLACEHOLDER, type Tile } from "../../src/ui/monitor/tiles.ts";
 import { Requests, requests } from "../../src/ui/requests/Requests.tsx";
 import type { Snapshot } from "../../src/ui/store.ts";
-import { busy, connection, event, pulls, sample } from "../../src/ui/store.ts";
+import {
+  busy,
+  connection,
+  event,
+  pulls,
+  sample,
+  snapshot,
+} from "../../src/ui/store.ts";
 
 const startedAt = new Date(2026, 8, 9, 10, 0, 0).getTime();
 const last: LastRequest = {
@@ -284,5 +292,36 @@ describe("event line", () => {
     );
     pulls.value = [];
     expect(render(<Event />)).toBe('<div class="event" hidden></div>');
+  });
+});
+
+describe("runtime facts", () => {
+  const snap = (version: Snapshot["engine"]["version"]) =>
+    ({
+      engine: {
+        id: "mlxserve",
+        url: "http://127.0.0.1:11234",
+        local: true,
+        version,
+        capabilities: [],
+        limits: null,
+      },
+      host: null,
+      models: [],
+      disk: [],
+    }) as Partial<Snapshot> as Snapshot;
+
+  test("the engine row carries the build the engine stated", () => {
+    snapshot.value = snap("26.9.5-pre-release.1");
+    const html = render(<Runtime snap={snapshot.value} s={null} />);
+    expect(html).toContain(
+      "<span>mlx-serve</span><small>26.9.5-pre-release.1</small>",
+    );
+  });
+
+  test("an unknown build leaves the engine name alone", () => {
+    snapshot.value = snap(null);
+    const html = render(<Runtime snap={snapshot.value} s={null} />);
+    expect(html).toContain("<span>mlx-serve</span><small></small>");
   });
 });

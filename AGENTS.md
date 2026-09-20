@@ -71,17 +71,25 @@ Deploy when asked, then say what is now running there.
   null, `procRss` 0 and `disk` empty by design.
 - Parsers and rate math are pure and tested on recorded fixtures in
   `test/fixtures/`. Record new ones with `curl <engine>/metrics.json` and
-  `curl <engine>/v1/models`, pretty-printed. Never record `/props`.
+  `curl <engine>/v1/models`, pretty-printed. A `/props` body is recorded
+  the same way, but only while a model is resident (rule 1).
 - `handle()` in `src/web.ts` is separate from `serve()`, so tests call it
   with a `Request`.
 
 ## Rules that protect the engine
 
-1. **Never call `GET /props` on mlx-serve.** It goes through the model-load
-   path and cold-loads the default model: it undoes API unloads, evicts the
-   model a client just loaded and halves decode speed during a request.
-   The adapter uses only endpoints answered before the load step:
-   `/health`, `/metrics.json`, `/v1/models` and, once after a download,
+1. **`GET /props` only while a model is resident.** It goes through the
+   model-load path, so on an idle engine it cold-loads the default model:
+   it undoes API unloads, evicts the model a client just loaded and halves
+   decode speed during a request. `Sampler.readProps()` is the only caller,
+   once per engine process, and only when the model list it already polls
+   shows something loaded. It is there for the two facts no other endpoint
+   reports, the build and the prefix cache budgets, and it is the only way
+   a remote engine can state either. The answer is stored in the `props`
+   meta row and read back at start, so an engine that comes back empty
+   still shows its last known build: stale by design. Every other call
+   stays on the endpoints answered before the load step: `/health`,
+   `/metrics.json`, `/v1/models` and, once after a download,
    `/v1/models/rescan`. Anything new is verified the same way in
    mlx-serve's `src/server.zig` first.
 2. **The sampler is read-only.** `load`, `unload`, `restart` and
@@ -111,9 +119,10 @@ src/main.ts          entry: CLI parsing (--engine, --listen, --db, --retention,
                      build time
 src/engine/types.ts  the Engine interface and the normalised metric types
 src/engine/mlxserve.ts
-                     mlx-serve adapter: parseMetrics/parseModels (pure, tested),
-                     the HTTP client, load/unload, cache dir and log paths,
-                     cacheLimits() from the LaunchAgent plist
+                     mlx-serve adapter: parseMetrics/parseModels/parseProps
+                     (pure, tested), the HTTP client, load/unload, cache dir
+                     and log paths, cacheLimits() from the LaunchAgent plist,
+                     props() under rule 1
 src/secrets.ts       the key files next to the binary; loadKey and
                      secretsDir, read once at start for the Hub token
 src/sample.ts        Sample type; computeRates and buildSample (pure, tested);
@@ -126,7 +135,8 @@ src/history.ts       ring buffer (1 h) plus bun:sqlite (~/.mlx-spy/mlx-spy.db):
                      samples (7 day retention, bucketed series() for uPlot;
                      only the columns the page reads back, the memory and
                      host gauges are live-only), models (ids and the
-                     favorite flag), requests (the last 50)
+                     favorite flag), requests (the last 50), meta (the
+                     sampler's carry-over and the engine's last /props)
 src/hub.ts           the Hugging Face Hub: parseRepoId, parseRepoFiles (pure,
                      tested on a recorded body), the resolve URL, fetchRepo
 src/pulls.ts         PullStore: pulls and pull_files over the same sqlite
@@ -203,6 +213,11 @@ models table of every tab.
   reclaimable pool, not the prefix cache. The hot prefix cache has no
   gauge, so it is estimated as active minus the loaded models'
   `bytes_resident` and labelled as such.
+- The engine's version is in one endpoint only, `/props`
+  (`settings.version`), which is under rule 1. It also prints it in the
+  banner it writes to its log at every start ("mlx-serve 26.9.5 (MLX
+  0.32.2)", the only place the MLX version appears), but mlx-spy does not
+  read that log.
 - The engine does not say which model is the default, nor which model
   served a request; mlx-spy attributes a request to the resident favorite,
   else the first resident by id.
@@ -211,10 +226,11 @@ models table of every tab.
   `com.ddalcu.mlx-serve`; "free" is a `launchctl kickstart -k` because a
   fresh process has no default model and so nothing to cold-load.
 - `--prefix-cache-mem` and `--prefix-cache-disk` are per resident model
-  (verified 2026-09-07 in `scheduler.zig` at 0897f01). No endpoint reports
-  them, so the adapter reads the plist's ProgramArguments; the tiles
-  multiply the budget by the resident model count (hot) and the tier dir
-  count (SSD).
+  (verified 2026-09-07 in `scheduler.zig` at 0897f01). The adapter reads
+  them from the plist's ProgramArguments, and `/props` reports what the
+  running process actually uses (`settings.prefix_cache`, the two agreed on
+  2026-09-20); the tiles multiply the budget by the resident model count
+  (hot) and the tier dir count (SSD).
 - The hot cache evicts per workload since 26.9.2, keyed by
   `prompt_cache_key`, so one client's batch evicts its own entries first.
 - Host memory on macOS: `free` is small by design; free + inactive is the

@@ -17,9 +17,16 @@ from the dashboard's own host. Every JSON response carries
 
 | Route | Answer |
 |---|---|
-| `GET /api/snapshot` | the latest sample, the model list, the engine's capabilities and cache budgets, host facts, the action log, the downloads and the model directory |
+| `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads and the model directory |
 | `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
+
+`engine.version` is the engine's build, which it states only while a model
+is resident; the answer is kept in mlx-spy's database, so after a restart
+with nothing loaded it is the last known build rather than nothing. Null
+until the engine has been asked once. `engine.limits` is the pair of prefix
+cache budgets, from `--hot-cache-max`/`--disk-cache-max`, the engine's
+LaunchAgent plist, or the same answer.
 
 A sample carries the engine state, live decode and prefill tok/s, cache hit
 ratios, the memory split (host free, inactive, wired and compressed; engine

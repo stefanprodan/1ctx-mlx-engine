@@ -83,12 +83,25 @@ export type CacheLimits = {
   diskBytes: number;
 };
 
+// What the running engine says about itself when asked directly: its build
+// and the budgets the process was started with. Fields are null when the
+// body did not carry them (no model loaded, an older engine).
+export type EngineProps = {
+  version: string | null;
+  limits: CacheLimits | null;
+};
+
 export interface Engine {
   readonly id: EngineId;
   readonly url: string;
   health(): Promise<boolean>;
   models(): Promise<ModelInfo[]>;
   metrics(): Promise<EngineMetrics>;
+  // Facts only the engine itself can state: its build and the budgets of
+  // the running process. The call may go through the engine's model-load
+  // path, so it is made only while a model is resident, once per engine
+  // process. Null when the engine has no such endpoint.
+  props?(): Promise<EngineProps | null>;
   load(id: string, asDefault: boolean): Promise<void>;
   unload(id: string): Promise<void>;
   // walk the model directory again for checkpoints added since the engine

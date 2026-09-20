@@ -7,7 +7,7 @@
 // version one so graphs survive reloads and every tab sees the same series.
 
 import { Database } from "bun:sqlite";
-import type { EngineCounters } from "./engine/types.ts";
+import type { EngineCounters, EngineProps } from "./engine/types.ts";
 import type { LastRequest } from "./requests.ts";
 import type { Sample } from "./sample.ts";
 
@@ -260,6 +260,32 @@ export class History {
     this.db
       .query("INSERT OR REPLACE INTO meta (key, value) VALUES ('sampler', $v)")
       .run({ v: JSON.stringify(state) });
+  }
+
+  // The engine's last answer about itself. It can only be asked while a
+  // model is resident, so an engine that comes back empty would otherwise
+  // show nothing at all: what it said last time is the better answer, even
+  // when the engine has been upgraded since. Replaced by the next read.
+  loadEngineProps(): EngineProps | null {
+    const row = this.db
+      .query("SELECT value FROM meta WHERE key = 'props'")
+      .get() as { value: string } | null;
+    if (!row) return null;
+    try {
+      const v = JSON.parse(row.value);
+      return {
+        version: typeof v.version === "string" ? v.version : null,
+        limits: v.limits ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  saveEngineProps(props: EngineProps) {
+    this.db
+      .query("INSERT OR REPLACE INTO meta (key, value) VALUES ('props', $v)")
+      .run({ v: JSON.stringify(props) });
   }
 
   // The engine's current model list: new ids are added, ids the engine no
