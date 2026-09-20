@@ -19,7 +19,7 @@ export function Header({ page }: { page: Page }) {
     <>
       <div class="wordmark">
         <Mark />
-        1ctx MLX
+        <span class="word">1ctx MLX</span>
       </div>
       <nav class="menu">
         {PAGES.map((p) => (

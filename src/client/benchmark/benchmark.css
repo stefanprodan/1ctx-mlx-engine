@@ -55,8 +55,39 @@
     width: 28px;
     padding-right: 0;
   }
+  /* drawn here: Safari on iOS paints a native checkbox as a black box on a
+     dark page */
   #benchmarks td.pick input {
-    accent-color: var(--accent);
+    appearance: none;
+    display: grid;
+    place-content: center;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border: 1px solid var(--faint);
+    border-radius: 4px;
+    background: var(--inset);
+    cursor: pointer;
+  }
+  #benchmarks td.pick input:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  #benchmarks td.pick input:checked::after {
+    content: "";
+    width: 8px;
+    height: 4px;
+    border-left: 2px solid #0d1a2c;
+    border-bottom: 2px solid #0d1a2c;
+    transform: translateY(-1px) rotate(-45deg);
+  }
+  #benchmarks td.pick input:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  #benchmarks td.pick input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
   }
   #benchmarks td.model .note {
     color: var(--amber);
@@ -119,6 +150,46 @@
     }
     .bench-line select {
       flex: 1 0 100%;
+    }
+    /* the running card: the model on its own line, then the phase and
+       Cancel on one */
+    .bench-model {
+      flex: 1 0 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bench-phase {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    /* the time is enough to tell runs apart; the day is in the opened row */
+    #benchmarks td.when .day {
+      display: none;
+    }
+    #benchmarks td.pick,
+    #benchmarks th.pick {
+      width: 24px;
+      padding-left: 2px;
+    }
+    #benchmarks td.model {
+      max-width: 96px;
+    }
+    #benchmarks td.model .note {
+      display: none;
+    }
+    /* the turns: the share of the prompt that was cached says it all */
+    .turns td,
+    .turns th {
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+    .turns-head {
+      margin-left: 4px;
+    }
+    /* nearly always the ceiling; the opened row's report has it */
+    .turns .gen {
+      display: none;
     }
   }
 

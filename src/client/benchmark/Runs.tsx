@@ -27,9 +27,11 @@ import {
 } from "./state.ts";
 import { Turns } from "./Turns.tsx";
 
-const fmtWhen = new Intl.DateTimeFormat(undefined, {
+const fmtDay = new Intl.DateTimeFormat(undefined, {
   month: "short",
   day: "numeric",
+});
+const fmtTime = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
@@ -70,7 +72,10 @@ function RunRow({
       </td>
       <td class="when">
         <span class="chev" />
-        <span class="fin">{fmtWhen.format(run.startedAt)}</span>
+        <span class="fin">
+          <span class="day">{fmtDay.format(run.startedAt)}, </span>
+          {fmtTime.format(run.startedAt)}
+        </span>
       </td>
       <td class="model" title={run.model}>
         {modelName(run.model)}
@@ -119,6 +124,10 @@ function Detail({ run }: { run: Benchmark }) {
   const s = run.summary;
   const facts: [string, string][] = [
     ["Model", run.model + (run.quantization ? ` (${run.quantization})` : "")],
+    [
+      "Started",
+      `${fmtDay.format(run.startedAt)}, ${fmtTime.format(run.startedAt)}`,
+    ],
     ["Context", s?.contextTokens ? `${s.contextTokens} tokens` : DASH],
     ["Warm latency", value(s?.warmLatencyMs, "ms")],
     ["Decode, first turn", value(s?.decodeFirstTps, "tok/s")],

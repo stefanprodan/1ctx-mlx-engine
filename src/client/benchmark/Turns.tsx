@@ -46,7 +46,7 @@ function TurnsTable({ turns }: { turns: BenchmarkTurn[] }) {
           <th>Cached</th>
           <th>Prefill</th>
           <th class="wide">Prefill tok/s</th>
-          <th>Generated</th>
+          <th class="gen">Generated</th>
           <th class="wide">Decode tok/s</th>
           <th class="wide">Finish</th>
         </tr>
@@ -68,7 +68,7 @@ function TurnsTable({ turns }: { turns: BenchmarkTurn[] }) {
             <td class="num wide">
               {rate(Math.max(t.promptN - t.cachedN, 0), t.promptMs)}
             </td>
-            <td class="num">{t.predictedN}</td>
+            <td class="num gen">{t.predictedN}</td>
             <td class="num wide">{rate(t.predictedN, t.predictedMs)}</td>
             <td class={`num wide${t.finishReason === "length" ? "" : " warn"}`}>
               {t.finishReason ?? DASH}
