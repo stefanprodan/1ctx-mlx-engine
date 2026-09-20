@@ -13,30 +13,13 @@
     /* the select's height, which the running state has nothing as tall as */
     min-height: 34px;
   }
-  .bench-line select {
-    background: var(--inset);
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    color: var(--val);
-    font-family: var(--mono);
-    font-size: 12.5px;
-    padding: 6px 9px;
-    min-width: 0;
-    max-width: 100%;
-  }
-  .bench-line select:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: -1px;
-    border-color: var(--accent);
+  .bench-line .select {
+    flex: 0 1 auto;
   }
   .bench-model {
     font-family: var(--mono);
     font-size: 13px;
     color: var(--val);
-  }
-  .bench-phase {
-    font-size: 13px;
-    color: var(--dim);
   }
   /* the note keeps the card's height in both states */
   .bench-note {
@@ -58,8 +41,8 @@
   }
   #benchmarks td.pick,
   #benchmarks th.pick {
-    width: 28px;
-    padding-right: 0;
+    width: 40px;
+    padding-left: 16px;
   }
   /* drawn here: Safari on iOS paints a native checkbox as a black box on a
      dark page */
@@ -98,7 +81,7 @@
   /* a run: the model, and under it one quiet line of when and what */
   #benchmarks th.run {
     text-align: left;
-    padding-left: 30px;
+    padding-left: 26px;
   }
   #benchmarks td.run {
     padding-top: 12px;
@@ -110,7 +93,9 @@
     align-items: center;
     row-gap: 3px;
   }
+  /* over both lines, so it sits level with the checkbox */
   #benchmarks td.run .chev {
+    grid-row: 1 / span 2;
     display: inline-block;
     width: 6px;
     height: 6px;
@@ -223,28 +208,25 @@
     .bench-run {
       padding: 12px;
     }
-    .bench-line select {
+    .bench-line .select {
       flex: 1 0 100%;
     }
-    /* the running card: the model on its own line, then the phase and
-       Cancel on one */
+    /* the running card: the model gives way to Cancel */
     .bench-model {
-      flex: 1 0 100%;
+      flex: 1 1 0;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .bench-phase {
-      flex: 1 1 0;
-      min-width: 0;
-    }
     #benchmarks td.pick,
     #benchmarks th.pick {
-      width: 24px;
-      padding-left: 2px;
+      width: 30px;
+      padding-left: 10px;
+      padding-right: 2px;
     }
     #benchmarks th.run {
-      padding-left: 26px;
+      padding-left: 22px;
     }
     .turns td,
     .turns th {

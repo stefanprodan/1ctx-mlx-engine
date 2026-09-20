@@ -27,7 +27,7 @@ const run = (over: Partial<Benchmark> = {}): Benchmark => ({
   error: null,
   model: "org/Model-4bit",
   quantization: "4-bit",
-  preset: "agent",
+  preset: "40K",
   turns: 8,
   repetitions: 3,
   maxTokens: 256,
@@ -133,7 +133,7 @@ test("the report is what gets pasted into an issue", () => {
       finishReason: "length",
     },
   ]);
-  expect(text).toContain("benchmark #4 (agent, done)");
+  expect(text).toContain("benchmark #4 (40K, done)");
   expect(text).toContain("model      org/Model-4bit (4-bit)");
   expect(text).toContain("engine     mlx-serve 26.9.5");
   expect(text).toContain("host       Apple M2 Max, 96 GB, macOS 26.6");

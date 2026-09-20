@@ -491,12 +491,10 @@ describe("benchmarks API", () => {
     expect(await list.json()).toEqual([benchmark]);
     const started = await response(deps, "/api/benchmarks", "POST", {
       model: MODEL,
-      preset: "agent",
+      preset: "40K",
     });
     expect(started.status).toBe(202);
-    expect(runner.calls).toEqual([
-      `start {"model":"${MODEL}","preset":"agent"}`,
-    ]);
+    expect(runner.calls).toEqual([`start {"model":"${MODEL}","preset":"40K"}`]);
     const one = await response(deps, "/api/benchmarks/7");
     expect(await one.json()).toEqual({ benchmark, turns: [] });
     expect((await response(deps, "/api/benchmarks/8")).status).toBe(404);

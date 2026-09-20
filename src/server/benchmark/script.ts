@@ -27,10 +27,14 @@ type PresetShape = { first: number; results: number[] };
 
 // token targets: the first request, then one tool result per later turn
 const SHAPES: Record<BenchmarkPreset, PresetShape> = {
-  short: { first: 10_000, results: [2_000, 1_000, 3_000] },
-  agent: {
+  "20K": { first: 10_000, results: [2_000, 1_000, 3_000, 4_000] },
+  "40K": {
     first: 15_000,
     results: [2_000, 4_000, 1_000, 6_000, 3_000, 8_000, 2_000],
+  },
+  "60K": {
+    first: 20_000,
+    results: [2_000, 4_000, 1_000, 6_000, 3_000, 8_000, 2_000, 6_000, 8_000],
   },
 };
 

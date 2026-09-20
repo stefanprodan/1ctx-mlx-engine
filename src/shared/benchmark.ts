@@ -5,7 +5,7 @@
 // replays a generated agentic session with a forced trajectory and reads
 // the engine's own timings: it measures the engine, never the model.
 
-export const BENCHMARK_PRESETS = ["short", "agent"] as const;
+export const BENCHMARK_PRESETS = ["20K", "40K", "60K"] as const;
 
 export type BenchmarkPreset = (typeof BENCHMARK_PRESETS)[number];
 

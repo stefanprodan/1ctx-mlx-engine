@@ -59,17 +59,6 @@ function RunRow({
     .join(" ");
   return (
     <tr class={rowClass || undefined} onClick={onToggle}>
-      <td class="pick">
-        <input
-          type="checkbox"
-          name={`compare-${run.id}`}
-          aria-label="Compare"
-          checked={ticked}
-          disabled={run.summary === null}
-          onClick={(e) => e.stopPropagation()}
-          onChange={() => togglePick(run.id)}
-        />
-      </td>
       <td class="run">
         {/* the grid lives inside: a cell that is a grid drops out of the row */}
         <div class="run-cell">
@@ -104,6 +93,17 @@ function RunRow({
           </td>
         );
       })}
+      <td class="pick">
+        <input
+          type="checkbox"
+          name={`compare-${run.id}`}
+          aria-label="Compare"
+          checked={ticked}
+          disabled={run.summary === null}
+          onClick={(e) => e.stopPropagation()}
+          onChange={() => togglePick(run.id)}
+        />
+      </td>
     </tr>
   );
 }
@@ -196,13 +196,13 @@ export function Runs() {
       <table id="benchmarks" hidden={list.length === 0}>
         <thead>
           <tr>
-            <th class="pick" />
             <th class="run">Model</th>
             {COLUMNS.map((column) => (
               <th class={`fig ${column.key}`} key={column.key}>
                 {column.label}
               </th>
             ))}
+            <th class="pick" />
           </tr>
         </thead>
         <tbody>

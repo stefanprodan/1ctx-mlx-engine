@@ -13,7 +13,7 @@ import {
 } from "../../../src/server/benchmark/script.ts";
 
 const base = {
-  preset: "agent",
+  preset: "40K",
   tag: "a",
   ratios: null,
   window: null,
@@ -33,7 +33,7 @@ test("the session is the same for every run but for the tag", () => {
 
 test("without a fit every piece is sized by the guess", () => {
   const session = buildSession(base);
-  expect(session.steps).toHaveLength(turnsOf("agent") - 1);
+  expect(session.steps).toHaveLength(turnsOf("40K") - 1);
   const first = session.system.length + JSON.stringify(session.tools).length;
   expect(first).toBeGreaterThan(15_000 * 2.6 * 0.98);
   expect(first).toBeLessThan(15_000 * 2.6 * 1.02);
@@ -69,14 +69,14 @@ test("the fit sizes each piece by its own ratio", () => {
 });
 
 test("a small window shrinks every target together", () => {
-  const whole = targetsOf("agent", 262_144, 256);
+  const whole = targetsOf("40K", 262_144, 256);
   expect(whole.first).toBe(15_000);
-  const small = targetsOf("agent", 40_960, 256);
+  const small = targetsOf("40K", 40_960, 256);
   const total = small.first + small.results.reduce((a, b) => a + b, 0);
   expect(total).toBeLessThanOrEqual(40_960 - 256 - 2048);
   expect(total).toBeGreaterThan(38_000);
   expect(small.results[5]! / small.first).toBeCloseTo(8 / 15, 2);
-  expect(targetsOf("agent", null, 256)).toEqual(whole);
+  expect(targetsOf("40K", null, 256)).toEqual(whole);
 });
 
 test("a turn carries the calls and results before it, and only those", () => {
@@ -110,7 +110,7 @@ test("a turn carries the calls and results before it, and only those", () => {
 });
 
 test("the hash names the workload, not the run", () => {
-  expect(scriptHash("agent")).toBe(scriptHash("agent"));
-  expect(scriptHash("agent")).not.toBe(scriptHash("short"));
-  expect(scriptHash("agent")).toMatch(/^[0-9a-f]{16}$/);
+  expect(scriptHash("40K")).toBe(scriptHash("40K"));
+  expect(scriptHash("40K")).not.toBe(scriptHash("20K"));
+  expect(scriptHash("40K")).toMatch(/^[0-9a-f]{16}$/);
 });

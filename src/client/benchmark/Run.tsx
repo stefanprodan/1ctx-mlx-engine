@@ -8,13 +8,15 @@ import {
 } from "../../shared/benchmark.ts";
 import { orderModels } from "../format.ts";
 import { confirm } from "../shell/Confirm.tsx";
+import { Select } from "../shell/Select.tsx";
 import { benchmark, busy, connected, models, snapshot } from "../store.ts";
 import { modelName, progressCopy } from "./report.ts";
 import { cancelRun, failure, startRun } from "./state.ts";
 
 const PRESETS: Record<BenchmarkPreset, string> = {
-  short: "4 turns to 16K",
-  agent: "8 turns to 40K",
+  "20K": "5 agent turns with tool calls and prompts 10K → 20K tokens",
+  "40K": "8 agent turns with tool calls and prompts 15K → 40K tokens",
+  "60K": "10 agent turns with tool calls and prompts 20K → 60K tokens",
 };
 
 // Why the button is off, in the server's own terms; null when it is not.
@@ -31,7 +33,7 @@ function refusal(): string | null {
 export function Run() {
   const list = orderModels(models.value);
   const [chosen, setChosen] = useState<string | null>(null);
-  const [preset, setPreset] = useState<BenchmarkPreset>("agent");
+  const [preset, setPreset] = useState<BenchmarkPreset>("40K");
   const model = list.find((m) => m.id === chosen)?.id ?? list[0]?.id;
   const running = benchmark.value;
   const off = refusal();
@@ -44,7 +46,6 @@ export function Run() {
           <span class="bench-model" title={running.benchmark.model}>
             {modelName(running.benchmark.model)}
           </span>
-          <span class="bench-phase">{copy.text}</span>
           <span class="grow" />
           <button
             type="button"
@@ -57,9 +58,7 @@ export function Run() {
         <div class="bar">
           <div class="fill" style={{ width: `${copy.fraction * 100}%` }} />
         </div>
-        <p class="bench-note">
-          The engine restarts before each repetition. Every other action waits.
-        </p>
+        <p class="bench-note">{copy.text}</p>
       </section>
     );
   }
@@ -81,19 +80,14 @@ export function Run() {
   return (
     <section class="card bench-run">
       <div class="bench-line">
-        <select
+        <Select
           name="model"
-          aria-label="Model"
-          value={model}
+          label="Model"
+          value={model ?? ""}
+          options={list.map((m) => m.id)}
           disabled={list.length === 0}
-          onChange={(e) => setChosen(e.currentTarget.value)}
-        >
-          {list.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.id}
-            </option>
-          ))}
-        </select>
+          onChange={setChosen}
+        />
         <div class="seg">
           {BENCHMARK_PRESETS.map((p) => (
             <button
@@ -125,8 +119,7 @@ export function Run() {
         {failure.value ? (
           <span class="warn">{failure.value}</span>
         ) : (
-          (off ??
-          "A scripted agent session, replayed from empty caches. It measures the engine, not the answers.")
+          (off ?? PRESETS[preset])
         )}
       </p>
     </section>

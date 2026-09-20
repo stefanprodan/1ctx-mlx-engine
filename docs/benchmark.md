@@ -19,8 +19,9 @@ temperature is 1.0, and every turn may generate 256 tokens.
 
 | Preset | Turns | First request | Context at the end |
 |---|---|---|---|
-| `short` | 4 | 10K tokens | about 16K |
-| `agent` | 8 | 15K tokens | about 40K |
+| `20K` | 5 | 10K tokens | about 20K |
+| `40K` | 8 | 15K tokens | about 40K |
+| `60K` | 10 | 20K tokens | about 60K |
 
 The sizes are in tokens of the model under test: before the run, every
 piece is counted with the model's own tokenizer and sized to its target. A

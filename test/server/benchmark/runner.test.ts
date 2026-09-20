@@ -153,7 +153,7 @@ function setup(over: Partial<RunnerDeps> = {}) {
   return { ...fake, lock, store, runner, lines, sample, samples };
 }
 
-const body = { model: ORNITH, preset: "short" };
+const body = { model: ORNITH, preset: "20K" };
 
 test("a run prepares every repetition on its own, in order", async () => {
   const t = setup();
@@ -173,12 +173,13 @@ test("a run prepares every repetition on its own, in order", async () => {
     "chat 4 256",
     "chat 6 256",
     "chat 8 256",
+    "chat 10 256",
   ];
   // the fit first: a load, then the tokenizer on the system prompt, the
-  // tool schemas and the three results; no chat request, nothing cached
+  // tool schemas and the four results; no chat request, nothing cached
   expect(t.state.calls).toEqual([
     `load ${ORNITH} true`,
-    ...new Array(5).fill("tokenize"),
+    ...new Array(6).fill("tokenize"),
     ...rep,
     ...rep,
   ]);
@@ -189,7 +190,7 @@ test("a run prepares every repetition on its own, in order", async () => {
   expect(benchmark.status).toBe("done");
   expect(benchmark.phase).toBe("finish");
   expect(benchmark.suspect).toEqual([]);
-  expect(turns).toHaveLength(8);
+  expect(turns).toHaveLength(10);
   expect(benchmark.summary?.decodeTps.median).toBe(256);
   expect(benchmark.summary?.cachePct.median).toBeGreaterThan(50);
   expect(benchmark.firstPromptTokens).toBeGreaterThan(9_800);
@@ -209,15 +210,15 @@ test("a start is refused with the status the route answers", async () => {
       return (err as BenchmarkError).status;
     }
   };
-  expect(status({ model: "", preset: "short" })).toBe(400);
+  expect(status({ model: "", preset: "20K" })).toBe(400);
   expect(status({ model: ORNITH, preset: "ladder" })).toBe(400);
   expect(status(body)).toBe(403);
   expect(t.store.list()).toEqual([]);
 
   const free = setup();
-  expect(() =>
-    free.runner.start({ model: "no/such", preset: "short" }),
-  ).toThrow("unknown model");
+  expect(() => free.runner.start({ model: "no/such", preset: "20K" })).toThrow(
+    "unknown model",
+  );
   // an action holds the shared lock
   let release = () => {};
   const held = free.lock.run(
