@@ -80,6 +80,10 @@ test("what was not observed is null, never 0", () => {
   expect(summarize([]).contextTokens).toBeNull();
   const stalled = summarize([{ ...recorded[0]!, predictedN: 0 }]);
   expect(stalled.decodeTps.median).toBeNull();
+  // a turn that stopped at a tool call counts in the overall rate only
+  const brief = summarize([{ ...recorded[0]!, predictedN: 26 }]);
+  expect(brief.decodeFirstTps.median).toBeNull();
+  expect(brief.decodeTps.median).not.toBeNull();
 });
 
 test("the figure is the median over the repetitions, with the spread", () => {
@@ -107,9 +111,14 @@ test("each rule names its reason", () => {
     "cold turn hit the cache",
   ]);
   // the agt4 case: a turn that prefills most of its prompt again
-  expect(suspects([cold, { ...second, cachedN: 4096 }, third], clean)).toEqual([
+  expect(suspects([cold, second, { ...third, cachedN: 4096 }], clean)).toEqual([
     "cache did not hold",
   ]);
+  // turn two is the engine's first render with tool messages: a cost, in
+  // the cache figure, not a suspicion
+  expect(suspects([cold, { ...second, cachedN: 4096 }, third], clean)).toEqual(
+    [],
+  );
   expect(suspects([{ ...cold, finishReason: "stop" }], clean)).toEqual([
     "turn ended early",
   ]);

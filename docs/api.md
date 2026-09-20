@@ -145,15 +145,18 @@ repetitions and `null` where nothing was observed: `coldLatencyMs` and
 `coldPrefillTps` (the first turn, nothing cached), `warmLatencyMs` and
 `warmPrefillTps` (the later turns; a turn that prefilled under 256 tokens
 is left out of the rate), `decodeTps` with `decodeFirstTps` and
-`decodeLastTps` (the slope with depth), `cachePct` (cached over prompt
+`decodeLastTps` (the slope with depth; a turn that generated under 64
+tokens is left out of these two), `cachePct` (cached over prompt
 tokens, later turns), and `contextTokens`, the deepest prompt. Prefill
 rates are over the tokens that were not cached. The latency is the
 engine's tokenize plus prefill time; the engine reports no time to first
 token per request, and queue time is not in it.
 
 `suspect` lists why a finished run should not be trusted as it stands:
-`cold turn hit the cache`, `cache did not hold` (a turn found under 90% of
-the previous prompt cached), `turn ended early` (a turn did not run to
+`cold turn hit the cache`, `cache did not hold` (a turn from the third on found under 90%
+of the previous prompt cached; the second turn is the first with tool
+messages, which the engine renders differently from the tool schemas on, a
+cost that shows in `cachePct`), `turn ended early` (a turn did not run to
 `maxTokens`), `prompt size drifted`, `other requests ran`.
 
 A turn is `{repetition, turn, promptN, cachedN, promptMs, predictedN,

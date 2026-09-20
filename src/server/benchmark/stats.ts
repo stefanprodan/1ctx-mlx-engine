@@ -25,6 +25,19 @@ const COLD_ALLOWANCE = 64;
 // the engine could not match; under this the cache did not hold.
 const HOLD_FLOOR = 0.9;
 
+// The rule starts at turn 3. Turn 2 is the first request that carries tool
+// messages, and mlx-serve then renders the prompt differently from the tool
+// schemas on (measured on 26.9.4 with a Qwen3 template: a plain second turn
+// hits in full, one with a tool result misses from the schemas). Every
+// agent session pays that once, so it is a cost to report, in the cache
+// figure and the turns, not a reason to distrust the run.
+const HOLD_FROM_TURN = 3;
+
+// A model that answers with a tool call stops after a few dozen tokens, and
+// a rate over that few says little: such a turn is left out of the first
+// and last decode rates. The overall rate is over every generated token.
+const MIN_DECODE_TOKENS = 64;
+
 const DRIFT_LIMIT = 0.02;
 
 export type Expectations = {
@@ -75,7 +88,9 @@ function sum(turns: BenchmarkTurn[], of: (t: BenchmarkTurn) => number) {
 const uncached = (t: BenchmarkTurn) => Math.max(t.promptN - t.cachedN, 0);
 const latency = (t: BenchmarkTurn) => t.tokenizeMs + t.promptMs;
 const decode = (t: BenchmarkTurn | undefined) =>
-  t ? rate(t.predictedN, t.predictedMs) : null;
+  t && t.predictedN >= MIN_DECODE_TOKENS
+    ? rate(t.predictedN, t.predictedMs)
+    : null;
 
 export function summarize(turns: BenchmarkTurn[]): BenchmarkSummary {
   const reps = byRepetition(turns).map((rep) => {
@@ -140,7 +155,11 @@ export function suspects(
         return;
       }
       const previous = rep[i - 1];
-      if (previous && turn.cachedN < previous.promptN * HOLD_FLOOR) {
+      if (
+        previous &&
+        turn.turn >= HOLD_FROM_TURN &&
+        turn.cachedN < previous.promptN * HOLD_FLOOR
+      ) {
         found.add("cache did not hold");
       }
     });
