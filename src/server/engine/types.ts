@@ -67,6 +67,9 @@ export type EngineProps = {
   limits: CacheLimits | null;
 };
 
+// one timestamped read of the metrics, what the rate math compares
+export type Reading = { t: number; metrics: EngineMetrics };
+
 export interface Engine {
   readonly id: EngineId;
   readonly url: string;

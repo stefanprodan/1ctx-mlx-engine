@@ -22,5 +22,6 @@
     "test/**/*.ts",
     "test/**/*.tsx",
     "scripts/**/*.ts"
-  ]
+  ],
+  "exclude": ["test/fixtures/structure"]
 }

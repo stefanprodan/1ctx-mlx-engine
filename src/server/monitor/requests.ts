@@ -11,7 +11,7 @@
 // With one request in flight, the common case, the picture is exact.
 
 import type { InFlight, LastRequest } from "../../shared/requests.ts";
-import type { Reading } from "./sample.ts";
+import type { Reading } from "../engine/types.ts";
 
 // Which resident model served a request. The engine does not say, so the
 // answer is a guess: the only resident one; among several, the user's

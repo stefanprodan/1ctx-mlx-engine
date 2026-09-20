@@ -7,7 +7,10 @@
 
 import { signal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import type { TextPart } from "../monitor/actions.ts";
+
+// A part of the dialog text: plain, or the model id shown as code. The id
+// comes from the engine and is never interpreted as HTML.
+export type TextPart = string | { code: string };
 
 type Request = {
   text: TextPart[];

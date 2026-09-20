@@ -9,7 +9,7 @@ import { computed } from "@preact/signals";
 import type { ActionEvent, ActionName } from "../../shared/actions.ts";
 import type { Capability } from "../../shared/models.ts";
 import { gb } from "../format.ts";
-import { confirm } from "../shell/Confirm.tsx";
+import { confirm, type TextPart } from "../shell/Confirm.tsx";
 import {
   busy,
   event,
@@ -66,10 +66,6 @@ export function loadEstimate(model: string | null): number {
   const m = snapshot.value?.models.find((x) => x.id === model);
   return (s?.mem.procFootprint ?? 0) + (m?.bytesOnDisk ?? 0);
 }
-
-// A part of the dialog text: plain, or the model id shown as code. The id
-// comes from the engine and is never interpreted as HTML.
-export type TextPart = string | { code: string };
 
 // The dialog copy states what happens, from the engine notes: an unload
 // drops the model's RAM prefix cache, a restart drops everything but the

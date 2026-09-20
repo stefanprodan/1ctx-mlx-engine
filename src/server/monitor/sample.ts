@@ -9,11 +9,7 @@
 import type { ModelInfo } from "../../shared/models.ts";
 import type { LastRequest } from "../../shared/requests.ts";
 import type { Sample } from "../../shared/sample.ts";
-import type {
-  Engine,
-  EngineMetrics,
-  HistogramSummary,
-} from "../engine/types.ts";
+import type { Engine, HistogramSummary, Reading } from "../engine/types.ts";
 import { cacheDirSizes } from "../host/disk.ts";
 import { isLocalUrl } from "../host/local.ts";
 import {
@@ -22,8 +18,6 @@ import {
   type HostSnapshot,
 } from "../host/types.ts";
 import { EMPTY_REQUESTS, type RequestState } from "./requests.ts";
-
-export type Reading = { t: number; metrics: EngineMetrics };
 
 export type Rates = {
   epoch: number;

@@ -10,7 +10,7 @@
 import type { DiskDir } from "../../shared/host.ts";
 import type { CacheLimits, ModelInfo } from "../../shared/models.ts";
 import type { Sample } from "../../shared/sample.ts";
-import type { Engine, EngineCounters } from "../engine/types.ts";
+import type { Engine, EngineCounters, Reading } from "../engine/types.ts";
 import { cacheDirSizes } from "../host/disk.ts";
 import { NULL_PROBES } from "../host/index.ts";
 import type { HostProbes, HostSnapshot } from "../host/types.ts";
@@ -28,7 +28,6 @@ import {
   downSample,
   EMPTY_LIVE,
   type LiveState,
-  type Reading,
   readEngine,
 } from "./sample.ts";
 

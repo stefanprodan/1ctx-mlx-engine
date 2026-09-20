@@ -3,11 +3,11 @@ import {
   parseMetrics,
   parseModels,
 } from "../../../src/server/engine/mlxserve.ts";
+import type { Reading } from "../../../src/server/engine/types.ts";
 import {
   buildSample,
   computeRates,
   EMPTY_LIVE,
-  type Reading,
 } from "../../../src/server/monitor/sample.ts";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
