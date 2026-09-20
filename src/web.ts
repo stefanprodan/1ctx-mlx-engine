@@ -1,37 +1,20 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// HTTP API and WebSocket push over the sampler, history, actions and chat
-// runner. The page is an HTML import passed from main.ts so tests can import
-// this module without invoking Bun's bundler.
+// HTTP API and WebSocket push over the sampler, history, actions and the
+// download runner. The page is an HTML import passed from main.ts so tests
+// can import this module without invoking Bun's bundler.
 
 import { networkInterfaces } from "node:os";
 import type { HTMLBundle } from "bun";
 import { ActionError, type ActionEvent, type Actions } from "./actions.ts";
-import {
-  ChatError,
-  type ChatRunner,
-  type ChatRuns,
-  type ChatWsEvent,
-} from "./chat.ts";
-import type { ChatPatch, ChatSettings } from "./chats.ts";
-import type { ConfigStore, RemoteModel } from "./config.ts";
-import { type Catalog, CatalogError } from "./engine/openrouter.ts";
-import {
-  type CacheLimits,
-  type Engine,
-  isProviderId,
-  type ProviderId,
-} from "./engine/types.ts";
+import type { CacheLimits, Engine } from "./engine/types.ts";
 import { type History, RANGES, type Range } from "./history.ts";
 import { diskSpace, type HostInfo } from "./host/info.ts";
 import { PullError, type PullRunner } from "./pull.ts";
 import type { Pull } from "./pulls.ts";
 import type { Sample } from "./sample.ts";
 import type { Sampler } from "./sampler.ts";
-import { isSearchProvider, type SearchProvider } from "./tools/search/types.ts";
-import { HOST_TIMEZONE } from "./tools/time.ts";
-import { TOOLS, toolSchemas } from "./tools.ts";
 
 export const DEFAULT_PORT = 11235;
 const SAMPLES_TOPIC = "samples";
@@ -57,7 +40,6 @@ export type WebDeps = {
   sampler: Sampler;
   history: History;
   actions: Actions;
-  chat: ChatRunner;
   pulls: PullRunner;
   version: string;
   local: boolean;
@@ -65,30 +47,15 @@ export type WebDeps = {
   host: HostInfo | null;
   // where downloads land; null when the host cannot say (tests)
   modelDir: string | null;
-  // the hosted providers' model lists and OpenRouter's catalog; the
-  // catalog is null when no key was found, and the routes say so
-  config: ConfigStore;
-  catalog: Catalog | null;
   now?: () => number;
 };
 
-// handle() also serves old focused tests that do not exercise chat or
-// downloads. Production serve() requires both runners through WebDeps.
-type HandleDeps = Omit<
-  WebDeps,
-  "chat" | "pulls" | "modelDir" | "config" | "catalog"
-> & {
-  chat?: ChatRunner;
+// handle() also serves focused tests that do not exercise downloads.
+// Production serve() requires the runner through WebDeps.
+type HandleDeps = Omit<WebDeps, "pulls" | "modelDir"> & {
   pulls?: PullRunner;
   modelDir?: string | null;
-  config?: ConfigStore;
-  catalog?: Catalog | null;
-  // serve() publishes the list on every change so every tab's picker
-  // follows the config page
-  onRemoteModels?: (models: RemoteModel[]) => void;
 };
-
-const EMPTY_LIMITS: Record<ProviderId, number> = { mlxserve: 1, openrouter: 0 };
 
 export function snapshot(deps: HandleDeps) {
   return {
@@ -108,10 +75,8 @@ export function snapshot(deps: HandleDeps) {
     disk: deps.sampler.currentDisk(),
     events: deps.actions.events,
     running: deps.actions.running(),
-    chatRuns: deps.chat?.runs() ?? { limits: EMPTY_LIMITS, sends: [] },
     pulls: deps.pulls?.list() ?? [],
     modelDir: deps.modelDir ?? null,
-    remoteModels: deps.config?.list("openrouter") ?? [],
   };
 }
 
@@ -119,10 +84,7 @@ export type WsMessage =
   | { type: "snapshot"; data: ReturnType<typeof snapshot> }
   | { type: "sample"; data: Sample }
   | { type: "event"; data: ActionEvent }
-  | { type: "chat"; data: ChatWsEvent }
-  | { type: "chatRuns"; data: ChatRuns }
-  | { type: "pull"; data: Pull }
-  | { type: "remoteModels"; data: RemoteModel[] };
+  | { type: "pull"; data: Pull };
 
 export function sameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
@@ -217,144 +179,6 @@ function stringField(
   return field;
 }
 
-function booleanField(
-  value: Record<string, unknown>,
-  name: string,
-): boolean | undefined {
-  const field = value[name];
-  if (field === undefined) return undefined;
-  if (typeof field !== "boolean") {
-    throw new HttpError(400, `${name} must be a boolean`);
-  }
-  return field;
-}
-
-function numberField(
-  value: Record<string, unknown>,
-  name: string,
-  min: number,
-  max: number,
-  integer = false,
-): number | null | undefined {
-  const field = value[name];
-  if (field === undefined || field === null) return field;
-  if (
-    typeof field !== "number" ||
-    !Number.isFinite(field) ||
-    field < min ||
-    field > max ||
-    (integer && !Number.isInteger(field))
-  ) {
-    const range =
-      max === Number.MAX_SAFE_INTEGER ? `at least ${min}` : `${min}..${max}`;
-    throw new HttpError(400, `${name} must be ${range}`);
-  }
-  return field;
-}
-
-function effortField(
-  value: Record<string, unknown>,
-): string | null | undefined {
-  const effort = value.reasoningEffort;
-  if (effort === undefined || effort === null) return effort;
-  if (!["low", "medium", "high", "none"].includes(String(effort))) {
-    throw new HttpError(
-      400,
-      "reasoningEffort must be low, medium, high, none or null",
-    );
-  }
-  return effort as string;
-}
-
-function toolsField(value: Record<string, unknown>): string[] | undefined {
-  const field = value.toolsOff;
-  if (field === undefined) return undefined;
-  if (!Array.isArray(field) || field.some((name) => typeof name !== "string")) {
-    throw new HttpError(400, "toolsOff must be an array of tool names");
-  }
-  const known = new Set(TOOLS.map((tool) => tool.name));
-  for (const name of field as string[]) {
-    if (!known.has(name)) {
-      throw new HttpError(400, `unknown tool: ${name}`);
-    }
-  }
-  return [...new Set(field as string[])];
-}
-
-function searchField(
-  value: Record<string, unknown>,
-): SearchProvider | undefined {
-  const field = value.search;
-  if (field === undefined) return undefined;
-  if (!isSearchProvider(field)) {
-    throw new HttpError(400, "search must be exa or firecrawl");
-  }
-  return field;
-}
-
-function providerField(value: Record<string, unknown>): ProviderId | undefined {
-  const field = value.provider;
-  if (field === undefined) return undefined;
-  if (!isProviderId(field)) {
-    throw new HttpError(400, "provider must be mlxserve or openrouter");
-  }
-  return field;
-}
-
-function settings(value: Record<string, unknown>): ChatSettings {
-  return {
-    provider: providerField(value) ?? "mlxserve",
-    model: stringField(value, "model", true)!,
-    systemPrompt: stringField(value, "systemPrompt") ?? "",
-    thinking: booleanField(value, "thinking") ?? true,
-    reasoningEffort: effortField(value) ?? null,
-    reasoningHistory: booleanField(value, "reasoningHistory") ?? true,
-    temperature: numberField(value, "temperature", 0, 2) ?? null,
-    topP: numberField(value, "topP", 0, 1) ?? null,
-    maxTokens:
-      numberField(value, "maxTokens", 1, Number.MAX_SAFE_INTEGER, true) ?? null,
-    toolsOff: toolsField(value) ?? [],
-    search: searchField(value) ?? "exa",
-  };
-}
-
-function patch(value: Record<string, unknown>): ChatPatch {
-  const result: ChatPatch = {};
-  const title = stringField(value, "title");
-  const provider = providerField(value);
-  const model = stringField(value, "model");
-  const systemPrompt = stringField(value, "systemPrompt");
-  const thinking = booleanField(value, "thinking");
-  const reasoningEffort = effortField(value);
-  const reasoningHistory = booleanField(value, "reasoningHistory");
-  const temperature = numberField(value, "temperature", 0, 2);
-  const topP = numberField(value, "topP", 0, 1);
-  const maxTokens = numberField(
-    value,
-    "maxTokens",
-    1,
-    Number.MAX_SAFE_INTEGER,
-    true,
-  );
-  const toolsOff = toolsField(value);
-  const search = searchField(value);
-  if (title !== undefined) result.title = title;
-  if (provider !== undefined) result.provider = provider;
-  if (model !== undefined) result.model = model;
-  if (systemPrompt !== undefined) result.systemPrompt = systemPrompt;
-  if (thinking !== undefined) result.thinking = thinking;
-  if (reasoningEffort !== undefined) result.reasoningEffort = reasoningEffort;
-  if (reasoningHistory !== undefined) {
-    result.reasoningHistory = reasoningHistory;
-  }
-  if (temperature !== undefined) result.temperature = temperature;
-  if (topP !== undefined) result.topP = topP;
-  if (maxTokens !== undefined) result.maxTokens = maxTokens;
-  if (toolsOff !== undefined) result.toolsOff = toolsOff;
-  if (search !== undefined) result.search = search;
-  return result;
-}
-
 async function actionRoute(
   req: Request,
   deps: HandleDeps,
@@ -370,80 +194,6 @@ async function actionRoute(
     }
     throw err;
   }
-}
-
-async function chatsRoute(req: Request, deps: HandleDeps): Promise<Response> {
-  const runner = deps.chat;
-  if (!runner) return json({ error: "not found" }, 404);
-  const url = new URL(req.url);
-  if (url.pathname === "/api/chats") {
-    if (req.method === "GET") return json(runner.list());
-    if (req.method !== "POST") {
-      return json({ error: "method not allowed" }, 405);
-    }
-    const value = await body(req);
-    const chat = runner.create(
-      settings(value),
-      stringField(value, "title") ?? "",
-    );
-    return json(chat, 201);
-  }
-
-  const match =
-    /^\/api\/chats\/([^/]+)(?:\/(messages|regenerate|edit|compact|stop))?$/.exec(
-      url.pathname,
-    );
-  if (!match) return json({ error: "not found" }, 404);
-  let id: string;
-  try {
-    id = decodeURIComponent(match[1]);
-  } catch {
-    return json({ error: "not found" }, 404);
-  }
-  const operation = match[2];
-  if (!operation) {
-    if (req.method === "GET") {
-      const chat = runner.get(id);
-      return chat ? json(chat) : json({ error: "Chat not found" }, 404);
-    }
-    if (req.method === "PATCH") {
-      const updated = runner.update(id, patch(await body(req)));
-      return updated ? json(updated) : json({ error: "Chat not found" }, 404);
-    }
-    if (req.method === "DELETE") {
-      return runner.remove(id)
-        ? json({ ok: true })
-        : json({ error: "Chat not found" }, 404);
-    }
-    return json({ error: "method not allowed" }, 405);
-  }
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
-  if (!runner.get(id)) return json({ error: "Chat not found" }, 404);
-  if (operation === "messages") {
-    const value = await body(req);
-    const content = stringField(value, "content", true)!;
-    return json(runner.send(id, content), 202);
-  }
-  if (operation === "edit") {
-    const value = await body(req);
-    const messageId = value.messageId;
-    if (!Number.isInteger(messageId) || Number(messageId) <= 0) {
-      throw new HttpError(400, "messageId must be a positive integer");
-    }
-    const content = stringField(value, "content", true)!;
-    return json(runner.edit(id, Number(messageId), content), 202);
-  }
-  if (operation === "regenerate") {
-    await body(req, true);
-    return json(runner.regenerate(id), 202);
-  }
-  if (operation === "compact") {
-    await body(req, true);
-    return json(runner.compact(id), 202);
-  }
-  await body(req, true);
-  runner.stop(id);
-  return json({ ok: true });
 }
 
 // Downloads: list, start (or resume) one, cancel it, forget it.
@@ -481,85 +231,6 @@ async function pullsRoute(req: Request, deps: HandleDeps): Promise<Response> {
   return json({ error: "method not allowed" }, 405);
 }
 
-// The config page's routes: the saved hosted models, checked against the
-// provider's catalog before they can be added, and refreshed from it
-// whenever the page opens. The key never leaves the server: `enabled`
-// says whether one was found.
-async function configRoute(req: Request, deps: HandleDeps): Promise<Response> {
-  const config = deps.config;
-  if (!config) return json({ error: "not found" }, 404);
-  const url = new URL(req.url);
-  const enabled = deps.catalog !== null && deps.catalog !== undefined;
-  const list = () => config.list("openrouter");
-  const changed = () => deps.onRemoteModels?.(list());
-  if (url.pathname === "/api/config") {
-    if (req.method !== "GET") return json({ error: "method not allowed" }, 405);
-    return json({
-      openrouter: {
-        enabled,
-        limit: deps.chat?.limits().openrouter ?? 0,
-        models: list(),
-      },
-    });
-  }
-  const match =
-    /^\/api\/config\/openrouter\/(refresh|check|models)(?:\/(.+))?$/.exec(
-      url.pathname,
-    );
-  if (!match) return json({ error: "not found" }, 404);
-  const [, operation, rest] = match;
-  const catalog = deps.catalog;
-  if (!catalog) return json({ error: "OpenRouter key missing" }, 404);
-  const fetchCatalog = async (fresh: boolean) => {
-    try {
-      return await catalog.get(fresh);
-    } catch (err) {
-      if (err instanceof CatalogError) throw new HttpError(502, err.message);
-      throw err;
-    }
-  };
-  if (operation === "refresh") {
-    if (req.method !== "POST")
-      return json({ error: "method not allowed" }, 405);
-    await body(req, true);
-    const models = await fetchCatalog(true);
-    config.refresh("openrouter", models);
-    changed();
-    return json({ models: list(), checkedAt: (deps.now ?? Date.now)() });
-  }
-  if (operation === "check" || (operation === "models" && rest === undefined)) {
-    if (req.method !== "POST")
-      return json({ error: "method not allowed" }, 405);
-    const value = await body(req);
-    const id = stringField(value, "id", true)!.trim();
-    const models = await fetchCatalog(false);
-    const model = models.get(id) ?? null;
-    // a wrong id is the check's ordinary answer, not an error
-    if (operation === "check") return json({ model });
-    if (!model) {
-      return json({ error: `${id} is not in the OpenRouter catalog` }, 404);
-    }
-    if (!config.add("openrouter", model)) {
-      return json({ error: `${id} is already in the list` }, 409);
-    }
-    changed();
-    return json(config.get("openrouter", id), 201);
-  }
-  if (req.method !== "DELETE")
-    return json({ error: "method not allowed" }, 405);
-  let id: string;
-  try {
-    id = decodeURIComponent(rest ?? "");
-  } catch {
-    return json({ error: "not found" }, 404);
-  }
-  if (!config.remove("openrouter", id)) {
-    return json({ error: "Model not found" }, 404);
-  }
-  changed();
-  return json({ ok: true });
-}
-
 export async function handle(
   req: Request,
   deps: HandleDeps,
@@ -572,34 +243,13 @@ export async function handle(
     const action = /^\/api\/actions\/([a-zA-Z]+)$/.exec(url.pathname);
     if (action) return await actionRoute(req, deps, action[1]);
     if (
-      url.pathname === "/api/chats" ||
-      url.pathname.startsWith("/api/chats/")
-    ) {
-      return await chatsRoute(req, deps);
-    }
-    if (
       url.pathname === "/api/pulls" ||
       url.pathname.startsWith("/api/pulls/")
     ) {
       return await pullsRoute(req, deps);
     }
-    if (
-      url.pathname === "/api/config" ||
-      url.pathname.startsWith("/api/config/")
-    ) {
-      return await configRoute(req, deps);
-    }
     if (req.method !== "GET") {
       return json({ error: "method not allowed" }, 405);
-    }
-    if (url.pathname === "/api/tools") {
-      return json({
-        timezone: HOST_TIMEZONE,
-        tools: toolSchemas().map(({ name, description }) => ({
-          name,
-          description,
-        })),
-      });
     }
     switch (url.pathname) {
       case "/api/snapshot":
@@ -623,11 +273,7 @@ export async function handle(
         return json({ error: "not found" }, 404);
     }
   } catch (err) {
-    if (
-      err instanceof ChatError ||
-      err instanceof PullError ||
-      err instanceof HttpError
-    ) {
+    if (err instanceof PullError || err instanceof HttpError) {
       return json({ error: err.message }, err.status);
     }
     throw err;
@@ -639,10 +285,6 @@ export function serve(
   listen: { hostname: string; port: number },
   page: HTMLBundle,
 ) {
-  const handleDeps: HandleDeps = {
-    ...deps,
-    onRemoteModels: (models) => publish({ type: "remoteModels", data: models }),
-  };
   const server = Bun.serve({
     hostname: listen.hostname,
     port: listen.port,
@@ -653,8 +295,6 @@ export function serve(
     routes: {
       "/": page,
       "/requests": page,
-      "/chat": page,
-      "/chat/*": page,
     },
     fetch(req, server) {
       if (new URL(req.url).pathname === "/ws") {
@@ -665,7 +305,7 @@ export function serve(
           ? undefined
           : new Response("websocket upgrade failed", { status: 400 });
       }
-      return handle(req, handleDeps);
+      return handle(req, deps);
     },
     websocket: {
       open(ws) {
@@ -687,12 +327,6 @@ export function serve(
   const unsubscribeEvents = deps.actions.onEvent((event) =>
     publish({ type: "event", data: event }),
   );
-  const unsubscribeChat = deps.chat.onEvent((event) =>
-    publish({ type: "chat", data: event }),
-  );
-  const unsubscribeRuns = deps.chat.onRuns((runs) =>
-    publish({ type: "chatRuns", data: runs }),
-  );
   const unsubscribePulls = deps.pulls.onEvent((pull) =>
     publish({ type: "pull", data: pull }),
   );
@@ -701,8 +335,6 @@ export function serve(
     stop() {
       unsubscribe();
       unsubscribeEvents();
-      unsubscribeChat();
-      unsubscribeRuns();
       unsubscribePulls();
       server.stop(true);
     },

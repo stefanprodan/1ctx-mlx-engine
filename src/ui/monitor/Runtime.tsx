@@ -67,9 +67,7 @@ export function RuntimeHead({
       <h2>Runtime</h2>
       <EngineState s={s} />
       <span class="hint">
-        {snap?.host && !local
-          ? "host facts are for this machine, not the engine's"
-          : ""}
+        {snap?.host && !local ? "this machine, not the engine host" : ""}
       </span>
       <span class="grow" />
       <span class="btns">

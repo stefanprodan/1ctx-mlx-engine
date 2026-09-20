@@ -6,8 +6,6 @@
 // subscriber is in place.
 
 import { render } from "preact";
-import { Chat } from "./chat/Chat.tsx";
-import { boot } from "./chat/nav.ts";
 import { Monitor } from "./monitor/Monitor.tsx";
 import { Requests } from "./requests/Requests.tsx";
 import { Footer } from "./shell/Footer.tsx";
@@ -18,20 +16,12 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const page = pageOf(location.pathname);
 render(<Header page={page} />, $("top"));
 render(<Footer />, $("foot"));
-if (page === "monitor") {
-  render(<Monitor />, $("view-monitor"));
-} else if (page === "requests") {
+if (page === "requests") {
   document.title = "mlx-spy · requests";
   $("view-monitor").hidden = true;
   $("view-requests").hidden = false;
   render(<Requests />, $("view-requests"));
 } else {
-  // the frame fills the viewport; the header shows the connection pill
-  $("view-monitor").hidden = true;
-  const frame = $("view-chat");
-  frame.hidden = false;
-  document.querySelector(".page")!.classList.add("chat");
-  render(<Chat frame={frame} />, frame);
-  boot();
+  render(<Monitor />, $("view-monitor"));
 }
 connect();

@@ -104,7 +104,7 @@ Through the API, which is what mlx-spy's buttons do:
 ```sh
 # cold-load a model (4 to 7 s from SSD, weights are mmap'd)
 curl -s -X POST $E/v1/load-model -H 'content-type: application/json' -d '{"model":"Jundot/Qwen3.8-27B-oQ4e-mtp"}'
-# load it and make it the server default (chat requests without a model go there)
+# load it and make it the server default (requests without a model go there)
 curl -s -X POST $E/v1/load-model -H 'content-type: application/json' -d '{"model":"Jundot/Qwen3.8-27B-oQ4e-mtp","default":true}'
 # unload: frees the weights and that model's RAM prefix cache (RSS drops a few seconds later)
 curl -s -X POST $E/v1/unload-model -H 'content-type: application/json' -d '{"model":"Jundot/Qwen3.8-27B-oQ4e-mtp"}'
@@ -150,11 +150,8 @@ plist). Tell the user what changed; the flags are their policy.
 - The engine does not say which model served a request, nor which model is
   the default. mlx-spy attributes a request to the resident favorite, else
   the first resident by id.
-- Thinking is off by default on `/v1/chat/completions`; `enable_thinking`
-  or `reasoning_effort` turns it on.
 - Since 26.9.2 the hot cache evicts per workload, keyed by
   `prompt_cache_key`, else `metadata.user_id`, else the system prompt.
-  mlx-spy sends the chat id as the key, so its chats are one group each.
 
 ## mlx-spy on the Studio
 
@@ -162,12 +159,12 @@ plist). Tell the user what changed; the flags are their policy.
 |---|---|
 | Binary | `~/.mlx-spy/bin/mlx-spy` |
 | launchd agent | label `com.stefanprodan.mlx-spy`, plist `~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist`, reference copy `scripts/com.stefanprodan.mlx-spy.plist` in this repo; `RunAtLoad` and `KeepAlive` (5 s throttle), so it comes back on a crash and at login |
-| Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235 --model-dir /Users/stefanprodan/models`, like the engine bound on every interface; the default db; downloads land in the engine's own model directory (set 2026-09-09); OpenRouter at its default of 4 chats at once (deployed 2026-09-10, the key found at boot, no models added yet: they are added from the chat's Settings page) |
+| Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235 --model-dir /Users/stefanprodan/models`, like the engine bound on every interface; the default db; downloads land in the engine's own model directory (set 2026-09-09) |
 | URL | `http://$STUDIO_HOST:11235` from the tailnet; `http://127.0.0.1:11235` on the box |
-| Database | `~/.mlx-spy/history.sqlite` (WAL mode, so `-shm` and `-wal` files sit next to it) |
+| Database | `~/.mlx-spy/mlx-spy.db` (WAL mode, so `-shm` and `-wal` files sit next to it) |
 | Log | `~/.mlx-spy/mlx-spy.log` (stdout and stderr of the agent, appended) |
 | Working dir | `~/.mlx-spy` |
-| Secrets | `~/.mlx-spy/secrets/` (mode 700, files mode 600): `exa.key` and `firecrawl.key`, each holding the bare API key, `hf.key` (a Hugging Face token, for gated repos and faster downloads; written from the shell's `HF_TOKEN` on 2026-09-09) and `openrouter.key` (written from the shell's `OPENROUTER_TOKEN` on 2026-09-10, verified against `GET /api/v1/key` and a free-model stream the same day; read at boot since the 2026-09-10 deploy); the boot log's `exa key:`, `firecrawl key:` and `hf key:` lines name the file found, or `none` |
+| Secrets | `~/.mlx-spy/secrets/` (mode 700, files mode 600): `hf.key`, a Hugging Face token for gated repos and faster downloads, written from the shell's `HF_TOKEN` on 2026-09-09; the boot log's `hf key:` line names the file found, or `none`. `hf.key` is the only key file; the `exa.key`, `firecrawl.key` and `openrouter.key` left from the chat were deleted on 2026-09-20 |
 
 Checks:
 
@@ -214,8 +211,8 @@ scp -q bin/mlx-spy $STUDIO_SSH:~/.mlx-spy/bin/mlx-spy.new
 ssh -o BatchMode=yes $STUDIO_SSH 'mv ~/.mlx-spy/bin/mlx-spy.new ~/.mlx-spy/bin/mlx-spy && launchctl kickstart -k gui/$(id -u)/com.stefanprodan.mlx-spy'
 ```
 
-Kickstart sends SIGTERM: mlx-spy marks streaming chats interrupted, closes
-the db and exits; launchd starts the new binary at once. The upload goes to
+Kickstart sends SIGTERM: mlx-spy closes the db and exits; launchd starts
+the new binary at once. The upload goes to
 a `.new` name and is moved because the running binary must not be
 overwritten in place.
 
@@ -243,7 +240,7 @@ ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanproda
 ### The database
 
 The schema is in `src/history.ts` (samples, meta, models, requests) and
-`src/chats.ts` (chats, messages). Fixes go in with `sqlite3` on the box.
+`src/pulls.ts` (pulls, pull_files). Fixes go in with `sqlite3` on the box.
 Two rules:
 
 - **Stop the agent first** (`launchctl bootout`), fix, then `bootstrap`.
@@ -257,7 +254,7 @@ Example, the 2026-09-08 backfill of request rows stored before the model
 attribution existed:
 
 ```sh
-ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanprodan.mlx-spy; sqlite3 ~/.mlx-spy/history.sqlite "
+ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanprodan.mlx-spy; sqlite3 ~/.mlx-spy/mlx-spy.db "
 UPDATE requests SET model = \"Jundot/Qwen3.8-27B-oQ4e-mtp\" WHERE model IS NULL;
 UPDATE meta SET value = json_set(value, \"$.lastRequest.model\", \"Jundot/Qwen3.8-27B-oQ4e-mtp\") WHERE key = \"sampler\" AND json_extract(value, \"$.lastRequest.model\") IS NULL;
 SELECT model, count(*) FROM requests GROUP BY model;"; launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist'
@@ -266,7 +263,7 @@ SELECT model, count(*) FROM requests GROUP BY model;"; launchctl bootstrap gui/$
 Read-only queries need no stop:
 
 ```sh
-ssh -o BatchMode=yes $STUDIO_SSH 'sqlite3 ~/.mlx-spy/history.sqlite "SELECT count(*) FROM samples; SELECT id, favorite FROM models;"'
+ssh -o BatchMode=yes $STUDIO_SSH 'sqlite3 ~/.mlx-spy/mlx-spy.db "SELECT count(*) FROM samples; SELECT id, favorite FROM models;"'
 ```
 
 ### A one-off sample without deploying

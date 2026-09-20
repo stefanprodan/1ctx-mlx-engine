@@ -14,17 +14,12 @@ describe("series", () => {
       t: startedAt + 2000,
       decodeTps: 42,
       generatedTokens: 7,
-      disk: [
-        { model: "a", bytes: 5, path: "" },
-        { model: "b", bytes: 6, path: "" },
-      ] as never,
     });
     const after = appendLive(before, s);
     expect(before.t.length).toBe(2);
     expect(after.t).toEqual([startedAt, startedAt + 1000, startedAt + 2000]);
     expect(after.decodeTps.at(-1)).toBe(42);
     expect(after.generationTokens.at(-1)).toBe(7);
-    expect(after.diskBytes.at(-1)).toBe(11);
     expect(after.engineUp.at(-1)).toBe(1);
     for (const k of Object.keys(after) as (keyof typeof after)[]) {
       expect(after[k].length).toBe(3);
@@ -38,11 +33,8 @@ describe("series", () => {
       epoch: 7,
       decodeTps: 1,
       prefillTps: 2,
-      requestsRunning: 3,
-      requestsWaiting: 4,
       cacheHitPct: 5,
       cacheTokenPct: 6,
-      gpuPct: 8,
       ttftMs: 9,
       ttftN: 10,
       generatedTokens: 11,
@@ -50,20 +42,6 @@ describe("series", () => {
       promptTokens: 13,
       cachedPromptTokens: 14,
       requestsCancelled: 15,
-      mem: {
-        procFootprint: 16,
-        weights: 17,
-        hotCacheEst: 18,
-        mlxActive: 19,
-        mlxPool: 20,
-        hostTotal: 21,
-        hostFree: 22,
-        hostInactive: 23,
-        hostWired: 24,
-        hostCompressed: 25,
-        procRss: 26,
-      },
-      disk: [{ model: "a", bytes: 27, path: "" }] as never,
     });
     const after = appendLive(series(1), s);
     const last = Object.fromEntries(
@@ -75,23 +53,8 @@ describe("series", () => {
       epoch: 7,
       decodeTps: 1,
       prefillTps: 2,
-      requestsRunning: 3,
-      requestsWaiting: 4,
       cacheHitPct: 5,
       cacheTokenPct: 6,
-      gpuPct: 8,
-      procFootprint: 16,
-      weights: 17,
-      hotCacheEst: 18,
-      mlxActive: 19,
-      mlxPool: 20,
-      hostTotal: 21,
-      hostFree: 22,
-      hostInactive: 23,
-      hostWired: 24,
-      hostCompressed: 25,
-      procRss: 26,
-      diskBytes: 27,
       ttftMs: 9,
       ttftN: 10,
       generationTokens: 11,

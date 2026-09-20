@@ -74,9 +74,6 @@ describe("History", () => {
     expect(s.t[0]).toBe(now - 99_000);
     expect(s.decodeTps[0]).toBe(99);
     expect(s.cacheHitPct[0]).toBeNull();
-    expect(s.weights[0]).toBe(800);
-    expect(s.hostFree[0]).toBe(20_000);
-    expect(s.diskBytes[0]).toBe(300);
     h.close();
   });
 
@@ -87,7 +84,6 @@ describe("History", () => {
       h.push(
         sample(now - i * 1000, {
           decodeTps: i % 2 === 0 ? 10 : 20,
-          requestsRunning: i % 24 === 0 ? 3 : 0,
           epoch: i < 100 ? 1 : 0,
         }),
       );
@@ -98,8 +94,6 @@ describe("History", () => {
     expect(s.t.length).toBeLessThanOrEqual(901);
     expect(s.t[1] - s.t[0]).toBe(24_000);
     expect(s.decodeTps[10]).toBe(15);
-    // queue depth keeps the max inside the bucket
-    expect(s.requestsRunning[10]).toBe(3);
     // the epoch bump in the last 100 s shows on the last buckets
     expect(s.epoch.at(-1)).toBe(1);
     expect(s.epoch[0]).toBe(0);
@@ -237,75 +231,6 @@ describe("History models", () => {
     expect(h.toggleFavorite("zzz")).toBeNull(); // unknown id
     h.close();
   });
-
-  test("an is_default column from the first cut is renamed", () => {
-    const { Database } = require("bun:sqlite");
-    const path = `${require("node:os").tmpdir()}/mlx-spy-models-${process.pid}.sqlite`;
-    const old = new Database(path, { create: true });
-    old.run(
-      "CREATE TABLE models (id TEXT PRIMARY KEY, is_default INTEGER NOT NULL DEFAULT 0, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL)",
-    );
-    old.run("INSERT INTO models VALUES ('a', 1, 1, 1)");
-    old.close();
-    try {
-      const h = new History(path);
-      expect(h.favorite()).toBe("a");
-      h.close();
-    } finally {
-      require("node:fs").rmSync(path, { force: true });
-    }
-  });
-});
-
-describe("History migration", () => {
-  test("adds the host columns to a pre-existing samples table", () => {
-    const { Database } = require("bun:sqlite");
-    const path = `${require("node:os").tmpdir()}/mlx-spy-migrate-${process.pid}.sqlite`;
-    const old = new Database(path, { create: true });
-    old.run(`CREATE TABLE samples (
-      t INTEGER PRIMARY KEY, engine_up INTEGER NOT NULL, epoch INTEGER NOT NULL,
-      decode_tps REAL, prefill_tps REAL, requests_running INTEGER NOT NULL,
-      requests_waiting INTEGER NOT NULL, cache_hit_pct REAL, cache_token_pct REAL,
-      gpu_pct REAL NOT NULL, proc_footprint INTEGER NOT NULL, weights INTEGER NOT NULL,
-      hot_cache_est INTEGER NOT NULL, mlx_active INTEGER NOT NULL, mlx_pool INTEGER NOT NULL)`);
-    old.run(
-      "INSERT INTO samples VALUES (1000, 1, 0, 1, 2, 0, 0, NULL, NULL, 0, 5, 4, 1, 5, 0)",
-    );
-    old.close();
-    try {
-      const h = new History(path);
-      const s = h.series("1h", 1000);
-      expect(s.t).toEqual([1000]);
-      expect(s.hostFree).toEqual([0]);
-      h.push(sample(2000));
-      expect(h.series("1h", 2000).diskBytes).toEqual([0, 300]);
-      // the migrated file appends ttft_ms after the counters, the reverse of
-      // CREATE TABLE: every value must still land in its own column
-      const s1 = {
-        ...sample(3000),
-        ttftMs: 1234,
-        ttftN: 1,
-        generatedTokens: 11,
-        promptTokens: 12,
-        cachedPromptTokens: 13,
-        requestsTotal: 14,
-        requestsCancelled: 15,
-      };
-      h.push(s1);
-      const s2 = h.series("1h", 3000);
-      expect(s2.ttftMs[2]).toBe(s1.ttftMs);
-      expect(s2.generationTokens[2]).toBe(s1.generatedTokens);
-      expect(s2.requestsTotal[2]).toBe(s1.requestsTotal);
-      expect(s2.promptTokens[2]).toBe(s1.promptTokens);
-      expect(s2.cachedPromptTokens[2]).toBe(s1.cachedPromptTokens);
-      expect(s2.requestsCancelled[2]).toBe(s1.requestsCancelled);
-      h.close();
-    } finally {
-      require("node:fs").rmSync(path, { force: true });
-      require("node:fs").rmSync(`${path}-wal`, { force: true });
-      require("node:fs").rmSync(`${path}-shm`, { force: true });
-    }
-  });
 });
 
 describe("History requests", () => {
@@ -360,29 +285,5 @@ describe("History requests", () => {
     expect(list.find((r) => r.cancelled)?.generated).toBe(3);
     expect(list.find((r) => !r.cancelled)?.generated).toBe(10);
     h.close();
-  });
-
-  test("the first cut of the requests table is dropped and rebuilt", () => {
-    const { Database } = require("bun:sqlite");
-    const path = `${require("node:os").tmpdir()}/mlx-spy-reqs-${process.pid}.sqlite`;
-    const old = new Database(path, { create: true });
-    old.run(`CREATE TABLE requests (finished_at INTEGER PRIMARY KEY,
-      started_at INTEGER, count INTEGER NOT NULL, cancelled INTEGER NOT NULL,
-      generated INTEGER NOT NULL, prompt_tokens INTEGER NOT NULL,
-      prefill_tokens INTEGER NOT NULL, prefill_ms INTEGER NOT NULL,
-      decode_ms INTEGER NOT NULL, ttft_ms REAL)`);
-    old.run("INSERT INTO requests VALUES (5, 4, 1, 0, 1, 1, 1, 1, 1, NULL)");
-    old.close();
-    try {
-      const h = new History(path);
-      expect(h.requests()).toEqual([]);
-      h.addRequest(req(9000));
-      expect(h.requests()[0].model).toBe("org/m");
-      h.close();
-    } finally {
-      for (const f of ["", "-wal", "-shm"]) {
-        require("node:fs").rmSync(path + f, { force: true });
-      }
-    }
   });
 });

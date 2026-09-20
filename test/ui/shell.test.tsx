@@ -12,15 +12,17 @@ import { Pill } from "../../src/ui/shell/Pill.tsx";
 import { connection, type Snapshot, snapshot } from "../../src/ui/store.ts";
 
 describe("shell", () => {
-  test("header marks the current page and shows the pill only on chat", () => {
+  test("header marks the current page and carries no pill", () => {
     const monitor = render(<Header page="monitor" />);
     expect(monitor).toContain('<div class="wordmark"><svg class="mark"');
     expect(monitor).toContain('<a href="/" class="active">Monitor</a>');
     expect(monitor).toContain('<a href="/requests">Requests</a>');
     expect(monitor).not.toContain('class="pill');
-    const chat = render(<Header page="chat" />);
-    expect(chat).toContain('<a href="/chat" class="active">Chat</a>');
-    expect(chat).toContain('<span class="grow"></span><span class="pill');
+    const requests = render(<Header page="requests" />);
+    expect(requests).toContain(
+      '<a href="/requests" class="active">Requests</a>',
+    );
+    expect(requests).not.toContain('class="pill');
   });
 
   test("pill follows the connection signal", () => {

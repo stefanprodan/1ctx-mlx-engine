@@ -28,29 +28,17 @@ export type Range = keyof typeof RANGES;
 const TARGET_POINTS = 900;
 
 // Columnar, ready for uPlot: one array per series, aligned on `t`.
+// Only what the page reads back is persisted. The memory, host and disk
+// gauges are live-only: the tiles read them off the Sample and no chart
+// plots them, so storing them at 1 Hz for 7 days bought nothing.
 export type Series = {
   t: number[];
   engineUp: (0 | 1)[];
   epoch: number[];
   decodeTps: (number | null)[];
   prefillTps: (number | null)[];
-  requestsRunning: number[];
-  requestsWaiting: number[];
   cacheHitPct: (number | null)[];
   cacheTokenPct: (number | null)[];
-  gpuPct: number[];
-  procFootprint: number[];
-  weights: number[];
-  hotCacheEst: number[];
-  mlxActive: number[];
-  mlxPool: number[];
-  hostTotal: number[];
-  hostFree: number[];
-  hostInactive: number[];
-  hostWired: number[];
-  hostCompressed: number[];
-  procRss: number[];
-  diskBytes: number[];
   ttftMs: (number | null)[]; // mean over the bucket, weighted by ttftN
   ttftN: number[]; // requests the mean covers
   generationTokens: number[];
@@ -89,32 +77,16 @@ export class History {
       epoch INTEGER NOT NULL,
       decode_tps REAL,
       prefill_tps REAL,
-      requests_running INTEGER NOT NULL,
-      requests_waiting INTEGER NOT NULL,
       cache_hit_pct REAL,
       cache_token_pct REAL,
-      gpu_pct REAL NOT NULL,
-      proc_footprint INTEGER NOT NULL,
-      weights INTEGER NOT NULL,
-      hot_cache_est INTEGER NOT NULL,
-      mlx_active INTEGER NOT NULL,
-      mlx_pool INTEGER NOT NULL,
-      host_total INTEGER NOT NULL DEFAULT 0,
-      host_free INTEGER NOT NULL DEFAULT 0,
-      host_inactive INTEGER NOT NULL DEFAULT 0,
-      host_wired INTEGER NOT NULL DEFAULT 0,
-      host_compressed INTEGER NOT NULL DEFAULT 0,
-      proc_rss INTEGER NOT NULL DEFAULT 0,
-      disk_bytes INTEGER NOT NULL DEFAULT 0,
       ttft_ms REAL,
-      ttft_n INTEGER NOT NULL DEFAULT 0,
-      generation_tokens INTEGER NOT NULL DEFAULT 0,
-      requests_total INTEGER NOT NULL DEFAULT 0,
-      prompt_tokens INTEGER NOT NULL DEFAULT 0,
-      cached_prompt_tokens INTEGER NOT NULL DEFAULT 0,
-      requests_cancelled INTEGER NOT NULL DEFAULT 0
+      ttft_n INTEGER NOT NULL,
+      generation_tokens INTEGER NOT NULL,
+      requests_total INTEGER NOT NULL,
+      prompt_tokens INTEGER NOT NULL,
+      cached_prompt_tokens INTEGER NOT NULL,
+      requests_cancelled INTEGER NOT NULL
     )`);
-    this.migrate();
     this.db.run(
       "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
     );
@@ -127,11 +99,9 @@ export class History {
       first_seen INTEGER NOT NULL,
       last_seen INTEGER NOT NULL
     )`);
-    this.migrateModels();
     // The last finished requests, one row each as the request bar saw them
     // (a cancel included), for the Requests page. Capped at REQUESTS_KEPT
     // from the writer, like the samples.
-    this.migrateRequests();
     // a completion and a cancel can share a tick: the pair is the key
     this.db.run(`CREATE TABLE IF NOT EXISTS requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,57 +118,15 @@ export class History {
       model TEXT,
       UNIQUE (finished_at, cancelled)
     )`);
-    // columns named: a migrated file appends them in a different order than
-    // CREATE TABLE lists them
     this.insert = this.db.prepare(`INSERT OR REPLACE INTO samples (
-      t, engine_up, epoch, decode_tps, prefill_tps, requests_running,
-      requests_waiting, cache_hit_pct, cache_token_pct, gpu_pct, proc_footprint,
-      weights, hot_cache_est, mlx_active, mlx_pool, host_total, host_free,
-      host_inactive, host_wired, host_compressed, proc_rss, disk_bytes,
-      ttft_ms, ttft_n, generation_tokens, requests_total, prompt_tokens,
-      cached_prompt_tokens, requests_cancelled
+      t, engine_up, epoch, decode_tps, prefill_tps, cache_hit_pct,
+      cache_token_pct, ttft_ms, ttft_n, generation_tokens, requests_total,
+      prompt_tokens, cached_prompt_tokens, requests_cancelled
     ) VALUES (
-      $t, $engineUp, $epoch, $decodeTps, $prefillTps, $requestsRunning,
-      $requestsWaiting, $cacheHitPct, $cacheTokenPct, $gpuPct, $procFootprint,
-      $weights, $hotCacheEst, $mlxActive, $mlxPool, $hostTotal, $hostFree,
-      $hostInactive, $hostWired, $hostCompressed, $procRss, $diskBytes,
-      $ttftMs, $ttftN, $generationTokens, $requestsTotal, $promptTokens,
-      $cachedPromptTokens, $requestsCancelled)`);
+      $t, $engineUp, $epoch, $decodeTps, $prefillTps, $cacheHitPct,
+      $cacheTokenPct, $ttftMs, $ttftN, $generationTokens, $requestsTotal,
+      $promptTokens, $cachedPromptTokens, $requestsCancelled)`);
     this.prune = this.db.prepare("DELETE FROM samples WHERE t < $before");
-  }
-
-  // Columns added after the first release get appended to an existing file;
-  // CREATE TABLE IF NOT EXISTS leaves an old schema alone.
-  private migrate() {
-    const have = new Set(
-      (
-        this.db.query("PRAGMA table_info(samples)").all() as { name: string }[]
-      ).map((c) => c.name),
-    );
-    for (const col of [
-      "host_total",
-      "host_free",
-      "host_inactive",
-      "host_wired",
-      "host_compressed",
-      "proc_rss",
-      "disk_bytes",
-      "generation_tokens",
-      "requests_total",
-      "prompt_tokens",
-      "cached_prompt_tokens",
-      "requests_cancelled",
-      "ttft_n",
-    ]) {
-      if (!have.has(col)) {
-        this.db.run(
-          `ALTER TABLE samples ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`,
-        );
-      }
-    }
-    if (!have.has("ttft_ms")) {
-      this.db.run("ALTER TABLE samples ADD COLUMN ttft_ms REAL");
-    }
   }
 
   push(s: Sample) {
@@ -210,23 +138,8 @@ export class History {
       epoch: s.epoch,
       decodeTps: s.decodeTps,
       prefillTps: s.prefillTps,
-      requestsRunning: s.requestsRunning,
-      requestsWaiting: s.requestsWaiting,
       cacheHitPct: s.cacheHitPct,
       cacheTokenPct: s.cacheTokenPct,
-      gpuPct: s.gpuPct,
-      procFootprint: s.mem.procFootprint,
-      weights: s.mem.weights,
-      hotCacheEst: s.mem.hotCacheEst,
-      mlxActive: s.mem.mlxActive,
-      mlxPool: s.mem.mlxPool,
-      hostTotal: s.mem.hostTotal,
-      hostFree: s.mem.hostFree,
-      hostInactive: s.mem.hostInactive,
-      hostWired: s.mem.hostWired,
-      hostCompressed: s.mem.hostCompressed,
-      procRss: s.mem.procRss,
-      diskBytes: s.disk.reduce((n, d) => n + d.bytes, 0),
       ttftMs: s.ttftMs,
       ttftN: s.ttftN,
       generationTokens: s.generatedTokens,
@@ -281,16 +194,7 @@ export class History {
         FROM (SELECT (b.t / $bucket) * $bucket AS t,
           min(engine_up) AS engineUp,
           avg(decode_tps) AS decodeTps, avg(prefill_tps) AS prefillTps,
-          max(requests_running) AS requestsRunning,
-          max(requests_waiting) AS requestsWaiting,
           avg(cache_hit_pct) AS cacheHitPct, avg(cache_token_pct) AS cacheTokenPct,
-          avg(gpu_pct) AS gpuPct, avg(proc_footprint) AS procFootprint,
-          avg(weights) AS weights, avg(hot_cache_est) AS hotCacheEst,
-          avg(mlx_active) AS mlxActive, avg(mlx_pool) AS mlxPool,
-          avg(host_total) AS hostTotal, avg(host_free) AS hostFree,
-          avg(host_inactive) AS hostInactive, avg(host_wired) AS hostWired,
-          avg(host_compressed) AS hostCompressed, avg(proc_rss) AS procRss,
-          avg(disk_bytes) AS diskBytes,
           sum(ttft_ms * ttft_n) / nullif(sum(ttft_n), 0) AS ttftMs,
           sum(ttft_n) AS ttftN,
           max(b.t) AS lastT
@@ -305,23 +209,8 @@ export class History {
       epoch: [],
       decodeTps: [],
       prefillTps: [],
-      requestsRunning: [],
-      requestsWaiting: [],
       cacheHitPct: [],
       cacheTokenPct: [],
-      gpuPct: [],
-      procFootprint: [],
-      weights: [],
-      hotCacheEst: [],
-      mlxActive: [],
-      mlxPool: [],
-      hostTotal: [],
-      hostFree: [],
-      hostInactive: [],
-      hostWired: [],
-      hostCompressed: [],
-      procRss: [],
-      diskBytes: [],
       ttftMs: [],
       ttftN: [],
       generationTokens: [],
@@ -336,23 +225,8 @@ export class History {
       out.epoch.push(r.epoch);
       out.decodeTps.push(r.decodeTps);
       out.prefillTps.push(r.prefillTps);
-      out.requestsRunning.push(r.requestsRunning);
-      out.requestsWaiting.push(r.requestsWaiting);
       out.cacheHitPct.push(r.cacheHitPct);
       out.cacheTokenPct.push(r.cacheTokenPct);
-      out.gpuPct.push(r.gpuPct);
-      out.procFootprint.push(Math.round(r.procFootprint));
-      out.weights.push(Math.round(r.weights));
-      out.hotCacheEst.push(Math.round(r.hotCacheEst));
-      out.mlxActive.push(Math.round(r.mlxActive));
-      out.mlxPool.push(Math.round(r.mlxPool));
-      out.hostTotal.push(Math.round(r.hostTotal));
-      out.hostFree.push(Math.round(r.hostFree));
-      out.hostInactive.push(Math.round(r.hostInactive));
-      out.hostWired.push(Math.round(r.hostWired));
-      out.hostCompressed.push(Math.round(r.hostCompressed));
-      out.procRss.push(Math.round(r.procRss));
-      out.diskBytes.push(Math.round(r.diskBytes));
       out.ttftMs.push(r.ttftMs === null ? null : Math.round(r.ttftMs));
       out.ttftN.push(r.ttftN);
       out.generationTokens.push(r.generationTokens);
@@ -386,27 +260,6 @@ export class History {
     this.db
       .query("INSERT OR REPLACE INTO meta (key, value) VALUES ('sampler', $v)")
       .run({ v: JSON.stringify(state) });
-  }
-
-  // The first cut of the requests table was keyed on finished_at alone (and
-  // at first had no model column): it is dropped, the list is short-lived.
-  private migrateRequests() {
-    const cols = (
-      this.db.query("PRAGMA table_info(requests)").all() as { name: string }[]
-    ).map((c) => c.name);
-    if (cols.length && !cols.includes("id")) {
-      this.db.run("DROP TABLE requests");
-    }
-  }
-
-  // The first cut of the table called the flag is_default.
-  private migrateModels() {
-    const cols = (
-      this.db.query("PRAGMA table_info(models)").all() as { name: string }[]
-    ).map((c) => c.name);
-    if (cols.includes("is_default")) {
-      this.db.run("ALTER TABLE models RENAME COLUMN is_default TO favorite");
-    }
   }
 
   // The engine's current model list: new ids are added, ids the engine no

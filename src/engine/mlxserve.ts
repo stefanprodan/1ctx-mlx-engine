@@ -11,28 +11,14 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import {
-  buildChatBody as buildOpenAiChatBody,
-  chatEvents as openAiChatEvents,
-  streamChat,
-} from "./openai.ts";
 import type {
   CacheLimits,
   Capability,
-  ChatEvent,
-  ChatProvider,
-  ChatRequest,
   Engine,
   EngineMetrics,
   HistogramSummary,
   ModelInfo,
 } from "./types.ts";
-
-export {
-  CHAT_HEADERS_TIMEOUT_MS,
-  MAX_SSE_FRAME_BYTES,
-  parseSse,
-} from "./openai.ts";
 
 // Every request from the sampler must fail fast: a hung engine must not
 // stall the 1 Hz loop, and a sample with engineUp=false is the right answer.
@@ -107,78 +93,6 @@ export function parseModels(body: any): ModelInfo[] {
     }));
 }
 
-export function buildChatBody(req: ChatRequest): Record<string, unknown> {
-  const body = buildOpenAiChatBody(req);
-  body.enable_thinking = req.thinking;
-  if (req.thinking && req.reasoningEffort != null) {
-    body.reasoning_effort = req.reasoningEffort;
-  }
-  return body;
-}
-
-export function chatEvents(json: string): ChatEvent[] {
-  const events = openAiChatEvents(json);
-  let timings: any;
-  try {
-    const body = JSON.parse(json);
-    if (body?.timings && typeof body.timings === "object") {
-      timings = body.timings;
-    }
-  } catch {
-    return events;
-  }
-  if (!timings) return events;
-  return events.map((event) => {
-    if (event.kind !== "usage") return event;
-    return {
-      ...event,
-      stats: {
-        ...event.stats,
-        cachedTokens:
-          typeof timings.cached_n === "number"
-            ? timings.cached_n
-            : event.stats.cachedTokens,
-        generated:
-          typeof timings.predicted_n === "number"
-            ? timings.predicted_n
-            : event.stats.generated,
-        prefillMs:
-          typeof timings.prompt_ms === "number" ? timings.prompt_ms : null,
-        decodeMs:
-          typeof timings.predicted_ms === "number"
-            ? timings.predicted_ms
-            : null,
-        tokenizeMs:
-          typeof timings.tokenize_ms === "number" ? timings.tokenize_ms : null,
-      },
-    };
-  });
-}
-
-// The sends the engine takes at once: one. mlx-serve 26.9.2 serializes
-// generation for the Studio's MoE models (--max-concurrent is clamped to
-// one for them, plans/26.09.10-parallel-chats-plan.md, 7), so a second
-// send would only queue behind the first, silent until its first token.
-export const CHAT_LIMIT = 1;
-
-// The engine as the chat runner sees it: its chat method behind the
-// provider contract, with the sampler's current list as the models
-export function mlxServeProvider(
-  engine: Engine,
-  models: () => ModelInfo[],
-  limit = CHAT_LIMIT,
-): ChatProvider {
-  const chat = engine.chat;
-  if (!chat) throw new Error(`${engine.id} does not support chat`);
-  return {
-    id: "mlxserve",
-    limit,
-    models: () =>
-      models().map((m) => ({ id: m.id, contextLength: m.contextLength })),
-    chat: (req, signal) => chat.call(engine, req, signal),
-  };
-}
-
 export class MlxServe implements Engine {
   readonly id = "mlxserve" as const;
   readonly url: string;
@@ -237,15 +151,6 @@ export class MlxServe implements Engine {
     return parseMetrics(body);
   }
 
-  async *chat(req: ChatRequest, signal: AbortSignal): AsyncIterable<ChatEvent> {
-    yield* streamChat(
-      `${this.url}/v1/chat/completions`,
-      buildChatBody(req),
-      signal,
-      chatEvents,
-    );
-  }
-
   // Model ids are "<org>/<name>" in serve mode; callers pass the full id.
   async load(id: string, asDefault: boolean): Promise<void> {
     await this.post("/v1/load-model", { model: id, default: asDefault });
@@ -264,7 +169,6 @@ export class MlxServe implements Engine {
 
   capabilities(): Set<Capability> {
     return new Set([
-      "chat",
       "load",
       "unload",
       "default",

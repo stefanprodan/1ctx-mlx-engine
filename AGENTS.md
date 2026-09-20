@@ -3,18 +3,15 @@
 How to work on **mlx-spy**, a monitor and control panel for LLM inference
 servers on Apple Silicon (mlx-serve first). One Bun/TypeScript program
 samples the engine and the host once a second, keeps history, and serves a
-dashboard with the control actions the engine's own console lacks, plus a
-chat that streams through mlx-spy so replies survive the tab.
+dashboard with the control actions the engine's own console lacks.
 
 - **Runtime:** Bun only, TypeScript run directly. No Node.
 - **Platform:** macOS on Apple Silicon. Host probes use `bun:ffi`.
 - **Zero runtime dependencies.** The devDependencies bundled into the
-  binary at build time are uPlot, Preact and `@preact/signals` (the page),
-  highlight.js (the server, a curated language set) and beautiful-mermaid
-  (the server, mermaid to SVG); `preact-render-to-string` is for the
-  tests only. All exact pins. A new
-  package needs the user's explicit go-ahead in the conversation,
-  official npm only, and the 24 h cooldown below.
+  binary at build time are uPlot, Preact and `@preact/signals` (the
+  page); `preact-render-to-string` is for the tests only. All exact
+  pins. A new package needs the user's explicit go-ahead in the
+  conversation, official npm only, and the 24 h cooldown below.
 - The roadmap is in `plans/`.
 
 ## The dev loop
@@ -47,7 +44,7 @@ make deploy-studio  # build, install and restart on the Mac Studio
    The one exception: an edit to `index.html` can leave the dev server
    with "Failed to load bundled module" in the page; `make preview`
    clears it.
-3. Look at it. Open `http://127.0.0.1:11236/`, `/requests` and `/chat` in
+3. Look at it. Open `http://127.0.0.1:11236/` and `/requests` in
    Chrome through the DevTools MCP: screenshot at a desktop width (1400)
    and a phone width (390), read the console (it must stay empty), and
    measure with `evaluate_script` when a pixel matters. A change to a
@@ -77,12 +74,6 @@ Deploy when asked, then say what is now running there.
   `curl <engine>/v1/models`, pretty-printed. Never record `/props`.
 - `handle()` in `src/web.ts` is separate from `serve()`, so tests call it
   with a `Request`.
-- `test/fixtures/ws/*.ndjson` are chat event sequences recorded from the
-  preview's `/ws` with `bun scripts/record-ws.ts <file> --note "..."`
-  while the chat is driven in Chrome; the first line is the note, `t` is
-  milliseconds since the first message. Record a new one for every chat
-  bug before fixing it (`plans/26.09.09-preact-plan.md`, "Recorded event
-  fixtures").
 
 ## Rules that protect the engine
 
@@ -96,24 +87,10 @@ Deploy when asked, then say what is now running there.
 2. **The sampler is read-only.** `load`, `unload`, `restart` and
    `diskClear` run only from an explicit user action through the actions
    layer, are logged, and are disabled when the engine URL is not local.
-   The chat runner is the only other engine caller: it posts to
-   `/v1/chat/completions` (always streaming, so the engine cancels the slot
-   when mlx-spy aborts) only when a user sends a message or asks for a
-   summary (`/compact`), plus one summary round after a reply that fills
-   the model's window; a message naming a non-resident model cold-loads
-   it on purpose. The chat tools
-   (`src/tools/`) are the only other network callers: `webfetch` reads what
-   the model asks for, the engine included (the user's decision), and
-   refuses only this host's loopback addresses; `websearch` posts the
-   model's query to `mcp.exa.ai` or `api.firecrawl.dev`, the chat's choice.
-   The pull runner (`src/pull.ts`) downloads from `huggingface.co` into
-   `--model-dir` only when a user asks for a repo; the engine takes no
-   part in the download and is asked to rescan when it is complete. The
-   OpenRouter provider (`src/engine/openrouter.ts`) posts to
-   `openrouter.ai` only for a send in a chat whose provider is OpenRouter
-   (the whole conversation leaves the host then), and reads its public
-   catalog once at start and whenever the chat's Settings page opens or
-   checks an id; never on a timer, never from the sampler.
+   The pull runner (`src/pull.ts`) is the only other network caller: it
+   downloads from `huggingface.co` into `--model-dir` only when a user
+   asks for a repo; the engine takes no part in the download and is
+   asked to rescan when it is complete.
 3. **No spawns on the monitor path.** Host numbers come from FFI, directory
    sizes from recursive stat. The only spawns are the two local-only
    actions: `launchctl kickstart -k gui/<uid>/<label>` for "free" and the
@@ -128,39 +105,28 @@ Deploy when asked, then say what is now running there.
 ```
 src/main.ts          entry: CLI parsing (--engine, --listen, --db, --retention,
                      --model-dir, --hot-cache-max, --disk-cache-max,
-                     --openrouter-concurrency, --once, -h, -v); wires sampler,
-                     history, runners and server; dev
+                     --once, -h, -v); wires sampler, history, the pull
+                     runner and the server; dev
                      VERSION from package.json, release VERSION injected at
                      build time
 src/engine/types.ts  the Engine interface and the normalised metric types
-src/engine/openai.ts the OpenAI chat completions wire, shared by every
-                     provider: buildChatBody, parseSse, chatEvents,
-                     ToolCallTracker, streamChat (pure parts tested on
-                     recorded and hand-made frames)
-src/engine/openrouter.ts
-                     OpenRouter as a ChatProvider: the bearer key, the
-                     reasoning object, usage with cost, the chat id as
-                     session_id, cache breakpoints on the messages,
-                     reasoning_details merged per reply and sent back,
-                     the public catalog (parseCatalog, Catalog with a one
-                     minute cache), the refused-request text; tested on
-                     recorded frames in test/fixtures/openrouter/
 src/engine/mlxserve.ts
                      mlx-serve adapter: parseMetrics/parseModels (pure, tested),
                      the HTTP client, load/unload, cache dir and log paths,
-                     cacheLimits() from the LaunchAgent plist; its chat layer
-                     adds enable_thinking, reasoning_effort and timings;
-                     mlxServeProvider() wraps it as the runner's engine
-                     provider with CHAT_LIMIT one
+                     cacheLimits() from the LaunchAgent plist
+src/secrets.ts       the key files next to the binary; loadKey and
+                     secretsDir, read once at start for the Hub token
 src/sample.ts        Sample type; computeRates and buildSample (pure, tested);
                      takeSample does the I/O for --once
 src/requests.ts      trackRequests: the request in flight and the last
                      finished one, from the counter deltas (pure, tested)
 src/sampler.ts       the 1 Hz loop; carries epoch, counters and the last
                      request across restarts through the history meta table
-src/history.ts       ring buffer (1 h) plus bun:sqlite: samples (7 day
-                     retention, bucketed series() for uPlot), models (ids and
-                     the favorite flag), requests (the last 50)
+src/history.ts       ring buffer (1 h) plus bun:sqlite (~/.mlx-spy/mlx-spy.db):
+                     samples (7 day retention, bucketed series() for uPlot;
+                     only the columns the page reads back, the memory and
+                     host gauges are live-only), models (ids and the
+                     favorite flag), requests (the last 50)
 src/hub.ts           the Hugging Face Hub: parseRepoId, parseRepoFiles (pure,
                      tested on a recorded body), the resolve URL, fetchRepo
 src/pulls.ts         PullStore: pulls and pull_files over the same sqlite
@@ -169,52 +135,23 @@ src/pull.ts          PullRunner: the download queue (one at a time), Range
                      resume into <file>.mlx-spy-part, sha256 while writing, retries,
                      cancel, remove, resume at start; progress on /ws;
                      tested against a fake Hub in test/pull.test.ts
-src/chats.ts         ChatStore: chats (with their provider) and messages over
-                     the same sqlite file
-src/config.ts        ConfigStore: the remote_models table, the hosted models
-                     added from the chat's Settings page, refreshed from the
-                     provider's catalog
-src/chat.ts          ChatRunner: the sends in flight by chat (a registry
-                     with a cap per provider, one for the engine and
-                     --openrouter-concurrency for OpenRouter, held through
-                     cancellation until the stream and tools drain), the
-                     chat's provider frozen per send, rounds of provider
-                     requests with tool calls between them, partial reply
-                     written every 250 ms or 2 KB, deltas and rendered HTML
-                     on /ws, stop from any tab, regenerate, edit; compaction
-                     (a summary round after a reply that fills the window,
-                     or on demand) and the next request from the summary
-src/tools.ts, src/tools/
-                     the tool registry the runner executes: get_current_time,
-                     webfetch (with the network guard), websearch; pure parts
-                     tested
-src/tools/time.ts   the clock in a timezone and the date line of the
-                     system prompt; the page imports it for the placeholder
-src/tools/search/    the search providers: types.ts (the names and the key
-                     type, no I/O), exa.ts and firecrawl.ts (build the
-                     request, parse the answer; pure, tested on fixtures)
-src/markdown.ts      renderMarkdown(): the safety boundary for model output
-src/highlight.ts     highlight(): highlight.js with the languages it registers;
-                     the fenced blocks of a reply, on the server
-src/diagram.ts       renderDiagram(): a mermaid block to an SVG image, on the
-                     server, for a finished reply only
 src/actions.ts       load, unload, default, free, diskClear (local-only),
                      historyClear, favorite; one at a time, logged, last 50
 src/web.ts           Bun.serve: the page, /api/snapshot, /api/history,
-                     /api/requests, POST /api/actions/<name>, /api/chats,
-                     /api/pulls and /api/config with their sub-routes, /ws;
-                     development mode from MLX_SPY_DEV=1; handle() separate
-                     from serve() for tests
+                     /api/requests, POST /api/actions/<name> and /api/pulls
+                     with its sub-routes, /ws; development mode from
+                     MLX_SPY_DEV=1; handle() separate from serve() for tests
 src/ui/index.html    the shell: head, the header, page and footer roots,
                      the script tag; Bun bundles style.css and main.tsx
                      from it
 src/ui/main.tsx      entry: renders the shell and the page's root, opens
                      the store
 src/ui/store.ts      the WebSocket client and its signals (connection,
-                     snapshot, sample, models, remoteModels, event, busy,
-                     pulls); listen() for the chat's event routing
+                     snapshot, sample, models, event, busy, pulls);
+                     listen() for the code that renders by hand
 src/ui/api.ts        api<T>(): one JSON call to this server
-src/ui/format.ts     gb, num, count, secs, tps, when, group (pure, tested)
+src/ui/format.ts     gb, num, count, diskSize, duration, orderModels
+                     (pure, tested)
 src/ui/icons.tsx     the inline SVGs as components
 src/ui/shell/        Header.tsx, Footer.tsx, Pill.tsx, Confirm.tsx (the
                      dialog with a promise API)
@@ -227,29 +164,6 @@ src/ui/monitor/      Monitor.tsx (the page: range, series and tile memory
                      request.ts, pull.ts (the row copy); actions.ts
                      (runAction, confirmText, engine facts)
 src/ui/requests/     Requests.tsx, Row.tsx
-src/ui/chat/         the Chat page. Pure and tested on the recordings in
-                     test/fixtures/ws/: stream.ts (one streaming row:
-                     liveOf, applyDelta, applyHtml, finish; offsets and
-                     gaps), events.ts (ChatState and applyEvent, the
-                     reducer over the socket events), thread.ts
-                     (groupRows: the user rows, work groups and replies
-                     the transcript renders, computed from the state so a
-                     reload shows what a live tab shows). store.ts (the
-                     signals: chats, state, draft, runs (the slots, from
-                     the socket only), note, opened blocks; the commands:
-                     send, patch, regenerate),
-                     nav.ts (open() with its token, showDraft, the socket
-                     routing with the pending queue while a fetch is in
-                     flight, the /chat/config page, boot). Components:
-                     Chat.tsx, List.tsx, Config.tsx (the Settings page:
-                     the hosted models, checked against the catalog before
-                     they are added), Header.tsx, ModelPicker.tsx (the
-                     engine's models, then the OpenRouter group),
-                     Settings.tsx, Thread.tsx
-                     (the scroll stickiness), Reply.tsx, UserRow.tsx,
-                     Think.tsx, Tool.tsx, Work.tsx, Composer.tsx,
-                     Summary.tsx (the compaction fold), Stats.tsx,
-                     Context.tsx, Empty.tsx
 src/ui/style.css     follows the engine's own console (its tokens: #131314
                      page, #1e1f20 cards, #0f1216 inset tiles, 10px uppercase
                      labels, bold mono values)
@@ -258,17 +172,13 @@ src/host/            probes: darwin.ts (bun:ffi, offsets verified with
                      facts), disk.ts (cache dir sizes, no spawn), local.ts
                      (is the engine on this host), index.ts (facade)
 test/                bun test suites; fixtures/ holds recorded engine bodies,
-                     fixtures/ws/ recorded /ws chat event sequences (ndjson),
-                     ui/ the client's pure modules (the chat ones driven
-                     over every recording by ui/ws.ts) and render-to-string
+                     ui/ the client's pure modules and render-to-string
                      checks of its components
-docs/                user docs: monitor, chat, api (keep in step with web.ts),
+docs/                user docs: monitor, api (keep in step with web.ts),
                      development; internal/studio.md is the Studio guide
 scripts/             preview.sh (make preview), deploy-studio.sh (make
-                     deploy-studio), record-ws.ts (records /ws chat events
-                     from the preview into test/fixtures/ws/),
-                     studio.env.example, and copies of the two Studio
-                     LaunchAgent plists (mlx-spy and mlx-serve)
+                     deploy-studio), studio.env.example, and copies of the
+                     two Studio LaunchAgent plists (mlx-spy and mlx-serve)
 plans/               the development plan and milestones
 ```
 
@@ -277,14 +187,9 @@ Data flow: adapter (`/metrics.json`, `/v1/models`) → `Reading` →
 `buildSample` → History (ring + SQLite) and listeners → `/api/snapshot`,
 `/api/history` and the `/ws` push → the page. Actions go the other way: a
 button → confirm dialog → `POST /api/actions/<name>` → `Actions.run` → an
-event on `/ws` that every tab shows. A chat message: composer →
-`POST /api/chats/<id>/messages` → `ChatRunner.send` → `{type: "chatRuns"}`
-with the slots, then `{type: "chat"}` events on `/ws` in every tab →
-`done` with the final row and its stats → `chatRuns` again once the slot
-is free. The page takes who is running from `chatRuns` alone, per
-provider. A hosted model: the Settings page → `POST
-/api/config/openrouter/models` → `ConfigStore` → `{type: "remoteModels"}`
-on `/ws` → the picker in every tab.
+event on `/ws` that every tab shows. A download: the dialog → `POST
+/api/pulls` → `PullRunner` → `{type: "pull"}` on `/ws` → the row in the
+models table of every tab.
 
 ## mlx-serve specifics worth knowing
 
@@ -311,8 +216,7 @@ on `/ws` → the picker in every tab.
   multiply the budget by the resident model count (hot) and the tier dir
   count (SSD).
 - The hot cache evicts per workload since 26.9.2, keyed by
-  `prompt_cache_key`. The runner sends the chat id, so another client's
-  batch evicts its own entries before a chat in progress.
+  `prompt_cache_key`, so one client's batch evicts its own entries first.
 - Host memory on macOS: `free` is small by design; free + inactive is the
   practical headroom. `compressed` is the compressor's page count.
 
@@ -323,8 +227,8 @@ on `/ws` → the picker in every tab.
   projections, no "old client" paths, no compatibility shims in tests.
   Change the socket and API contracts, the fixture format and the
   database schema freely; wiping the database on an upgrade is
-  acceptable. The page, the recorder and the tests live in this repo
-  and move with the server in the same change.
+  acceptable. The page and the tests live in this repo and move with the
+  server in the same change.
 - **Style is enforced by Biome** (`biome.json`): 2-space indent, double
   quotes, semicolons, trailing commas, 80 columns. Biome also rejects a
   selector of lower specificity after a higher one that matches the same
@@ -343,8 +247,8 @@ on `/ws` → the picker in every tab.
   "No requests yet."); no filler sentences to fill space, keep the height
   with CSS instead. Empty states keep the layout of the filled state so
   nothing jumps when data arrives.
-- **Docs move with the code.** A change to a page updates `docs/monitor.md`
-  or `docs/chat.md`; a route change updates `docs/api.md`; a change to the
+- **Docs move with the code.** A change to a page updates
+  `docs/monitor.md`; a route change updates `docs/api.md`; a change to the
   Studio setup updates `docs/internal/studio.md`, after it was run there.
 - **Commit messages are short.** Subject under 72 characters, `Area:
   what changed`. Body optional, at most three short lines saying why,
