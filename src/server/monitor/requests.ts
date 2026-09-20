@@ -1,0 +1,170 @@
+// Copyright 2026 Stefan Prodan.
+// SPDX-License-Identifier: Apache-2.0
+//
+// The engine reports requests as counts and totals, never as a list, so the
+// request bar tracks the engine as a whole: when the oldest open request
+// started, how long the engine has spent prefilling and decoding since, and
+// what the last finished request cost. Starts are seen as the running count
+// going up between two readings; a completion is the decode-time histogram
+// counting one more request, and its counter deltas are that request's own
+// numbers (two completions in one tick merge into one entry that says so).
+// With one request in flight, the common case, the picture is exact.
+
+import type { InFlight, LastRequest } from "../../shared/requests.ts";
+import type { Reading } from "../engine/types.ts";
+
+// Which resident model served a request. The engine does not say, so the
+// answer is a guess: the only resident one; among several, the user's
+// favorite (the daily driver), else the first by id, so the guess is at
+// least stable across requests.
+export function attributeModel(
+  models: readonly { id: string; loaded: boolean; favorite?: boolean }[],
+): string | null {
+  const loaded = models.filter((m) => m.loaded);
+  if (loaded.length === 0) return null;
+  const fav = loaded.find((m) => m.favorite);
+  if (fav) return fav.id;
+  return loaded.map((m) => m.id).sort()[0];
+}
+
+export type RequestState = {
+  starts: number[]; // start times of the open requests, oldest first
+  inFlight: InFlight | null;
+  last: LastRequest | null;
+  // what ended this tick, in order: a completion, a cancel, or both (a
+  // request finishing while another's client leaves); `last` is the latest
+  finished: LastRequest[];
+  doneAt: number | null; // the last tick a completion was counted
+};
+
+export const EMPTY_REQUESTS: RequestState = {
+  starts: [],
+  inFlight: null,
+  last: null,
+  finished: [],
+  doneAt: null,
+};
+
+// The engine's gauges are republished every 2 s while its counters move at
+// once, so after a completion the running count can read stale for a read
+// or two. A request that disappears from the count without a completion
+// inside this window is that lag; later, it is a client that went away,
+// which the engine counts nowhere (no counter, no histogram) and mlx-spy
+// records as cancelled with what it saw of it.
+const GAUGE_LAG_MS = 3000;
+
+// mlx-serve counts a prefilling request in requests_running too (prefill
+// runs on an in-flight slot); the max covers a flag that flips first
+const open = (r: Reading) =>
+  Math.max(
+    r.metrics.gauges.requestsRunning,
+    r.metrics.gauges.requestsPrefilling,
+  );
+
+// One tick. `prev` is null when the window broke (first reading, engine
+// restart or outage), which forgets the open requests but keeps the last
+// finished one.
+export function trackRequests(
+  state: RequestState,
+  prev: Reading | null,
+  cur: Reading,
+): RequestState {
+  const running = open(cur) > 0;
+  if (!prev) {
+    return {
+      starts: running ? [cur.t] : [],
+      inFlight: running
+        ? { startedAt: cur.t, prefillMs: 0, decodeMs: 0 }
+        : null,
+      last: state.last,
+      finished: [],
+      doneAt: null,
+    };
+  }
+  const dt = Math.max(0, cur.t - prev.t);
+  const a = prev.metrics;
+  const b = cur.metrics;
+  const done =
+    b.histograms.decodeTimeSeconds.count - a.histograms.decodeTimeSeconds.count;
+  let starts = state.starts;
+  let last = state.last;
+  const finished: LastRequest[] = [];
+  if (done > 0) {
+    const ttftN =
+      b.histograms.ttftSeconds.count - a.histograms.ttftSeconds.count;
+    const ms = (h: "prefillTimeSeconds" | "decodeTimeSeconds") =>
+      Math.round((b.histograms[h].sum - a.histograms[h].sum) * 1000);
+    last = {
+      startedAt: starts[0] ?? null,
+      finishedAt: cur.t,
+      count: done,
+      cancelled: b.counters.requestsCancelled > a.counters.requestsCancelled,
+      generated: b.counters.generationTokens - a.counters.generationTokens,
+      promptTokens: b.counters.promptTokens - a.counters.promptTokens,
+      prefillTokens: b.counters.prefillTokens - a.counters.prefillTokens,
+      prefillMs: ms("prefillTimeSeconds"),
+      decodeMs: ms("decodeTimeSeconds"),
+      ttftMs:
+        ttftN > 0
+          ? Math.round(
+              ((b.histograms.ttftSeconds.sum - a.histograms.ttftSeconds.sum) /
+                ttftN) *
+                1000,
+            )
+          : null,
+    };
+    finished.push(last);
+    starts = starts.slice(done);
+  }
+  const doneAt = done > 0 ? cur.t : state.doneAt;
+  const lag = doneAt != null && cur.t - doneAt <= GAUGE_LAG_MS;
+  // more open than known starts is a start (a request that started and
+  // ended between two ticks was never seen open and has none); inside the
+  // window after a completion the count may still include the finished
+  // request, so a rise there waits until the gauge is trusted again
+  const started = lag ? 0 : Math.max(0, open(cur) - starts.length);
+  for (let i = 0; i < started; i++) starts = [...starts, cur.t];
+  // the gauge only ever lags above the known starts (completions leave the
+  // count before they leave it), so a count below them is never lag
+  const dropped = Math.max(0, starts.length - open(cur));
+  if (dropped > 0) {
+    // gone without a completion: a cancelled request, known only from the
+    // live gauges of the previous read and the phase clock
+    last = {
+      startedAt: starts[0] ?? null,
+      finishedAt: cur.t,
+      count: dropped,
+      cancelled: true,
+      generated: Math.max(
+        0,
+        a.gauges.generationTokensLive - a.counters.generationTokens,
+      ),
+      promptTokens: 0,
+      prefillTokens: 0,
+      prefillMs: state.inFlight?.prefillMs ?? 0,
+      decodeMs: state.inFlight?.decodeMs ?? 0,
+      ttftMs: null,
+    };
+    finished.push(last);
+    starts = starts.slice(dropped);
+  }
+  if (!running || !starts.length) {
+    return { starts: [], inFlight: null, last, finished, doneAt };
+  }
+  // the engine is busy: time since the previous tick went to the phase it
+  // was in at that tick
+  // phase, unless every open request started this tick (the engine was
+  // idle, or finished everything and started afresh): count from zero
+  const prevIn = state.inFlight;
+  const wasPrefilling = a.gauges.requestsPrefilling > 0;
+  const fresh = starts.every((t) => t === cur.t);
+  const inFlight: InFlight =
+    prevIn && !fresh
+      ? {
+          startedAt: starts[0],
+          prefillMs: prevIn.prefillMs + (wasPrefilling ? dt : 0),
+          decodeMs: prevIn.decodeMs + (wasPrefilling ? 0 : dt),
+        }
+      : { startedAt: starts[0], prefillMs: 0, decodeMs: 0 };
+  return { starts, inFlight, last, finished, doneAt };
+}

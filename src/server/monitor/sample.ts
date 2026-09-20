@@ -1,0 +1,389 @@
+// Copyright 2026 Stefan Prodan.
+// SPDX-License-Identifier: Apache-2.0
+//
+// One Sample per second: the engine's counters and gauges turned into rates
+// over the window since the previous reading, joined with the host probes.
+// The pure parts (rates, epoch detection, assembly) are here and unit
+// tested; takeSample() does the I/O for --once.
+
+import type { ModelInfo } from "../../shared/models.ts";
+import type { LastRequest } from "../../shared/requests.ts";
+import type { Sample } from "../../shared/sample.ts";
+import type { Engine, HistogramSummary, Reading } from "../engine/types.ts";
+import { cacheDirSizes } from "../host/disk.ts";
+import { isLocalUrl } from "../host/local.ts";
+import {
+  EMPTY_HOST,
+  type HostProbes,
+  type HostSnapshot,
+} from "../host/types.ts";
+import { EMPTY_REQUESTS, type RequestState } from "./requests.ts";
+
+export type Rates = {
+  epoch: number;
+  windowMs: number | null;
+  decodeTps: number | null;
+  prefillTps: number | null;
+  cacheHitPct: number | null;
+  cacheTokenPct: number | null;
+  ttftMs: number | null;
+  ttftN: number;
+  live: LiveState; // carry into the next computeRates call
+};
+
+// A *_live gauge is republished by the engine's sampler thread every 2 s and
+// frozen in between, so rating it over a fixed window aliases: a 3 s window
+// holds one step or two and the line zig-zags. Rate it between moves of the
+// gauge instead, carry that rate while the phase is still running, and read
+// zero when it is idle. The engine's cadence drifts against our 1 s reads,
+// so a single step is seen after 1, 2 or 3 s; the rate spans the last few
+// moves, where the token count is exact and the jitter averages out.
+export type LiveMove = { t: number; value: number };
+export type LiveTrack = {
+  t: number;
+  value: number;
+  rate: number;
+  moves: LiveMove[];
+  hold: number; // ticks left to ignore moves after a request completed
+};
+export type LiveState = {
+  decode: LiveTrack | null;
+  prefill: LiveTrack | null;
+};
+export const EMPTY_LIVE: LiveState = { decode: null, prefill: null };
+const LIVE_MOVES = 6; // intervals the rate spans, about 12 s
+// A running request whose decode gauge has not moved for this long is in
+// another phase (a long prefill): stop carrying the old decode rate.
+const LIVE_STALE_MS = 5000;
+// The decode gauge is completed tokens plus in-flight tokens, read as two
+// values: at a completion the engine can count the finished request's
+// tokens on both sides for one publish, a jump of thousands that drops
+// back on the next. Ignore the gauge for this many ticks after a request
+// completed and carry the last rate instead.
+const SETTLE_TICKS = 2;
+
+type TrackOpts = {
+  staleMs: number;
+  // the phase flag marks the start of the phase, so the first move can be
+  // rated from there instead of waiting for a second one
+  seed: boolean;
+  // a request completed this tick (see SETTLE_TICKS)
+  settle: boolean;
+  // a drop is a new request (prefill: rate from scratch) or the double
+  // count settling (decode: keep the rate)
+  carryOnDrop: boolean;
+};
+
+function trackLive(
+  prev: LiveTrack | null,
+  t: number,
+  cur: number,
+  running: boolean,
+  opts: TrackOpts,
+): LiveTrack {
+  const at = { t, value: cur };
+  if (!prev) return { ...at, rate: 0, moves: [], hold: 0 };
+  const hold = opts.settle ? SETTLE_TICKS : Math.max(0, prev.hold - 1);
+  if (cur === prev.value) {
+    if (!running || t - prev.t > opts.staleMs) {
+      return { ...at, rate: 0, moves: [], hold };
+    }
+    if (opts.seed && prev.moves.length === 0) {
+      return { ...prev, moves: [at], hold };
+    }
+    return { ...prev, hold };
+  }
+  if (hold > 0) {
+    // the value moved while settling: record it, rate nothing from it
+    return { ...at, rate: prev.rate, moves: [], hold };
+  }
+  if (cur < prev.value) {
+    return {
+      ...at,
+      rate: opts.carryOnDrop ? prev.rate : 0,
+      moves: [at],
+      hold,
+    };
+  }
+  const moves = [...prev.moves, at];
+  while (moves.length > LIVE_MOVES + 1) moves.shift();
+  const first = moves[0];
+  const secs = Math.max(t - first.t, 1) / 1000;
+  const rate =
+    moves.length < 2
+      ? prev.rate
+      : Math.round(((cur - first.value) / secs) * 10) / 10;
+  return { ...at, rate, moves, hold };
+}
+
+const pct = (num: number, den: number) =>
+  den > 0 ? Math.round((num / den) * 1000) / 10 : null;
+
+// Histogram sums only move when a request ends, so the delta over a window is
+// the mean for the requests that finished in it (ms), or null when none did.
+function histMean(a: HistogramSummary, b: HistogramSummary): number | null {
+  const n = b.count - a.count;
+  return n > 0 ? Math.round(((b.sum - a.sum) / n) * 1000) : null;
+}
+
+// Pure: rates between two readings. A counter going backwards means the
+// engine restarted: start a new epoch and publish no rates for that window.
+// `live` is the gauge tracking state from the previous call; the returned
+// `live` is what the next call needs.
+export function computeRates(
+  prev: Reading | null,
+  cur: Reading,
+  prevEpoch: number,
+  live: LiveState = EMPTY_LIVE,
+): Rates {
+  const none = {
+    windowMs: null,
+    decodeTps: null,
+    prefillTps: null,
+    cacheHitPct: null,
+    cacheTokenPct: null,
+    ttftMs: null,
+    ttftN: 0,
+  };
+  const g1 = cur.metrics.gauges;
+  const running = g1.requestsRunning > 0 || g1.requestsPrefilling > 0;
+  const completed =
+    prev != null &&
+    cur.metrics.histograms.decodeTimeSeconds.count >
+      prev.metrics.histograms.decodeTimeSeconds.count;
+  const track = (): LiveState => ({
+    decode: trackLive(live.decode, cur.t, g1.generationTokensLive, running, {
+      staleMs: LIVE_STALE_MS,
+      seed: false,
+      settle: completed,
+      carryOnDrop: true,
+    }),
+    prefill: trackLive(
+      live.prefill,
+      cur.t,
+      g1.prefillTokensLive,
+      g1.requestsPrefilling > 0,
+      {
+        staleMs: Number.POSITIVE_INFINITY,
+        seed: true,
+        settle: false,
+        carryOnDrop: false,
+      },
+    ),
+  });
+  if (!prev) return { epoch: prevEpoch, ...none, live: track() };
+  const a = prev.metrics.counters;
+  const c = cur.metrics.counters;
+  const reset = (Object.keys(c) as (keyof typeof c)[]).some((k) => c[k] < a[k]);
+  if (reset) return { epoch: prevEpoch + 1, ...none, live: EMPTY_LIVE };
+  const windowMs = cur.t - prev.t;
+  if (windowMs <= 0) return { epoch: prevEpoch, ...none, live };
+  const next = track();
+  const livePrefill = next.prefill?.rate ?? 0;
+  // The live gauge is published once per prefill chunk and zeroed when the
+  // prefill ends, so a prefill of a single chunk (a mostly cached prompt)
+  // never shows on it. When a request completed in this window, rate the
+  // computed tokens over the prefill time instead: the engine's own figure.
+  const ph0 = prev.metrics.histograms.prefillTimeSeconds;
+  const ph1 = cur.metrics.histograms.prefillTimeSeconds;
+  const prefillSecs = ph1.sum - ph0.sum;
+  const finishedPrefill =
+    livePrefill === 0 && ph1.count > ph0.count && prefillSecs > 0
+      ? Math.round(((c.prefillTokens - a.prefillTokens) / prefillSecs) * 10) /
+        10
+      : livePrefill;
+  // Same for decode: a short answer is one gauge step, which has no base
+  // to be rated from, so use the request's own decode time at completion.
+  const dh0 = prev.metrics.histograms.decodeTimeSeconds;
+  const dh1 = cur.metrics.histograms.decodeTimeSeconds;
+  const decodeSecs = dh1.sum - dh0.sum;
+  const liveDecode = next.decode?.rate ?? 0;
+  const finishedDecode =
+    liveDecode === 0 && dh1.count > dh0.count && decodeSecs > 0
+      ? Math.round(
+          ((c.generationTokens - a.generationTokens) / decodeSecs) * 10,
+        ) / 10
+      : liveDecode;
+  return {
+    epoch: prevEpoch,
+    windowMs,
+    decodeTps: finishedDecode,
+    prefillTps: finishedPrefill,
+    cacheHitPct: pct(
+      c.cacheHits - a.cacheHits,
+      c.cacheQueries - a.cacheQueries,
+    ),
+    cacheTokenPct: pct(
+      c.cachedPromptTokens - a.cachedPromptTokens,
+      c.promptTokens - a.promptTokens,
+    ),
+    ttftMs: histMean(
+      prev.metrics.histograms.ttftSeconds,
+      cur.metrics.histograms.ttftSeconds,
+    ),
+    ttftN: Math.max(
+      0,
+      cur.metrics.histograms.ttftSeconds.count -
+        prev.metrics.histograms.ttftSeconds.count,
+    ),
+    live: next,
+  };
+}
+
+function hostMem(host: HostSnapshot) {
+  const m = host.mem;
+  return {
+    hostTotal: m?.total ?? 0,
+    hostFree: m?.free ?? 0,
+    hostInactive: m?.inactive ?? 0,
+    hostWired: m?.wired ?? 0,
+    hostCompressed: m?.compressed ?? 0,
+  };
+}
+
+// Pure: assemble a Sample from a reading, the rates, the model list and the
+// host snapshot.
+export function buildSample(
+  cur: Reading,
+  rates: Rates,
+  models: ModelInfo[],
+  host: HostSnapshot = EMPTY_HOST,
+  phaseSince: number | null = null,
+  requests: RequestState = EMPTY_REQUESTS,
+): Sample {
+  const g = cur.metrics.gauges;
+  const weights = models
+    .filter((m) => m.loaded)
+    .reduce((s, m) => s + m.bytesResident, 0);
+  return {
+    t: cur.t,
+    engineUp: true,
+    epoch: rates.epoch,
+    windowMs: rates.windowMs,
+    decodeTps: rates.decodeTps,
+    prefillTps: rates.prefillTps,
+    requestsRunning: g.requestsRunning,
+    requestsWaiting: g.requestsWaiting,
+    requestsPrefilling: g.requestsPrefilling,
+    prefillTokensLive: g.prefillTokensLive,
+    inflightTokens: Math.max(
+      0,
+      g.generationTokensLive - cur.metrics.counters.generationTokens,
+    ),
+    phaseSince,
+    request: requests.inFlight,
+    lastRequest: requests.last,
+    cacheHitPct: rates.cacheHitPct,
+    cacheTokenPct: rates.cacheTokenPct,
+    ttftMs: rates.ttftMs,
+    ttftN: rates.ttftN,
+    gpuPct: g.gpuPct,
+    generatedTokens: cur.metrics.counters.generationTokens,
+    promptTokens: cur.metrics.counters.promptTokens,
+    cachedPromptTokens: cur.metrics.counters.cachedPromptTokens,
+    requestsTotal: cur.metrics.counters.requestsSuccess,
+    requestsCancelled: cur.metrics.counters.requestsCancelled,
+    enginePid: host.pid,
+    engineStartedAt: host.proc?.startedAt || null,
+    engineCpuPct: host.cpuPct,
+    mem: {
+      ...hostMem(host),
+      procFootprint: host.proc?.footprint ?? g.memoryBytes,
+      procRss: host.proc?.rss ?? 0,
+      weights,
+      hotCacheEst: Math.max(0, g.mlxActiveBytes - weights),
+      mlxActive: g.mlxActiveBytes,
+      mlxPool: g.mlxCacheBytes,
+    },
+    disk: host.disk,
+    models,
+  };
+}
+
+// The engine did not answer. Host memory and the disk tier are still real.
+export function downSample(
+  t: number,
+  epoch: number,
+  host: HostSnapshot = EMPTY_HOST,
+  lastRequest: LastRequest | null = null,
+): Sample {
+  return {
+    t,
+    engineUp: false,
+    epoch,
+    windowMs: null,
+    decodeTps: null,
+    prefillTps: null,
+    requestsRunning: 0,
+    requestsWaiting: 0,
+    requestsPrefilling: 0,
+    prefillTokensLive: 0,
+    inflightTokens: 0,
+    phaseSince: null,
+    request: null,
+    lastRequest,
+    cacheHitPct: null,
+    cacheTokenPct: null,
+    ttftMs: null,
+    ttftN: 0,
+    gpuPct: 0,
+    generatedTokens: 0,
+    promptTokens: 0,
+    cachedPromptTokens: 0,
+    requestsTotal: 0,
+    requestsCancelled: 0,
+    // the process may well be alive (a hung endpoint, a load in progress):
+    // what the probes saw of it is real
+    enginePid: host.pid,
+    engineStartedAt: host.proc?.startedAt || null,
+    engineCpuPct: host.cpuPct,
+    mem: {
+      ...hostMem(host),
+      procFootprint: host.proc?.footprint ?? 0,
+      procRss: host.proc?.rss ?? 0,
+      weights: 0,
+      hotCacheEst: 0,
+      mlxActive: 0,
+      mlxPool: 0,
+    },
+    disk: host.disk,
+    models: [],
+  };
+}
+
+export async function readEngine(engine: Engine): Promise<Reading | null> {
+  try {
+    const metrics = await engine.metrics();
+    return { t: Date.now(), metrics };
+  } catch {
+    return null;
+  }
+}
+
+// One sample with rates measured over `windowMs`: two metrics reads, one
+// models read, the host probes once. This is the --once path; the 1 Hz
+// sampler keeps the previous reading between ticks instead of sleeping.
+export async function takeSample(
+  engine: Engine,
+  windowMs: number,
+  probes: HostProbes,
+): Promise<Sample> {
+  const local = isLocalUrl(engine.url);
+  const pid = local ? probes.findPid(engine.processNames()) : null;
+  const host: HostSnapshot = {
+    mem: probes.hostMemory(),
+    pid,
+    proc: pid === null ? null : probes.processMemory(pid),
+    cpuPct: null, // needs two readings; the loop has them, --once does not
+    disk: local ? await cacheDirSizes(engine.cacheDirs()) : [],
+  };
+  const first = await readEngine(engine);
+  if (!first) return downSample(Date.now(), 0, host);
+  await Bun.sleep(windowMs);
+  const [second, models] = await Promise.all([
+    readEngine(engine),
+    engine.models().catch(() => [] as ModelInfo[]),
+  ]);
+  if (!second) return downSample(Date.now(), 0, host);
+  return buildSample(second, computeRates(first, second, 0), models, host);
+}

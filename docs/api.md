@@ -69,31 +69,31 @@ Errors are `{"error": "<sentence>"}` with 400 (bad input), 403
 
 mlx-spy downloads a model from the Hugging Face Hub itself, into
 `--model-dir` (`~/.mlx-spy/models` by default) as `<owner>/<name>/`, one
-pull at a time from a queue kept in its database. Every file streams into
+download at a time from a queue kept in its database. Every file streams into
 `<file>.mlx-spy-part` and resumes with a Range request after a cut, a retry, a
 cancel or a restart of mlx-spy; LFS files are checked against the Hub's
 sha256 before the rename. The engine takes no part in the download; when
-a pull completes mlx-spy asks it to rescan its model directory, so the
+a download completes mlx-spy asks it to rescan its model directory, so the
 model appears in the list when that directory is the one the engine
 serves. A gated repository needs `hf.key` in the secrets directory.
 
 | Route | Body | Answer |
 |---|---|---|
-| `GET /api/pulls` | | the last 20 pulls, newest first |
-| `POST /api/pulls` | `{repo}`: `owner/name` or a huggingface.co URL | 202, the queued pull; the same repository again resumes its failed or cancelled pull, and answers 409 while one is queued or running |
-| `GET /api/pulls/<id>` | | the pull |
-| `POST /api/pulls/<id>/cancel` | | the pull, paused: its parts stay on disk and a new POST for the repository resumes it. 409 when it is not queued or running |
-| `DELETE /api/pulls/<id>` | | `{ok: true}`; a running pull is stopped first, then its files, partial or finished, and its record are deleted |
+| `GET /api/downloads` | | the last 20 downloads, newest first |
+| `POST /api/downloads` | `{repo}`: `owner/name` or a huggingface.co URL | 202, the queued download; the same repository again resumes its failed or cancelled download, and answers 409 while one is queued or running |
+| `GET /api/downloads/<id>` | | the download |
+| `POST /api/downloads/<id>/cancel` | | the download, paused: its parts stay on disk and a new POST for the repository resumes it. 409 when it is not queued or running |
+| `DELETE /api/downloads/<id>` | | `{ok: true}`; a running download is stopped first, then its files, partial or finished, and its record are deleted |
 
-A pull is `{id, repo, revision, dir, status, bytesTotal, bytesDone,
+A download is `{id, repo, revision, dir, status, bytesTotal, bytesDone,
 filesTotal, filesDone, file, error, createdAt, updatedAt, finishedAt,
 speedBps}`. `status` is `queued`, `running`, `done`, `failed` (the reason
 in `error`) or `cancelled`. `revision` is the commit the file list was
 taken at; every file resolves against it. `file` is the path in flight
 and `speedBps` the rate over the last seconds, both only while running.
 Errors are 400 (not a repository id), 403 (gated or private, no token),
-404 (unknown repository or pull), 409 (see above) or 502 (the Hub did not
-answer). A pull that needs more disk than the model directory has free,
+404 (unknown repository or download), 409 (see above) or 502 (the Hub did not
+answer). A download that needs more disk than the model directory has free,
 plus 1 GB, fails at start with the numbers in `error`.
 
 ## Engine management
@@ -128,7 +128,7 @@ arrives on the socket.
 
 `WS /ws` sends `{type: "snapshot"}` on connect (the same body as
 `/api/snapshot`), then `{type: "sample"}` once a second, `{type: "event"}` when
-an action finishes in any tab, `{type: "pull"}` with the pull as `data`
+an action finishes in any tab, `{type: "download"}` with the download as `data`
 on every change of a download's state and twice a second while one runs,
 and `{type: "engine"}` with the engine page state as `data` on every change
 of the manager's state and twice a second during an engine download.

@@ -44,17 +44,17 @@ The generated agent writes normal logs to `~/.mlx-spy/mlx-spy.log` and uses
 to one `.1` file at 8 MB; the latter rotates while the job is stopped during
 a reload.
 
-The page is bundled by Bun from `src/ui/index.html`: once at startup in
+The page is bundled by Bun from `src/client/index.html`: once at startup in
 the compiled binary, on demand when `MLX_SPY_DEV=1` is set, which
 `make dev` and `make preview` do; then a CSS edit hot-reloads and an edit
 to the client's TypeScript reloads the page. The client is Preact with
-signals (`src/ui/main.tsx`, `store.ts`, `shell/`, `monitor/`,
-`requests/`), bundled like uPlot so the binary still has no runtime
+signals (`src/client/main.tsx`, `store.ts`, `shell/`, `monitor/`,
+`requests/`, `engine/`), bundled like uPlot so the binary still has no runtime
 dependencies. Logic lives in plain `.ts` modules that take data and
 return data (the tiles, the chart series, the request bar) and is tested
 on recorded fixtures; components hold only what the DOM owns (uPlot,
 dialogs, timers). A new component gets a render-to-string check in
-`test/ui/` asserting the class names `style.css` depends on.
+`test/client/` asserting the class names the stylesheets depend on.
 `make preview` (re)starts a detached instance on `127.0.0.1:11236`
 against this machine's engine on `127.0.0.1:11234` (`make preview-stop`,
 `make preview-log`, `make preview-clean` to also wipe its db and log).
@@ -73,11 +73,24 @@ Downloads land in `--model-dir`, `~/.mlx-spy/models` by default, for the
 preview too (`.preview/models/` when it watches a remote engine); point
 it at the engine's own model
 directory for a downloaded model to be served. The downloader is tested
-against a fake Hub in `test/pull.test.ts`; a real pull of a small
+against a fake Hub in `test/server/models/download.test.ts`; a real download of a small
 repository such as `Jundot/gemma-4-E2B-it-oQ4e-mtp` (3.9 GB) is the
 end-to-end check.
 
 ## Layout
+
+The source has three parts. `src/shared/` holds what crosses the wire,
+types and pure guards only. `src/server/` is grouped by area (`monitor/`,
+`models/`, `engine/`, `service/`, `host/`, `web/`, `lib/`), and
+`src/client/` is the page, one directory and one stylesheet per page.
+The client never imports the server, and the server imports the client
+only to serve it.
+
+`test/structure.test.ts` enforces this on every `make test`: the import
+boundaries, no import cycles, no file under `src/` over 500 lines, every
+relative import with its extension, and every stylesheet in the
+`tokens`, `base` or `pages` cascade layer. A broken rule names the file
+and the reason.
 
 `AGENTS.md` at the repository root describes every module, the data flow,
 the rules that protect the engine and the conventions (Biome style,
@@ -86,7 +99,8 @@ before changing anything; it is written for humans too.
 
 ## Tests
 
-`bun test` runs the suites under `test/`. Parsers and rate math are tested
+`bun test` runs the suites under `test/`, which mirror `src/` (`server/`,
+`client/`, `shared/`). Parsers and rate math are tested
 on fixtures recorded from a live engine (`test/fixtures/`): `/metrics.json`,
 `/v1/models` and `/props` bodies. Record new ones with `curl`, and a
 `/props` body only while a model is resident (AGENTS.md rule 1).

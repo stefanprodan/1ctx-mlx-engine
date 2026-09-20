@@ -1,0 +1,11 @@
+@layer tokens, base, pages;
+
+@layer pages {
+  .page {
+    margin: 0;
+  }
+}
+
+.loose {
+  color: red;
+}

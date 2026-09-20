@@ -3,9 +3,9 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import { AppError, runApp } from "./app.ts";
-import { HELP, parseCli, VERSION } from "./cli.ts";
-import { runService, ServiceError } from "./service.ts";
+import { AppError, runApp } from "./server/app.ts";
+import { HELP, parseCli, VERSION } from "./server/cli.ts";
+import { runService, ServiceError } from "./server/service/service.ts";
 
 export { VERSION };
 

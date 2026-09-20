@@ -1,0 +1,309 @@
+@layer tokens, base, pages;
+
+@layer pages {
+  /* ---- the Engine page ---- */
+
+  .pill.warn {
+    background: #2a2109;
+    color: #f0b429;
+  }
+  /* the reason a section is locked, in text: a disabled control is not
+     focusable, so a tooltip on it never opens */
+  .hint.why {
+    color: var(--cap);
+  }
+
+  /* one row under the facts: a release, an operation or a failure */
+  .notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--inset);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .notice .what {
+    color: var(--fg);
+  }
+  .notice .ver {
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .notice .meta {
+    color: var(--cap);
+    font-size: 12px;
+  }
+  .notice.work .what {
+    color: var(--accent);
+  }
+  /* Everything this page does can fail, so failure has a place in the
+     layout. The row keeps its shape; its colour and its buttons change. */
+  .notice.bad {
+    background: #1a0f12;
+    border-color: #4a2028;
+  }
+  .notice.bad .what {
+    color: #ff95a8;
+    font-weight: 600;
+  }
+  /* an action's failure, above the first section */
+  .notice.top {
+    margin: 0 0 4px;
+  }
+  .notice .why {
+    flex: 1 0 100%;
+    font-size: 12.5px;
+    color: var(--fg);
+  }
+  .tail {
+    flex: 1 0 100%;
+    margin: 4px 0 0;
+    padding: 8px 10px;
+    background: #0b0d10;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--cap);
+    white-space: pre-wrap;
+    overflow-x: auto;
+    max-height: 92px;
+  }
+  .prog {
+    flex: 1 0 100%;
+    margin-top: 2px;
+  }
+  .prog .bar {
+    margin-top: 8px;
+  }
+
+  /* a command the reader runs elsewhere: text, never a button. A pill here
+     would sit beside Upgrade and promise to do the same thing */
+  .cmd {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--val);
+    background: #0a0c0f;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 9px;
+    user-select: all;
+  }
+
+  /* a button inside a mono fact stays a button */
+  .facts dd .btn {
+    font-family: var(--sans);
+    margin-left: 4px;
+  }
+
+  /* the locality line when mlx-serve is not on this host */
+  .locked {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: var(--cap);
+  }
+  .locked svg {
+    flex: none;
+  }
+
+  /* the config: one row per concern, the label in the gutter and the
+     controls inline, sized to what they hold */
+  .setting {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 4px 18px;
+    align-items: start;
+    padding: 11px 0;
+  }
+  /* not :first-of-type: anything inserted above the first row would
+     silently re-enable its rule */
+  .setting + .setting {
+    border-top: 1px solid var(--rule);
+  }
+  .setting > .k {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--cap);
+    padding-top: 8px;
+  }
+  .setting > .v {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .pair {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .pair > small,
+  .v > small {
+    font-size: 11px;
+    color: var(--cap);
+    white-space: nowrap;
+  }
+  .setting ::placeholder {
+    color: var(--cap-inset);
+    opacity: 1;
+  }
+  .setting input[type="text"],
+  .setting select,
+  .setting textarea {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--val);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    padding: 6px 9px;
+  }
+  .setting textarea {
+    resize: vertical;
+    min-height: 54px;
+    line-height: 1.5;
+    width: 100%;
+  }
+  .setting input:focus,
+  .setting select:focus,
+  .setting textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  .setting input:disabled,
+  .setting select:disabled,
+  .setting textarea:disabled {
+    opacity: 0.5;
+  }
+  /* A changed field has to be findable without reading the foot. These two
+     sit after the base input rule and match its specificity; the refusal
+     comes last because a refused field is always an edited one. */
+  .setting input.changed,
+  .setting select.changed,
+  .setting textarea.changed {
+    border-color: var(--amber);
+  }
+  .setting input[aria-invalid="true"],
+  .setting select[aria-invalid="true"],
+  .setting textarea[aria-invalid="true"] {
+    border-color: #ff95a8;
+  }
+  .w3 {
+    width: 58px;
+  }
+  .w5 {
+    width: 78px;
+  }
+  .w7 {
+    width: 104px;
+  }
+  /* a select needs its widest option plus the native arrow */
+  .w9 {
+    width: 132px;
+  }
+  /* the unit labels never wrap; these are sentences and must */
+  .setting .help,
+  .setting .bad {
+    flex: 1 0 100%;
+    font-size: 11px;
+    color: var(--cap);
+    white-space: normal;
+  }
+  .setting .bad {
+    color: #ff95a8;
+  }
+
+  .dirs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+  /* a grid, not a flex row: the trailing cell keeps its width on the row
+     that has no button, so the paths share one right edge */
+  .dir {
+    display: grid;
+    grid-template-columns: 1fr 28px;
+    align-items: center;
+    gap: 8px;
+  }
+  .dir .path {
+    min-width: 0;
+  }
+  .dir .ibtn {
+    margin-left: 0;
+  }
+  /* the pinned row alone has no button column to line up with */
+  .dirs:not(:has(.ibtn)) .dir {
+    grid-template-columns: 1fr;
+  }
+
+  .flag {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--fg);
+  }
+  .flag .box {
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+  }
+  .flag.changed {
+    color: var(--amber);
+  }
+  .flag.pre {
+    font-size: 12px;
+    color: var(--cap);
+  }
+
+  .apply {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .apply .what {
+    font-size: 12.5px;
+    color: var(--dim);
+  }
+  .apply .what.bad {
+    color: #ff95a8;
+  }
+  /* holds the card's place until the manager's state arrives */
+  .cfg-wait {
+    min-height: 560px;
+  }
+
+  @media (max-width: 600px) {
+    .setting {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    .setting > .k {
+      padding-top: 0;
+    }
+    .notice {
+      align-items: flex-start;
+    }
+  }
+}

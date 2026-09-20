@@ -31,7 +31,7 @@ same series.
   plus the model's weights); the rest ask for confirmation. The Download
   button in the section head asks for a Hugging Face repository
   (`owner/name` or its URL) and fetches it into the model directory
-  (`--model-dir`); the pull is a row at the top of the table with the
+  (`--model-dir`); the download is a row at the top of the table with the
   bytes so far, the speed, the time left, a delete button (asks first;
   stops the download and removes its files) and a pause button, which
   becomes resume once it stopped. A finished download becomes the

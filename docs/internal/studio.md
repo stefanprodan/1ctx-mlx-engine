@@ -190,7 +190,7 @@ ssh -o BatchMode=yes $STUDIO_SSH 'cp ~/.mlx-spy/backup/com.ddalcu.mlx-serve.plis
 | What | Where |
 |---|---|
 | Binary | `~/.mlx-spy/bin/mlx-spy` |
-| Version | a dev build (`v0.0.0-dev`) of `main` at `d878233`, deployed with `make deploy-studio` on 2026-09-20; the page marks it `dev build`. It moves to the tap build when `v0.1.0` exists |
+| Version | a dev build (`v0.0.0-dev`) of `main`, deployed with `make deploy-studio`; the page marks it `dev build`, and `build` in `/api/snapshot` says when it was compiled. It moves to the tap build when `v0.1.0` exists |
 | launchd agent | label `com.stefanprodan.mlx-spy`, generated plist `~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist`; `RunAtLoad` and `KeepAlive` (5 s throttle), so it comes back on a crash and at login |
 | Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235 --model-dir /Users/stefanprodan/models`, like the engine bound on every interface; the default db; downloads land in the engine's own model directory (set 2026-09-09) |
 | URL | `http://$STUDIO_HOST:11235` from the tailnet; `http://127.0.0.1:11235` on the box |
@@ -252,8 +252,9 @@ models.
 
 ### The database
 
-The schema is in `src/history.ts` (samples, meta, models, requests) and
-`src/pulls.ts` (pulls, pull_files). Fixes go in with `sqlite3` on the box.
+The schema is in `src/server/monitor/history.ts` (samples, meta, models,
+requests) and `src/server/models/store.ts` (downloads, download_files).
+Fixes go in with `sqlite3` on the box.
 Two rules:
 
 - **Stop the agent first** (`launchctl bootout`), fix, then `bootstrap`.
