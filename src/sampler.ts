@@ -7,7 +7,12 @@
 // hands the Sample to the history and to listeners. tick() is public and the
 // clock injectable so tests drive it without timers or a network.
 
-import type { Engine, EngineCounters, ModelInfo } from "./engine/types.ts";
+import type {
+  CacheLimits,
+  Engine,
+  EngineCounters,
+  ModelInfo,
+} from "./engine/types.ts";
 import type { History } from "./history.ts";
 import { cacheDirSizes } from "./host/disk.ts";
 import { NULL_PROBES } from "./host/index.ts";
@@ -93,6 +98,14 @@ export class Sampler {
   private epoch: number;
   private models: ModelInfo[] = [];
   private ticksSinceModels = MODELS_EVERY_TICKS; // fetch on the first tick
+  // what the engine stated about its own process, read once per process
+  // while a model was resident (see readProps); seeded from the database,
+  // so an engine that comes back with nothing loaded still shows its last
+  // known build and budgets
+  private version: string | null = null;
+  private limits: CacheLimits | null = null;
+  private propsRead = false;
+  private propsScan: Promise<void> | null = null;
   private pid: number | null = null;
   private ticksSincePid = PID_EVERY_TICKS;
   private prevCpu: { pid: number | null; t: number; cpuNs: number } | null =
@@ -127,6 +140,9 @@ export class Sampler {
     // existed): the write is idempotent
     if (state.lastRequest) history.addRequest(state.lastRequest);
     if (state.counters) this.prev = baseline(state.counters);
+    const props = history.loadEngineProps();
+    this.version = props?.version ?? null;
+    this.limits = props?.limits ?? null;
   }
 
   onSample(fn: (s: Sample) => void): () => void {
@@ -159,6 +175,49 @@ export class Sampler {
 
   currentDisk(): DiskDir[] {
     return this.disk;
+  }
+
+  currentVersion(): string | null {
+    return this.version;
+  }
+
+  // The budgets of the running engine process, when it has stated them;
+  // null until then. The launch configuration read from disk stays the
+  // answer for a local engine, so this fills the gap for a remote one.
+  currentLimits(): CacheLimits | null {
+    return this.limits;
+  }
+
+  // GET /props is the only endpoint that states the engine's build and the
+  // budgets its process runs with, and the only source of either for a
+  // remote engine. It also runs mlx-serve's model-load path, which on an
+  // idle engine cold-loads the default model, so it is asked only while a
+  // model is resident: the load path then has something in memory to
+  // answer about. Once per engine process, off the tick's path; a failure
+  // keeps what the database held, stale build and all.
+  private readProps() {
+    if (this.propsScan || !this.engine.props) return;
+    this.propsRead = true;
+    this.propsScan = this.engine
+      .props()
+      .then((p) => {
+        if (!p?.version && !p?.limits) return;
+        if (p.limits) this.limits = p.limits;
+        if (p.version && p.version !== this.version) {
+          this.log(`engine version ${p.version}`);
+        }
+        this.version = p.version ?? this.version;
+        // the answer outlives this engine process, so the next start has
+        // something to show before a model is resident again
+        this.history.saveEngineProps({
+          version: this.version,
+          limits: this.limits,
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        this.propsScan = null;
+      });
   }
 
   // The history was wiped: the last request goes with it, or the next
@@ -254,9 +313,10 @@ export class Sampler {
     };
   }
 
-  // Waits for an in-flight disk walk; tests use it, the loop never does.
+  // Waits for the in-flight disk walk and version read; tests use it, the
+  // loop never does.
   async settle(): Promise<void> {
-    await this.diskScan;
+    await Promise.all([this.diskScan, this.propsScan]);
   }
 
   // One sample. A slow engine must not pile up ticks: if the previous one is
@@ -282,6 +342,9 @@ export class Sampler {
         this.phase = "idle";
         this.phaseSince = null;
         this.models = [];
+        // it may come back a different build, with other budgets: ask the
+        // new process once a model is resident again
+        this.propsRead = false;
       } else {
         reading.t = t;
         // The restored previous reading (t=0 after a restart) only serves
@@ -298,6 +361,8 @@ export class Sampler {
           // a new process: whatever phase it is in began now
           this.phase = "idle";
           this.phaseSince = null;
+          // a new process may be a new build, with other budgets
+          this.propsRead = false;
         }
         // a restored reading has no gauges and a reset no valid deltas:
         // both start the request tracking afresh
@@ -335,6 +400,11 @@ export class Sampler {
           } catch {
             // keep the last list; the next tick retries
           }
+        }
+        // the list is what says a model is resident, which is what makes
+        // asking the engine about itself free
+        if (!this.propsRead && this.models.some((m) => m.loaded)) {
+          this.readProps();
         }
         const g = reading.metrics.gauges;
         const phase =

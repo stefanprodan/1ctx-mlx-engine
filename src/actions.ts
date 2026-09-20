@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The control actions: load, unload and set-default go through the engine
-// adapter; free (a launchd restart of the service) and disk clear (delete the
-// SSD cache tier contents) are the program's only spawns and file deletions,
+// adapter; free (a launchd restart of the service) and disk clear (delete
+// the SSD cache tier contents) are the program's only spawns and deletions,
 // and both run only when the engine is on this host; history clear wipes
 // mlx-spy's own sample database and touches no engine, as does favorite
 // (the daily-driver mark on one model). Every action is an

@@ -1,13 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
   limitsFromArgs,
+  MlxServe,
   parseLaunchdArgs,
   parseMetrics,
   parseModels,
+  parseProps,
   parseSize,
 } from "../src/engine/mlxserve.ts";
 import metricsFixture from "./fixtures/metrics.json";
 import modelsFixture from "./fixtures/models.json";
+import propsFixture from "./fixtures/props.json";
 
 describe("parseMetrics", () => {
   const m = parseMetrics(metricsFixture);
@@ -138,5 +141,85 @@ describe("launch configuration", () => {
     expect(limitsFromArgs(["--prefix-cache-mem", "big"]).hotBytes).toBe(
       2 * GiB,
     );
+  });
+});
+
+describe("parseProps", () => {
+  const GiB = 1024 ** 3;
+
+  test("takes the build and the budgets of the running process", () => {
+    expect(parseProps(propsFixture)).toEqual({
+      version: "26.9.5-pre-release.1",
+      limits: { hotBytes: 16 * GiB, diskBytes: 50 * GiB },
+    });
+  });
+
+  test("the recorded budgets are the ones the plist asks for", () => {
+    // the two sources must agree, or the tiles would move when the engine
+    // answers instead of the plist
+    const props = parseProps(propsFixture);
+    expect(props.limits).toEqual(
+      limitsFromArgs([
+        "--prefix-cache-mem",
+        "16GB",
+        "--prefix-cache-disk",
+        "50GB",
+      ]),
+    );
+  });
+
+  test("tolerates a body without settings", () => {
+    expect(parseProps({})).toEqual({ version: null, limits: null });
+    expect(parseProps(null)).toEqual({ version: null, limits: null });
+    expect(parseProps({ settings: { version: 7, prefix_cache: {} } })).toEqual({
+      version: null,
+      limits: null,
+    });
+  });
+});
+
+describe("the adapter over HTTP", () => {
+  // a stand-in engine, so the client and its routes are exercised, not
+  // just the parsers
+  function serve(routes: Record<string, unknown>) {
+    return Bun.serve({
+      port: 0,
+      fetch(req) {
+        const body = routes[new URL(req.url).pathname];
+        return body === undefined
+          ? new Response("nope", { status: 404 })
+          : Response.json(body);
+      },
+    });
+  }
+
+  test("props() asks /props and keeps what matters", async () => {
+    const server = serve({ "/props": propsFixture });
+    const engine = new MlxServe(server.url.origin);
+    expect(await engine.props()).toEqual({
+      version: "26.9.5-pre-release.1",
+      limits: { hotBytes: 16 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 },
+    });
+    await server.stop(true);
+  });
+
+  test("props() is null when the engine has no such endpoint", async () => {
+    const server = serve({ "/health": { status: "ok" } });
+    const engine = new MlxServe(server.url.origin);
+    expect(await engine.props()).toBeNull();
+    await server.stop(true);
+  });
+
+  test("health, models and metrics go to their own routes", async () => {
+    const server = serve({
+      "/health": { status: "ok" },
+      "/v1/models": modelsFixture,
+      "/metrics.json": metricsFixture,
+    });
+    const engine = new MlxServe(server.url.origin);
+    expect(await engine.health()).toBe(true);
+    expect(await engine.models()).toHaveLength(3);
+    expect((await engine.metrics()).counters.promptTokens).toBe(42781);
+    await server.stop(true);
   });
 });

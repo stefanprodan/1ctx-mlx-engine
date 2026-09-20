@@ -37,10 +37,13 @@ same series.
   becomes resume once it stopped. A finished download becomes the
   model's own row once the engine lists it. A download that fails says
   why under the table.
-- **Runtime**: the engine process (pid, RSS, CPU, GPU, weights) next to
-  host facts (OS, chip, cores, GPU cores, memory, disk), plus Restart
-  engine and Clear disk cache. Those two, and the process probes, only
-  work when the engine runs on the same host.
+- **Runtime**: the engine process (build, pid, RSS, CPU, GPU, weights)
+  next to host facts (OS, chip, cores, GPU cores, memory, disk), plus
+  Restart engine and Clear disk cache. Those two and the process probes
+  only work when the engine runs on the same host. The build comes from
+  the engine itself, asked once while a model is resident (asking an idle
+  engine would make it load one), and kept in the database, so a restarted
+  engine with nothing loaded still shows the build it last reported.
 
 The engine reports counts, not requests: with several requests in flight
 the bar and the tiles describe the engine as a whole.

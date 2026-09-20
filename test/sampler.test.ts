@@ -23,13 +23,15 @@ class FakeEngine implements Engine {
   readonly url = "http://fake:11234";
   metricsCalls = 0;
   modelsCalls = 0;
+  // residency the tests can move, as a load or an eviction does
+  list: ModelInfo[] = parseModels(modelsFixture);
   constructor(readonly steps: Step[]) {}
   async health() {
     return true;
   }
   async models(): Promise<ModelInfo[]> {
     this.modelsCalls++;
-    return parseModels(modelsFixture);
+    return structuredClone(this.list);
   }
   async metrics(): Promise<EngineMetrics> {
     this.metricsCalls++;
@@ -39,6 +41,16 @@ class FakeEngine implements Engine {
     const body = structuredClone(metricsFixture) as any;
     step(body);
     return parseMetrics(body);
+  }
+  // counted, so the tests can show /props is asked only while a model is
+  // resident and only once per engine process
+  propsCalls = 0;
+  async props() {
+    this.propsCalls++;
+    return {
+      version: `26.9.${this.propsCalls}`,
+      limits: { hotBytes: 16 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 },
+    };
   }
   async load() {}
   async unload() {}
@@ -68,6 +80,11 @@ function clock(start = 1_000_000) {
 }
 
 const idle = () => {};
+
+// The /props read resolves on its own microtask, so tests that assert the
+// whole log ignore the line it writes; the tests above own that behavior.
+const loop = (lines: string[]) =>
+  lines.filter((l) => !l.startsWith("engine version"));
 
 describe("Sampler", () => {
   test("first tick fetches models and has no rates; second has a window", async () => {
@@ -138,12 +155,119 @@ describe("Sampler", () => {
     const b = await s.tick();
     expect(b?.epoch).toBe(1);
     expect(b?.windowMs).toBeNull();
-    expect(lines).toEqual(["engine counters reset: epoch 0 -> 1"]);
+    expect(loop(lines)).toEqual(["engine counters reset: epoch 0 -> 1"]);
     c.advance(1000);
     const d = await s.tick();
     expect(d?.epoch).toBe(1);
     expect(d?.windowMs).toBe(1000);
     expect(history.loadSamplerState().epoch).toBe(1);
+    history.close();
+  });
+
+  test("asks the engine about itself once a model is resident", async () => {
+    const engine = new FakeEngine([idle, idle, idle]);
+    const history = new History(":memory:");
+    const c = clock();
+    const s = new Sampler(engine, history, {
+      now: c.now,
+      log: (l) => lines.push(l),
+    });
+    const lines: string[] = [];
+    await s.tick();
+    await s.settle();
+    // the fixture list has two models resident
+    expect(engine.propsCalls).toBe(1);
+    expect(s.currentVersion()).toBe("26.9.1");
+    expect(s.currentLimits()).toEqual({
+      hotBytes: 16 * 1024 ** 3,
+      diskBytes: 50 * 1024 ** 3,
+    });
+    expect(lines).toContain("engine version 26.9.1");
+    // the same process is not asked twice
+    c.advance(1000);
+    await s.tick();
+    c.advance(1000);
+    await s.tick();
+    await s.settle();
+    expect(engine.propsCalls).toBe(1);
+    history.close();
+  });
+
+  test("asks nothing of an engine with no model loaded", async () => {
+    const engine = new FakeEngine([idle, idle]);
+    engine.list = engine.list.map((m) => ({ ...m, loaded: false }));
+    const history = new History(":memory:");
+    const c = clock();
+    const s = new Sampler(engine, history, { now: c.now });
+    await s.tick();
+    await s.settle();
+    expect(engine.propsCalls).toBe(0);
+    expect(s.currentVersion()).toBeNull();
+    // and asks as soon as one is, without waiting for an action
+    engine.list = engine.list.map((m, i) => ({ ...m, loaded: i === 0 }));
+    await s.refreshModels();
+    c.advance(1000);
+    await s.tick();
+    await s.settle();
+    expect(engine.propsCalls).toBe(1);
+    history.close();
+  });
+
+  test("shows what the engine said last time until it can be asked", async () => {
+    const history = new History(":memory:");
+    history.saveEngineProps({
+      version: "26.9.0",
+      limits: { hotBytes: 8 * 1024 ** 3, diskBytes: 0 },
+    });
+    const engine = new FakeEngine([idle, idle]);
+    engine.list = engine.list.map((m) => ({ ...m, loaded: false }));
+    const c = clock();
+    const s = new Sampler(engine, history, { now: c.now });
+    // an engine with nothing loaded cannot be asked, and stale facts beat
+    // an empty row
+    expect(s.currentVersion()).toBe("26.9.0");
+    await s.tick();
+    await s.settle();
+    expect(engine.propsCalls).toBe(0);
+    expect(s.currentVersion()).toBe("26.9.0");
+    expect(s.currentLimits()).toEqual({
+      hotBytes: 8 * 1024 ** 3,
+      diskBytes: 0,
+    });
+    // once a model is resident the engine's own answer replaces them, and
+    // is stored for the next start
+    engine.list = engine.list.map((m, i) => ({ ...m, loaded: i === 0 }));
+    await s.refreshModels();
+    c.advance(1000);
+    await s.tick();
+    await s.settle();
+    expect(s.currentVersion()).toBe("26.9.1");
+    expect(history.loadEngineProps()).toEqual({
+      version: "26.9.1",
+      limits: { hotBytes: 16 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 },
+    });
+    history.close();
+  });
+
+  test("asks again after the engine restarted", async () => {
+    const engine = new FakeEngine([
+      idle,
+      (b) => {
+        b.counters.prompt_tokens_total = 5;
+        b.counters.requests_success_total = 0;
+      },
+    ]);
+    const history = new History(":memory:");
+    const c = clock();
+    const s = new Sampler(engine, history, { now: c.now });
+    await s.tick();
+    await s.settle();
+    expect(engine.propsCalls).toBe(1);
+    c.advance(1000);
+    await s.tick(); // the counters went backwards: a new process
+    await s.settle();
+    expect(engine.propsCalls).toBe(2);
+    expect(s.currentVersion()).toBe("26.9.2");
     history.close();
   });
 
@@ -384,7 +508,7 @@ describe("Sampler", () => {
     expect(back?.windowMs).toBeNull();
     // the new process's phase clock starts at this reading
     expect(back?.phaseSince).toBe(c.now());
-    expect(lines).toEqual(["engine counters reset: epoch 0 -> 1"]);
+    expect(loop(lines)).toEqual(["engine counters reset: epoch 0 -> 1"]);
     c.advance(1000);
     expect((await s.tick())?.epoch).toBe(1);
     history.close();
@@ -405,7 +529,7 @@ describe("Sampler", () => {
     s.onSample((x) => seen.push(x.t));
     expect((await s.tick())?.engineUp).toBe(true);
     expect(seen).toHaveLength(1);
-    expect(lines).toEqual(["sample listener failed: boom"]);
+    expect(loop(lines)).toEqual(["sample listener failed: boom"]);
     history.close();
   });
 });
@@ -447,8 +571,10 @@ describe("web", () => {
       id: "mlxserve",
       url: "http://fake:11234",
       local: false,
+      // the engine stated both once the first tick saw a resident model
+      version: "26.9.1",
       capabilities: [],
-      limits: null,
+      limits: { hotBytes: 17179869184, diskBytes: 53687091200 },
     });
     expect(snap.host).toBeNull();
     expect(snap.disk).toEqual([]);
@@ -598,7 +724,7 @@ describe("Sampler host probes", () => {
     expect(a.engineStartedAt).toBe(500_000);
     expect(a.engineCpuPct).toBeNull(); // one reading, no rate yet
     expect(probes.scans).toBe(1);
-    expect(lines).toEqual(["engine pid none -> 42"]);
+    expect(loop(lines)).toEqual(["engine pid none -> 42"]);
     c.advance(1000);
     const a2 = (await s.tick())!;
     expect(a2.engineCpuPct).toBeCloseTo(25, 5);

@@ -64,8 +64,12 @@ export function snapshot(deps: HandleDeps) {
       id: deps.engine.id,
       url: deps.engine.url,
       local: deps.local,
+      // the build the engine stated about itself, null until it has
+      version: deps.sampler.currentVersion(),
       capabilities: [...deps.engine.capabilities()],
-      limits: deps.limits,
+      // the launch flags and the plist, else what the engine stated about
+      // its own process (the only source for a remote engine)
+      limits: deps.limits ?? deps.sampler.currentLimits(),
     },
     host: deps.host
       ? { ...deps.host, disk: diskSpace(deps.host.diskPath) }

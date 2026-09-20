@@ -3,11 +3,14 @@
 //
 // Adapter for mlx-serve (github.com/ddalcu/mlx-serve) in --serve mode.
 //
-// Only endpoints that mlx-serve's dispatch answers before its model-load step
-// are used here: /health, /metrics.json, /v1/models and, after a download,
-// /v1/models/rescan (verified in the engine's src/server.zig). GET /props is NEVER called: it goes through the load path
-// and cold-loads the default model, which is the bug that motivated mlx-spy.
-// load/unload are explicit user actions, never called from the sampler.
+// The sampler uses only endpoints that mlx-serve's dispatch answers before
+// its model-load step: /health, /metrics.json, /v1/models and, after a
+// download, /v1/models/rescan (verified in the engine's src/server.zig).
+// GET /props goes through the load path and cold-loads the default model on
+// an idle engine, which is the bug that motivated mlx-spy, so props() is
+// asked only while a model is resident and then only once per engine
+// process. load/unload are explicit user actions, never called from the
+// sampler.
 
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -16,6 +19,7 @@ import type {
   Capability,
   Engine,
   EngineMetrics,
+  EngineProps,
   HistogramSummary,
   ModelInfo,
 } from "./types.ts";
@@ -93,6 +97,21 @@ export function parseModels(body: any): ModelInfo[] {
     }));
 }
 
+// Pure: the /props body → the facts worth keeping. The engine reports much
+// more (the loaded model's shape, live memory headroom, speculative decoding
+// settings), but only these two are unavailable elsewhere and constant for
+// the life of the process. Exported for tests.
+export function parseProps(body: any): EngineProps {
+  const st = body?.settings ?? {};
+  const pc = st.prefix_cache ?? {};
+  const version = typeof st.version === "string" ? st.version : null;
+  const limits =
+    typeof pc.mem_bytes === "number" && typeof pc.disk_bytes === "number"
+      ? { hotBytes: pc.mem_bytes, diskBytes: pc.disk_bytes }
+      : null;
+  return { version, limits };
+}
+
 export class MlxServe implements Engine {
   readonly id = "mlxserve" as const;
   readonly url: string;
@@ -149,6 +168,18 @@ export class MlxServe implements Engine {
       throw new Error("/metrics.json: no counters");
     }
     return parseMetrics(body);
+  }
+
+  // The only endpoint that states the engine's build and the budgets of the
+  // running process, and the only source of either for a remote engine. It
+  // also runs the model-load path, so the caller must have seen a model
+  // resident first (rule 1): the engine then has nothing to cold-load.
+  async props(): Promise<EngineProps | null> {
+    try {
+      return parseProps(await this.get("/props"));
+    } catch {
+      return null;
+    }
   }
 
   // Model ids are "<org>/<name>" in serve mode; callers pass the full id.

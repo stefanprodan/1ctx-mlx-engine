@@ -1,0 +1,58 @@
+{
+  "default_generation_settings": {
+    "model": "qwen3_5_moe",
+    "n_ctx": 262144
+  },
+  "total_slots": 1,
+  "model_info": {
+    "vocab_size": 248320,
+    "hidden_size": 2048,
+    "num_hidden_layers": 40,
+    "num_attention_heads": 16,
+    "num_key_value_heads": 2,
+    "head_dim": 256,
+    "quantization_bits": 4,
+    "quantization_group_size": 64,
+    "max_position_embeddings": 262144
+  },
+  "memory": {
+    "active_bytes": 22531033884,
+    "peak_bytes": 23252616261,
+    "available_bytes": 52860338176,
+    "max_safe_context": 262144,
+    "cache_bytes": 34951180
+  },
+  "batching": {
+    "supported": true,
+    "reason": "ok",
+    "max_group": 32
+  },
+  "settings": {
+    "version": "26.9.5-pre-release.1",
+    "engine": "mlx",
+    "kv_quant": "off",
+    "kv_attn_mode": "auto",
+    "decode_attn_quant": false,
+    "prefill_chunk": 8192,
+    "mtp": {
+      "loaded": true,
+      "default_on": true,
+      "acceptance": "exact",
+      "acceptance_param": null,
+      "depth": 6,
+      "adaptive": true,
+      "max_ctx": 0
+    },
+    "drafter": "none",
+    "pld": {
+      "default_on": true,
+      "draft_len": 5,
+      "key_len": 3
+    },
+    "max_concurrent": 1,
+    "prefix_cache": {
+      "mem_bytes": 17179869184,
+      "disk_bytes": 53687091200
+    }
+  }
+}

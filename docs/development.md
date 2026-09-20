@@ -69,6 +69,6 @@ before changing anything; it is written for humans too.
 ## Tests
 
 `bun test` runs the suites under `test/`. Parsers and rate math are tested
-on fixtures recorded from a live engine (`test/fixtures/`): `/metrics.json`
-and `/v1/models` bodies. Record new ones with `curl` and never record
-`/props`.
+on fixtures recorded from a live engine (`test/fixtures/`): `/metrics.json`,
+`/v1/models` and `/props` bodies. Record new ones with `curl`, and a
+`/props` body only while a model is resident (AGENTS.md rule 1).

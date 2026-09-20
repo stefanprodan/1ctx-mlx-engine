@@ -52,7 +52,7 @@ the host key changed (a reinstall):
 
 | What | Value |
 |---|---|
-| Version | mlx-serve 26.9.2 from the Homebrew tap `ddalcu/mlx-serve`, binary `/opt/homebrew/bin/mlx-serve` |
+| Version | mlx-serve 26.9.5-pre-release.1 from the Homebrew tap `ddalcu/mlx-serve`, binary `/opt/homebrew/bin/mlx-serve` (was 26.9.2 until the upgrade on 2026-09-20) |
 | launchd agent | label `com.ddalcu.mlx-serve`, plist `~/Library/LaunchAgents/com.ddalcu.mlx-serve.plist`, copy `scripts/com.ddalcu.mlx-serve.plist` in this repo (the Studio file is what runs; `RunAtLoad`, `KeepAlive`, 10 s throttle) |
 | Port | 11234, bound on `0.0.0.0`; from the MacBook `http://$STUDIO_HOST:11234` |
 | Models | checkpoints under `~/models/<org>/<name>` (shared with oMLX through the `~/.omlx/models` symlink); serve mode lists them all and ids are `<org>/<name>` |
@@ -91,11 +91,16 @@ ssh -o BatchMode=yes $STUDIO_SSH 'launchctl print gui/$(id -u)/com.ddalcu.mlx-se
 ```
 
 `/health`, `/v1/models`, `/metrics.json` and `/metrics` answer before the
-model-load path. **Never `GET /props`**: it cold-loads the default model,
-undoes API unloads and evicts what a client just loaded. The engine's own
-web console at the server root polls `/props` every 5 s, so keep that
-console closed during measurements. mlx-spy's Monitor page is the
-replacement.
+model-load path. **`GET /props` only while a model is resident** (check
+`/v1/models` first): on an idle engine it cold-loads the default
+model, undoes API unloads and evicts what a client just loaded. Its body
+is worth knowing, though: `settings.version` is the engine build,
+`settings.prefix_cache` the budgets of the running process, `memory` the
+live headroom, and `model_info` the default model's shape (recorded in
+`test/fixtures/props.json` on 2026-09-20, with Ornith resident). The
+engine's own web console at the server root polls it every 5 s regardless,
+so keep that console closed during measurements. mlx-spy's Monitor page is
+the replacement.
 
 ### Controlling the engine
 
@@ -135,11 +140,18 @@ plist). Tell the user what changed; the flags are their policy.
 
 - Never `pkill mlx-serve` or start `mlx-serve --serve` by hand: launchd
   restarts the agent and the two fight over the port.
-- Never `GET /props` (above).
+- Never `GET /props` on an idle engine (above); with a model resident it
+  is free, and that is the only time mlx-spy asks.
 - Never download or push checkpoints without an explicit go-ahead.
 
 ### Engine facts mlx-spy depends on
 
+- The version is in two places: `settings.version` in `/props`, which is
+  where mlx-spy takes it from (once per engine process, while a model is
+  resident, then stored in its database), and the banner the engine prints
+  at every start into its own log and the launchd log (`mlx-serve
+  26.9.5-pre-release.1 (MLX 0.32.2)`, the only place the MLX version
+  appears), which mlx-spy does not read (verified 2026-09-20).
 - `generation_tokens_live` and `prefill_tokens_live` are per current
   request and drop when a new one starts; `*_total` counters only go
   backwards on a process restart (that bumps mlx-spy's epoch).
