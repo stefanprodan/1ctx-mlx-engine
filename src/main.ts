@@ -33,7 +33,7 @@ const buildVersion = process.env.MLX_SPY_BUILD_VERSION;
 export const VERSION = buildVersion || `v${pkg.version}`;
 
 const DEFAULT_ENGINE = "http://127.0.0.1:11234";
-const DEFAULT_DB = join(homedir(), ".mlx-spy", "history.sqlite");
+const DEFAULT_DB = join(homedir(), ".mlx-spy", "mlx-spy.db");
 const DEFAULT_MODEL_DIR = join(homedir(), ".mlx-spy", "models");
 const DEFAULT_RETENTION_DAYS = 7;
 // Rates need two readings; one second matches the sampler's tick.
@@ -48,7 +48,7 @@ const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inference serve
   --engine <url>       engine base URL (default: ${DEFAULT_ENGINE})
   --listen <host:port> bind address (default: the Tailscale address, else
                        127.0.0.1, port ${DEFAULT_PORT})
-  --db <path>          SQLite history file (default: ~/.mlx-spy/history.sqlite;
+  --db <path>          SQLite history file (default: ~/.mlx-spy/mlx-spy.db;
                        ":memory:" keeps nothing)
   --retention <days>   history retention (default: ${DEFAULT_RETENTION_DAYS})
   --model-dir <path>   where downloads from the Hugging Face Hub land, as

@@ -122,9 +122,11 @@ src/requests.ts      trackRequests: the request in flight and the last
                      finished one, from the counter deltas (pure, tested)
 src/sampler.ts       the 1 Hz loop; carries epoch, counters and the last
                      request across restarts through the history meta table
-src/history.ts       ring buffer (1 h) plus bun:sqlite: samples (7 day
-                     retention, bucketed series() for uPlot), models (ids and
-                     the favorite flag), requests (the last 50)
+src/history.ts       ring buffer (1 h) plus bun:sqlite (~/.mlx-spy/mlx-spy.db):
+                     samples (7 day retention, bucketed series() for uPlot;
+                     only the columns the page reads back, the memory and
+                     host gauges are live-only), models (ids and the
+                     favorite flag), requests (the last 50)
 src/hub.ts           the Hugging Face Hub: parseRepoId, parseRepoFiles (pure,
                      tested on a recorded body), the resolve URL, fetchRepo
 src/pulls.ts         PullStore: pulls and pull_files over the same sqlite

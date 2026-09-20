@@ -161,7 +161,7 @@ plist). Tell the user what changed; the flags are their policy.
 | launchd agent | label `com.stefanprodan.mlx-spy`, plist `~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist`, reference copy `scripts/com.stefanprodan.mlx-spy.plist` in this repo; `RunAtLoad` and `KeepAlive` (5 s throttle), so it comes back on a crash and at login |
 | Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235 --model-dir /Users/stefanprodan/models`, like the engine bound on every interface; the default db; downloads land in the engine's own model directory (set 2026-09-09) |
 | URL | `http://$STUDIO_HOST:11235` from the tailnet; `http://127.0.0.1:11235` on the box |
-| Database | `~/.mlx-spy/history.sqlite` (WAL mode, so `-shm` and `-wal` files sit next to it) |
+| Database | `~/.mlx-spy/mlx-spy.db` (WAL mode, so `-shm` and `-wal` files sit next to it) |
 | Log | `~/.mlx-spy/mlx-spy.log` (stdout and stderr of the agent, appended) |
 | Working dir | `~/.mlx-spy` |
 | Secrets | `~/.mlx-spy/secrets/` (mode 700, files mode 600): `hf.key`, a Hugging Face token for gated repos and faster downloads, written from the shell's `HF_TOKEN` on 2026-09-09; the boot log's `hf key:` line names the file found, or `none`. The `exa.key`, `firecrawl.key` and `openrouter.key` files left from the chat are unread since 2026-09-20 and can be deleted |
@@ -254,7 +254,7 @@ Example, the 2026-09-08 backfill of request rows stored before the model
 attribution existed:
 
 ```sh
-ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanprodan.mlx-spy; sqlite3 ~/.mlx-spy/history.sqlite "
+ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanprodan.mlx-spy; sqlite3 ~/.mlx-spy/mlx-spy.db "
 UPDATE requests SET model = \"Jundot/Qwen3.8-27B-oQ4e-mtp\" WHERE model IS NULL;
 UPDATE meta SET value = json_set(value, \"$.lastRequest.model\", \"Jundot/Qwen3.8-27B-oQ4e-mtp\") WHERE key = \"sampler\" AND json_extract(value, \"$.lastRequest.model\") IS NULL;
 SELECT model, count(*) FROM requests GROUP BY model;"; launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist'
@@ -263,7 +263,7 @@ SELECT model, count(*) FROM requests GROUP BY model;"; launchctl bootstrap gui/$
 Read-only queries need no stop:
 
 ```sh
-ssh -o BatchMode=yes $STUDIO_SSH 'sqlite3 ~/.mlx-spy/history.sqlite "SELECT count(*) FROM samples; SELECT id, favorite FROM models;"'
+ssh -o BatchMode=yes $STUDIO_SSH 'sqlite3 ~/.mlx-spy/mlx-spy.db "SELECT count(*) FROM samples; SELECT id, favorite FROM models;"'
 ```
 
 ### A one-off sample without deploying

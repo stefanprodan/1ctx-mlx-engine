@@ -31,7 +31,7 @@ start() {
   . scripts/studio.env
   mkdir -p "$DIR"
   MLX_SPY_DEV=1 nohup bun --watch src/main.ts --engine "http://$STUDIO_HOST:11234" \
-    --listen "127.0.0.1:$PORT" --db "$DIR/history.sqlite" \
+    --listen "127.0.0.1:$PORT" --db "$DIR/mlx-spy.db" \
     --model-dir "$DIR/models" >"$LOG" 2>&1 &
   echo $! >"$PID"
   for _ in $(seq 1 50); do

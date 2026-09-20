@@ -18,7 +18,7 @@ from the dashboard's own host. Every JSON response carries
 | Route | Answer |
 |---|---|
 | `GET /api/snapshot` | the latest sample, the model list, the engine's capabilities and cache budgets, host facts, the action log, the downloads and the model directory |
-| `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts; 1h is raw seconds, longer ranges are bucket averages |
+| `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
 
 A sample carries the engine state, live decode and prefill tok/s, cache hit
@@ -26,7 +26,9 @@ ratios, the memory split (host free, inactive, wired and compressed; engine
 footprint and RSS; weights, estimated RAM cache, MLX pool), the cache tier
 directories, the model list, and the request in flight or the last one
 finished. The engine reports counts, not requests, so with several in
-flight the numbers describe the engine as a whole.
+flight the numbers describe the engine as a whole. The memory, host and
+disk gauges are live only: the history keeps what the page plots and
+totals, not what a tile shows for the current second.
 
 ## Actions
 
