@@ -18,7 +18,7 @@ export function Header({ page }: { page: Page }) {
     <>
       <div class="wordmark">
         <Mark />
-        1ctx-mlx-engine
+        1ctx MLX
       </div>
       <nav class="menu">
         {PAGES.map((p) => (
