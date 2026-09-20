@@ -9,8 +9,8 @@ for a remote engine the page is read-only and says so.
 **1ctx-mlx-engine** shows the running version (marked `dev build` when it
 runs from source), its memory and CPU, and, when a release is out, the
 install command to copy: running it again is the upgrade, and it restarts
-the service into the new build. Restart exits the process and launchd
-starts it again.
+the service into the new build (a phone shows only that a release is
+out). Restart exits the process and launchd starts it again.
 
 **mlx-serve** shows the installed build with its MLX version, the
 previous build with Rollback, the listener and the process's memory and

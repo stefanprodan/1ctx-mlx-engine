@@ -308,5 +308,11 @@
     .notice {
       align-items: flex-start;
     }
+    /* nobody runs a shell command from a phone: the row only says that a
+       release is out */
+    .notice .cmd,
+    .notice .cmd + .ibtn {
+      display: none;
+    }
   }
 }
