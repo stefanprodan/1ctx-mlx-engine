@@ -5,7 +5,7 @@ import type {
   Engine,
   EngineMetrics,
 } from "../../../src/server/engine/types.ts";
-import { DownloadError } from "../../../src/server/models/download.ts";
+import { DownloadError } from "../../../src/server/models/error.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import {
   handle,

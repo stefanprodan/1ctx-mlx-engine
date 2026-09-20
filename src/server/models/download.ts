@@ -13,58 +13,34 @@
 // before its model-load step, like /v1/models; verified in src/server.zig)
 // so the new checkpoint shows in the list without an engine restart.
 
-import {
-  mkdir,
-  open,
-  rename,
-  rm,
-  rmdir,
-  stat,
-  truncate,
-} from "node:fs/promises";
+import { mkdir, rm, rmdir } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import type { Download } from "../../shared/downloads.ts";
 import type { Engine } from "../engine/types.ts";
 import { diskSpace } from "../host/info.ts";
 import {
-  abortPromise as aborted,
   DOWNLOAD_DISK_MARGIN,
   DOWNLOAD_STALL_MS,
   describeError as describe,
-  fetchRedirected,
-  sleepWithSignal as sleep,
 } from "../lib/fetch.ts";
 import type { Log } from "../lib/log.ts";
+import { DownloadError } from "./error.ts";
 import {
   fetchRepo,
   HubError,
-  hubHeaders,
   PART_SUFFIX,
   parseRepoId,
   resolveUrl,
 } from "./hub.ts";
 import type { DownloadFile, DownloadStore } from "./store.ts";
+import { fetchFile, hashOf, sizeOf } from "./transfer.ts";
 
-const RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
 const PROGRESS_EVERY_MS = 500;
 const WRITE_EVERY_MS = 1000;
 const SPEED_WINDOW_MS = 5000;
 const DISK_MARGIN = DOWNLOAD_DISK_MARGIN;
-const HASH_CHUNK = 4 * 1024 * 1024;
 const STALL_MS = DOWNLOAD_STALL_MS;
-
-export class DownloadError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-// a failure worth another attempt at the same file (the .part is kept)
-class Retryable extends Error {}
 
 export type DownloaderDeps = {
   store: DownloadStore;
@@ -354,158 +330,22 @@ export class Downloader {
         file.path,
         this.deps.hub,
       );
-      await this.fetchFile(url, file, dest, active);
+      await fetchFile(
+        {
+          token: this.deps.token,
+          log: this.deps.log,
+          retryDelayMs: this.retryDelayMs,
+          stallMs: this.stallMs,
+        },
+        { url, file, dest, signal, base: active.bytesDone },
+        (done, tick) => {
+          active.bytesDone = done;
+          if (tick) this.tick(active.id, active, false);
+        },
+      );
       this.deps.store.fileDone(download.id, file.path);
       active.file = null;
       this.tick(download.id, active, true);
-    }
-  }
-
-  private async fetchFile(
-    url: string,
-    file: DownloadFile,
-    dest: string,
-    active: Active,
-  ) {
-    const signal = active.controller.signal;
-    // the finished files so far; the part in flight is added on top
-    const base = active.bytesDone;
-    if (file.size === 0) {
-      await Bun.write(dest, "");
-      return;
-    }
-    for (let attempt = 1; ; attempt++) {
-      try {
-        await this.stream(url, file, dest, active, base);
-        return;
-      } catch (err) {
-        if (signal.aborted) throw err;
-        if (!(err instanceof Retryable) || attempt >= RETRIES) throw err;
-        this.deps.log(
-          `download ${file.path}: ${describe(err)}; retry ${attempt} of ${RETRIES - 1}`,
-        );
-        await sleep(this.retryDelayMs * attempt, signal);
-      }
-    }
-  }
-
-  // One attempt at a file: resume the .part, verify, rename.
-  private async stream(
-    url: string,
-    file: DownloadFile,
-    dest: string,
-    active: Active,
-    base: number,
-  ) {
-    const signal = active.controller.signal;
-    const part = dest + PART_SUFFIX;
-    let have = (await sizeOf(part)) ?? 0;
-    let hasher = file.sha256 ? new Bun.CryptoHasher("sha256") : null;
-    // a part longer than the file is not this file: start over
-    if (have > file.size) {
-      await truncate(part, 0);
-      have = 0;
-    }
-    if (have > 0 && hasher) await hashFile(part, hasher, signal);
-    active.bytesDone = base + have;
-    if (have < file.size) {
-      const res = await this.request(url, have, signal);
-      // a 206 must continue where the part ends; a 200 to a range request
-      // means the server ignored it and what we have is worthless
-      const contentRange = res.headers.get("content-range") ?? "";
-      if (
-        have > 0 &&
-        (res.status === 200 ||
-          (res.status === 206 && !contentRange.startsWith(`bytes ${have}-`)))
-      ) {
-        if (res.status === 206) {
-          await res.body?.cancel();
-          throw new Retryable(`unexpected range: ${contentRange || "none"}`);
-        }
-        await truncate(part, 0);
-        have = 0;
-        active.bytesDone = base;
-        if (hasher) hasher = new Bun.CryptoHasher("sha256");
-      } else if (res.status !== 200 && res.status !== 206) {
-        await res.body?.cancel();
-        throw statusError(res.status);
-      }
-      if (!res.body) throw new Retryable("empty body");
-      const handle = await open(part, "a");
-      // a body that stalls is dropped, and the retry resumes the part
-      const stall = new AbortController();
-      let timer = setTimeout(() => stall.abort(), this.stallMs);
-      const onAbort = () => stall.abort();
-      signal.addEventListener("abort", onAbort, { once: true });
-      try {
-        const reader = res.body.getReader();
-        // once per file, not per chunk: each call adds a listener that
-        // stays until the signal is collected, and a checkpoint is
-        // hundreds of thousands of chunks
-        const stalled = aborted(stall.signal);
-        stalled.catch(() => undefined);
-        while (true) {
-          const next = await Promise.race([reader.read(), stalled]);
-          if (next.done) break;
-          const chunk = next.value;
-          clearTimeout(timer);
-          timer = setTimeout(() => stall.abort(), this.stallMs);
-          if (have + chunk.byteLength > file.size) {
-            // more than the file: not this file
-            await reader.cancel().catch(() => {});
-            await handle.close();
-            await truncate(part, 0);
-            throw new Retryable(`got more than ${file.size} bytes`);
-          }
-          await handle.write(chunk);
-          hasher?.update(chunk);
-          have += chunk.byteLength;
-          active.bytesDone = base + have;
-          this.tick(active.id, active, false);
-        }
-      } catch (err) {
-        if (signal.aborted) throw signal.reason;
-        if (stall.signal.aborted) {
-          await res.body.cancel().catch(() => {});
-          throw new Retryable(
-            `no data for ${Math.round(this.stallMs / 1000)} s`,
-          );
-        }
-        throw err instanceof Retryable ? err : new Retryable(describe(err));
-      } finally {
-        clearTimeout(timer);
-        signal.removeEventListener("abort", onAbort);
-        await handle.close().catch(() => {});
-      }
-    }
-    if (have !== file.size) {
-      throw new Retryable(`got ${have} of ${file.size} bytes`);
-    }
-    if (hasher && file.sha256) {
-      const digest = hasher.digest("hex");
-      if (digest !== file.sha256) {
-        // the bytes are wrong, not missing: no resume, the file starts over
-        await rm(part, { force: true });
-        throw new Error(`${file.path}: sha256 mismatch`);
-      }
-    }
-    await rename(part, dest);
-  }
-
-  // Redirects are followed by hand: the Hub answers with a 307 to a signed
-  // CDN URL, and the bearer must not travel to another host.
-  private async request(
-    url: string,
-    from: number,
-    signal: AbortSignal,
-  ): Promise<Response> {
-    const headers = hubHeaders(this.deps.token);
-    if (from > 0) headers.range = `bytes=${from}-`;
-    try {
-      return await fetchRedirected(url, { headers, signal });
-    } catch (error) {
-      if (signal.aborted) throw error;
-      throw new Retryable(describe(error));
     }
   }
 
@@ -582,40 +422,6 @@ export function destOf(dir: string, path: string): string | null {
   return dest.startsWith(root + sep) ? dest : null;
 }
 
-async function sizeOf(path: string): Promise<number | null> {
-  try {
-    const s = await stat(path);
-    return s.isFile() ? s.size : null;
-  } catch {
-    return null;
-  }
-}
-
-async function hashOf(path: string, signal: AbortSignal): Promise<string> {
-  const hasher = new Bun.CryptoHasher("sha256");
-  await hashFile(path, hasher, signal);
-  return hasher.digest("hex");
-}
-
-async function hashFile(
-  path: string,
-  hasher: Bun.CryptoHasher,
-  signal: AbortSignal,
-) {
-  const handle = await open(path, "r");
-  try {
-    const buffer = new Uint8Array(HASH_CHUNK);
-    while (true) {
-      if (signal.aborted) throw signal.reason;
-      const { bytesRead } = await handle.read(buffer, 0, HASH_CHUNK, null);
-      if (bytesRead === 0) break;
-      hasher.update(buffer.subarray(0, bytesRead));
-    }
-  } finally {
-    await handle.close();
-  }
-}
-
 // Removes the model directory and its owner directory when empty, up to
 // the model root, so a removed partial download leaves nothing behind.
 async function pruneEmpty(dir: string, root: string) {
@@ -629,14 +435,4 @@ async function pruneEmpty(dir: string, root: string) {
     }
     current = dirname(current);
   }
-}
-
-function statusError(status: number): Error {
-  if (status === 401 || status === 403) {
-    return new DownloadError(403, "gated or private repo; add hf.key");
-  }
-  if (status === 404)
-    return new DownloadError(404, "file not found on the Hub");
-  if (status === 416) return new Retryable("range refused");
-  return new Retryable(`HTTP ${status}`);
 }

@@ -22,10 +22,8 @@ import type {
   EngineMetrics,
 } from "../../../src/server/engine/types.ts";
 import type { Log } from "../../../src/server/lib/log.ts";
-import {
-  DownloadError,
-  Downloader,
-} from "../../../src/server/models/download.ts";
+import { Downloader } from "../../../src/server/models/download.ts";
+import { DownloadError } from "../../../src/server/models/error.ts";
 import { DownloadStore } from "../../../src/server/models/store.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import type { Download } from "../../../src/shared/downloads.ts";

@@ -21,7 +21,8 @@ import { type EngineManager, EngineManagerError } from "../engine/install.ts";
 import type { Engine } from "../engine/types.ts";
 import { diskSpace } from "../host/info.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
-import { DownloadError, type Downloader } from "../models/download.ts";
+import type { Downloader } from "../models/download.ts";
+import { DownloadError } from "../models/error.ts";
 import type { History } from "../monitor/history.ts";
 import type { Sampler } from "../monitor/sampler.ts";
 
