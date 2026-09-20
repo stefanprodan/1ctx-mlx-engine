@@ -25,6 +25,7 @@ export function isRange(value: string | null): value is Range {
 }
 
 export function snapshot(deps: HandleDeps): Snapshot {
+  const managed = deps.manager?.state() ?? null;
   return {
     version: deps.version,
     build: deps.build ?? null,
@@ -32,11 +33,12 @@ export function snapshot(deps: HandleDeps): Snapshot {
       id: deps.engine.id,
       url: deps.engine.url,
       local: deps.local,
+      mode: managed?.mode ?? null,
       // A managed tree states its build without touching /props. Otherwise
       // the sampler's guarded engine fact remains the source of truth.
       version:
-        deps.manager?.state().mode === "managed"
-          ? (deps.manager.state().active?.version ?? null)
+        managed?.mode === "managed"
+          ? (managed.active?.version ?? null)
           : deps.sampler.currentVersion(),
       capabilities: [...deps.engine.capabilities()],
       // The provider applies current launch configuration and CLI overrides,

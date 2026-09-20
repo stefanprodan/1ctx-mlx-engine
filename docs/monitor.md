@@ -6,6 +6,13 @@ The Monitor page is the engine at a glance, one sample per second, with
 seven days of history in SQLite so every tab and every reload shows the
 same series.
 
+On a host with no mlx-serve installed the page says so: the Models and
+Runtime pills read `not installed` where a stopped engine reads
+`unreachable` and `offline`, the request bar reads `no engine`, Restart
+engine is off, and the Models card links to the Engine page. A visit that
+lands on `/` from outside goes to the Engine page directly; the Monitor
+link in the header still opens the Monitor.
+
 - **Tiles**: requests served, tokens generated, prefill and decode tok/s,
   cache efficiency, memory, RAM cache and SSD cache. The cache tiles draw
   a bar against the engine's per-model budgets, read from its launchd

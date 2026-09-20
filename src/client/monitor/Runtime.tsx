@@ -9,7 +9,7 @@
 import type { Sample } from "../../shared/sample.ts";
 import type { Snapshot } from "../../shared/socket.ts";
 import { DASH, diskSize, duration, gb, num, sizeText } from "../format.ts";
-import { busy, connection } from "../store.ts";
+import { absent, busy, connection } from "../store.ts";
 import { engineLocal, engineName, runAction } from "./actions.ts";
 
 // a fact with an optional note; the dash carries no note
@@ -44,6 +44,7 @@ export function EngineState({ s }: { s: Sample | null }) {
   if (connection.value === "reconnecting") {
     return <span class="pill">unknown</span>;
   }
+  if (absent.value) return <span class="pill err">not installed</span>;
   if (!s) return <span class="pill">connecting</span>;
   const text = !s.engineUp
     ? "offline"
@@ -62,7 +63,9 @@ export function RuntimeHead({
 }) {
   const local = engineLocal.value;
   const canRestart =
-    (snap?.engine.capabilities.includes("restart") ?? false) && local;
+    (snap?.engine.capabilities.includes("restart") ?? false) &&
+    local &&
+    !absent.value;
   return (
     <div class="shead">
       <h2>Runtime</h2>
@@ -79,7 +82,9 @@ export function RuntimeHead({
           title={
             canRestart
               ? ""
-              : "restarts the engine service; only for a local engine"
+              : absent.value
+                ? "mlx-serve is not installed"
+                : "restarts the engine service; only for a local engine"
           }
           onClick={() => void runAction("free", null)}
         >

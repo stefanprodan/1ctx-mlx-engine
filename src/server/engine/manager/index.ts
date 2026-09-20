@@ -67,6 +67,7 @@ export class EngineManager {
     const defaults = DEFAULTS(
       context.deps.pinnedModelDir,
       context.deps.engineUrl,
+      context.deps.listenHost,
     );
     const installs = context.deps.store.installs();
     const check = publicCheck(context.deps.store.releaseCheck(ENGINE_REPO));

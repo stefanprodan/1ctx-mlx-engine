@@ -7,6 +7,17 @@ import { initialMemory, requestBar } from "../../src/client/monitor/request.ts";
 import { lastRequest, sample, stamp, startedAt } from "./helpers.ts";
 
 describe("request bar", () => {
+  test("a bare host is not idle", () => {
+    const result = requestBar(initialMemory, sample(), true);
+    expect(result.bar).toMatchObject({
+      state: "no engine",
+      totalText: "Not installed",
+      prefillWidth: 0,
+      decodeWidth: 0,
+    });
+    expect(result.memory).toBe(initialMemory);
+  });
+
   test("idle", () => {
     const result = requestBar(initialMemory, sample());
     expect(result.bar).toMatchObject({

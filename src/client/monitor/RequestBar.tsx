@@ -1,13 +1,13 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import { sample } from "../store.ts";
+import { absent, sample } from "../store.ts";
 import { initialMemory, type RequestMemory, requestBar } from "./request.ts";
 
 let memory: RequestMemory = initialMemory;
 
 export function RequestBar() {
-  const next = requestBar(memory, sample.value);
+  const next = requestBar(memory, sample.value, absent.value);
   memory = next.memory;
   const bar = next.bar;
   const hasPrefill = Boolean(

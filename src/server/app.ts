@@ -146,6 +146,7 @@ export async function runApp(
     lock,
     engineUrl: options.engineUrl,
     pinnedModelDir: options.modelDir,
+    listenHost: hostname,
     local,
     engineUp: () => history.latest()?.engineUp ?? false,
     health: () => engine.health(),

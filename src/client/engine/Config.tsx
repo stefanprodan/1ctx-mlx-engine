@@ -4,7 +4,7 @@
 // The Configuration section: one row per concern, the label in the gutter
 // and the controls inline, sized to what they hold. A blank field means
 // the engine's own default and its placeholder names that default. The
-// foot holds Apply and Revert, or Install before there is a service.
+// foot holds Apply and Revert, or what Install will do with the form.
 
 import type { EngineState, KvQuant, LogLevel } from "../../shared/engine.ts";
 import { abbreviateHome } from "../../shared/paths.ts";
@@ -18,7 +18,6 @@ import {
   edit,
   footError,
   form,
-  install,
   issues,
   locked,
   revert,
@@ -67,13 +66,13 @@ function Foot({ engine }: { engine: EngineState }) {
       </div>
     );
   }
-  // Before there is a service there is nothing to apply to: Install is
-  // what consumes the form.
+  // Before there is a service there is nothing to apply to: Install, in
+  // the release row above, is what consumes the form.
   const tag = engine.offered?.tag ?? null;
   const why =
     footError.value ??
     engine.refusal ??
-    (tag ? "Install will use these settings." : "No release to install.");
+    (tag ? "Install uses these settings." : "No release to install.");
   return (
     <div class="apply">
       <span
@@ -82,18 +81,6 @@ function Foot({ engine }: { engine: EngineState }) {
         id="install-why"
       >
         {why}
-      </span>
-      <span class="grow" />
-      <span class="btns">
-        <button
-          type="button"
-          class="btn primary"
-          aria-describedby="install-why"
-          disabled={off || tag === null || engine.refusal !== null}
-          onClick={() => tag && void install(tag)}
-        >
-          Install
-        </button>
       </span>
     </div>
   );
