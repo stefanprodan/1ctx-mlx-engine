@@ -17,12 +17,16 @@ describe("shell", () => {
     expect(monitor).toContain('<div class="wordmark"><svg class="mark"');
     expect(monitor).toContain('<a href="/" class="active">Monitor</a>');
     expect(monitor).toContain('<a href="/requests">Requests</a>');
+    expect(monitor).toContain('<a href="/engine">Engine</a>');
     expect(monitor).not.toContain('class="pill');
     const requests = render(<Header page="requests" />);
     expect(requests).toContain(
       '<a href="/requests" class="active">Requests</a>',
     );
     expect(requests).not.toContain('class="pill');
+    expect(render(<Header page="engine" />)).toContain(
+      '<a href="/engine" class="active">Engine</a>',
+    );
   });
 
   test("pill follows the connection signal", () => {

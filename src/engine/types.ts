@@ -117,7 +117,4 @@ export interface Engine {
   // launchd label of the engine service, for the local-only "free" action
   // (launchctl kickstart -k); null when the engine is not a service
   serviceLabel(): string | null;
-  // the budgets from the engine's launch configuration, read from disk;
-  // null when the engine is remote or not a service
-  cacheLimits(): Promise<CacheLimits | null>;
 }

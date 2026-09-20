@@ -61,10 +61,16 @@ full model id, the start time and the outcome; a phone hides most columns
 and the panel is where they are. The bin in the History head deletes the
 stored requests and the last request in the bar.
 
+## Engine
+
+The third page manages the engine itself: see [engine.md](engine.md).
+
 ## Memory numbers
 
 Memory is shown in binary GB, the unit About This Mac uses; only the host
-disk is decimal, as Finder labels it. The engine's footprint is what it
+disk is decimal, as Finder labels it. The precision follows the size:
+whole GB from 10 up, one decimal below that, and MB under 1 GB, so a
+small checkpoint reads `320 MB` and not `0 GB`. The engine's footprint is what it
 reports itself; RSS comes from libproc when the engine is local. "RAM
 cache" is an estimate: the MLX allocator's active bytes minus the loaded
 weights, because the engine has no gauge for its hot prefix cache.

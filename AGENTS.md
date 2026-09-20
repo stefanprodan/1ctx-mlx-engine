@@ -33,9 +33,16 @@ make deploy-studio  # build, install and restart on the Mac Studio
 ### Seeing a change
 
 1. `scripts/preview.sh status`. If it is not up, `make preview`. It runs
-   the source against the Studio's engine (named in `scripts/studio.env`,
-   git-ignored) on `http://127.0.0.1:11236`, with its pid, db and log
-   under `.preview/`. Never start the server by hand in the background.
+   the source on `http://127.0.0.1:11236` against this machine's engine
+   (`127.0.0.1:11234`) and the real model directory,
+   `~/.mlx-spy/models`, with its pid, db and log under `.preview/`. Never
+   start the server by hand in the background. Development needs no
+   other host: when nothing is installed, the Engine page installs
+   mlx-serve here (a real LaunchAgent, a real build under
+   `~/.mlx-spy/engine`), and `mlx-community/Qwen3-0.6B-4bit` (335 MB) is
+   enough to serve requests. `PREVIEW_ENGINE=studio make preview` watches
+   the Studio named in `scripts/studio.env` (git-ignored) instead, for
+   real load and big models; everything that manages is disabled there.
 2. Edit. The preview runs with `MLX_SPY_DEV=1`, which turns on Bun's dev
    server: an edit to `src/ui/style.css` hot-reloads in the open tab, an
    edit to a `.ts` or `.tsx` file under `src/ui/` reloads the page (Bun
@@ -65,10 +72,10 @@ Deploy when asked, then say what is now running there.
 
 ### Testing without a browser
 
-- `bun src/main.ts --engine http://<studio>:11234 --once` prints one
-  sample: exit 0 when the engine answered, 2 when it did not, 1 on bad
-  arguments. From the MacBook the engine is remote, so `enginePid` is
-  null, `procRss` 0 and `disk` empty by design.
+- `bun src/main.ts --once` prints one sample from the local engine: exit
+  0 when the engine answered, 2 when it did not, 1 on bad arguments.
+  With `--engine http://<studio>:11234` the engine is remote, so
+  `enginePid` is null, `procRss` 0 and `disk` empty by design.
 - Parsers and rate math are pure and tested on recorded fixtures in
   `test/fixtures/`. Record new ones with `curl <engine>/metrics.json` and
   `curl <engine>/v1/models`, pretty-printed. A `/props` body is recorded
@@ -92,39 +99,80 @@ Deploy when asked, then say what is now running there.
    `/metrics.json`, `/v1/models` and, once after a download,
    `/v1/models/rescan`. Anything new is verified the same way in
    mlx-serve's `src/server.zig` first.
-2. **The sampler is read-only.** `load`, `unload`, `restart` and
+2. **The sampler is read-only, and no engine endpoint is called outside
+   the four it already uses.** `load`, `unload`, `restart` and
    `diskClear` run only from an explicit user action through the actions
    layer, are logged, and are disabled when the engine URL is not local.
-   The pull runner (`src/pull.ts`) is the only other network caller: it
-   downloads from `huggingface.co` into `--model-dir` only when a user
-   asks for a repo; the engine takes no part in the download and is
-   asked to rescan when it is complete.
+   There are two other network callers, and the engine takes no part in
+   either: the pull runner (`src/pull.ts`) downloads from
+   `huggingface.co` into `--model-dir` when a user asks for a repo, then
+   asks the engine to rescan; the engine manager
+   (`src/engine/install.ts`) reads the GitHub releases of mlx-serve and
+   mlx-spy every 6 h and downloads a release asset only from a button.
 3. **No spawns on the monitor path.** Host numbers come from FFI, directory
-   sizes from recursive stat. The only spawns are the two local-only
-   actions: `launchctl kickstart -k gui/<uid>/<label>` for "free" and the
-   deletion of the disk cache contents for "disk clear". The cache path
-   comes from the adapter's allow-list, never from the request.
+   sizes from recursive stat. The program's spawn paths call `launchctl`
+   with argument vectors and never a shell: the local-only "free" action
+   and explicit service commands. Disk clear is a filesystem delete. The
+   cache path comes from the adapter's allow-list, never from the request.
 4. **Fail fast on the engine.** Sampler requests time out in 3 s and a
    failed read produces a sample with `engineUp: false`; a hung engine
    never stalls the loop.
 
+5. **The manager is local-only and runs from a button or a command.**
+   Every management route needs `isLocalUrl(--engine)`. It shares one
+   lock with the actions, so nothing loads a model into an engine that
+   is being replaced. It never spawns a package manager. A LaunchAgent
+   is staged and parsed before the job is touched, and the engine's swap
+   writes a journal row first, which `reconcile()` finishes or rolls back
+   at the next start. `launchctl print` runs after an operation, never
+   from `snapshot()`. mlx-spy manages only an engine it installed (the
+   `managed` marker); it never adopts or imports another agent's plist.
+
 ## Layout
 
 ```
-src/main.ts          entry: CLI parsing (--engine, --listen, --db, --retention,
-                     --model-dir, --hot-cache-max, --disk-cache-max,
-                     --once, -h, -v); wires sampler, history, the pull
-                     runner and the server; dev
-                     VERSION from package.json, release VERSION injected at
+src/main.ts          thin entry: CLI result dispatch and plain error handling
+src/cli.ts           pure CLI parsing for foreground and service commands;
+                     VERSION from package.json in development and injected at
                      build time
+src/app.ts           foreground application wiring, macOS floor and log sink
+src/plist.ts         pure LaunchAgent XML rendering and stable Homebrew path
+src/launchd.ts       injected launchctl verbs, status parse, atomic write and
+                     the ordered staged reload sequence
+src/service.ts       install, status, lifecycle and uninstall for mlx-spy's
+                     own LaunchAgent
+src/log.ts           levelled callable logger, repeat collapsing, appending
+                     file sink and stopped launchd-log rotation
 src/engine/types.ts  the Engine interface and the normalised metric types
 src/engine/mlxserve.ts
                      mlx-serve adapter: parseMetrics/parseModels/parseProps
                      (pure, tested), the HTTP client, load/unload, cache dir
-                     and log paths, cacheLimits() from the LaunchAgent plist,
-                     props() under rule 1
-src/secrets.ts       the key files next to the binary; loadKey and
-                     secretsDir, read once at start for the Hub token
+                     and log paths, props() under rule 1; the service
+                     label is the managed one only once mlx-spy owns it
+src/engine/manage.ts the contract between the manager and the Engine page:
+                     EngineConfig, EngineState, SpyState, the route bodies
+                     (types only, so the page can import it)
+src/engine/config.ts pure: DEFAULTS, configToArgs, validateConfig over the
+                     effective argv, the size grammar, and the launchd
+                     argument parse that reads an unmanaged engine's budgets
+src/engine/release.ts
+                     pure: the GitHub releases body, the asset pick, tag
+                     order and trust, offered() (never a downgrade), the
+                     `--version` output; fetchReleases is the one I/O call
+src/engine/store.ts  EngineStore over the History db handle: the applied
+                     and pending config, the settings, the managed marker,
+                     the install records, the journal, the release checks
+src/engine/install.ts
+                     EngineManager under rule 5: install, upgrade, cancel,
+                     applyConfig, service, rollback, uninstall, reconcile;
+                     the port preflight, the four-fact verification, the
+                     release poll and mlx-spy's own section of the state
+src/download.ts      what the two downloaders share: redirects followed by
+                     hand so a token never crosses origins, the stall
+                     timeout, the free-space margin
+src/secrets.ts       the key files in ~/.mlx-spy/secrets (.preview/secrets
+                     from source); loadKey and secretsDir, read once at
+                     start for the Hub token and the optional GitHub one
 src/sample.ts        Sample type; computeRates and buildSample (pure, tested);
                      takeSample does the I/O for --once
 src/requests.ts      trackRequests: the request in flight and the last
@@ -174,6 +222,13 @@ src/ui/monitor/      Monitor.tsx (the page: range, series and tile memory
                      request.ts, pull.ts (the row copy); actions.ts
                      (runAction, confirmText, engine facts)
 src/ui/requests/     Requests.tsx, Row.tsx
+src/ui/engine/       Engine.tsx (the page), Spy.tsx, Service.tsx (the
+                     mlx-serve head), Build.tsx (facts and the one row that
+                     is a release, an operation or a failure), Progress.tsx,
+                     Config.tsx (the form and its foot); state.ts (the
+                     signals and the calls); the pure, tested config.ts
+                     (form to config, changed fields) and release.ts (the
+                     row and pill copy)
 src/ui/style.css     follows the engine's own console (its tokens: #131314
                      page, #1e1f20 cards, #0f1216 inset tiles, 10px uppercase
                      labels, bold mono values)
@@ -186,9 +241,8 @@ test/                bun test suites; fixtures/ holds recorded engine bodies,
                      checks of its components
 docs/                user docs: monitor, api (keep in step with web.ts),
                      development; internal/studio.md is the Studio guide
-scripts/             preview.sh (make preview), deploy-studio.sh (make
-                     deploy-studio), studio.env.example, and copies of the
-                     two Studio LaunchAgent plists (mlx-spy and mlx-serve)
+scripts/             preview.sh, deploy-studio.sh (build, copy, then `service
+                     install --restart`) and studio.env.example
 plans/               the development plan and milestones
 ```
 

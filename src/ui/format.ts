@@ -13,6 +13,20 @@ export const GB = 2 ** 30;
 export const DASH = "–";
 export const gb = (b: number | null | undefined, d = 1) =>
   b == null ? DASH : (b / GB).toFixed(d);
+// A memory size at the precision its magnitude deserves: whole GB from 10
+// up (a 38 GB engine), one decimal below that, whole MB under 1 GB. A
+// 0.6B checkpoint is 320 MB, and "0 GB" beside "1 model resident" reads
+// as a broken probe.
+export function size(b: number): { value: string; unit: "GB" | "MB" } {
+  if (b >= 10 * GB) return { value: (b / GB).toFixed(0), unit: "GB" };
+  if (b >= GB) return { value: (b / GB).toFixed(1), unit: "GB" };
+  if (b > 0) return { value: String(Math.round(b / 2 ** 20)), unit: "MB" };
+  return { value: "0", unit: "GB" };
+}
+export const sizeText = (b: number) => {
+  const s = size(b);
+  return `${s.value} ${s.unit}`;
+};
 export const diskSize = (b: number) =>
   b >= 1e12 ? `${(b / 1e12).toFixed(1)} TB` : `${Math.round(b / 1e9)} GB`;
 export const num = (n: number | null | undefined, d = 0) =>

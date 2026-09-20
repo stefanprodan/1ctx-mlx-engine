@@ -17,6 +17,7 @@ import type { History } from "./history.ts";
 import { cacheDirSizes } from "./host/disk.ts";
 import { NULL_PROBES } from "./host/index.ts";
 import type { DiskDir, HostProbes, HostSnapshot } from "./host/types.ts";
+import type { Log } from "./log.ts";
 import {
   attributeModel,
   EMPTY_REQUESTS,
@@ -117,7 +118,7 @@ export class Sampler {
   private inFlight = false;
   private readonly listeners = new Set<(s: Sample) => void>();
   private readonly now: () => number;
-  private readonly log: (line: string) => void;
+  private readonly log: Log;
   private readonly probes: HostProbes;
   private readonly local: boolean;
 
@@ -127,7 +128,7 @@ export class Sampler {
     opts: SamplerOptions = {},
   ) {
     this.now = opts.now ?? Date.now;
-    this.log = opts.log ?? (() => {});
+    this.log = (opts.log ?? (() => {})) as Log;
     this.probes = opts.probes ?? NULL_PROBES;
     this.local = opts.local ?? false;
     // Carry the epoch and the last counters across our own restarts, so the

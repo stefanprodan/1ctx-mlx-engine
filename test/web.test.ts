@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { DEFAULTS } from "../src/engine/config.ts";
+import { EngineManagerError } from "../src/engine/install.ts";
 import type {
   CacheLimits,
   Capability,
@@ -51,9 +53,6 @@ class WebEngine implements Engine {
   serviceLabel() {
     return null;
   }
-  async cacheLimits(): Promise<CacheLimits | null> {
-    return null;
-  }
 }
 
 function setup() {
@@ -78,7 +77,7 @@ function setup() {
     actions,
     version: "vtest",
     local: true,
-    limits: null,
+    currentLimits: () => sampler.currentLimits(),
     host: null,
   } as unknown as WebDeps;
   return { engine, history, deps };
@@ -157,6 +156,19 @@ function fakePulls() {
   };
 }
 
+describe("snapshot", () => {
+  test("reads current engine limits each time", () => {
+    const s = setup();
+    let limits: CacheLimits | null = { hotBytes: 1, diskBytes: 2 };
+    s.deps.sampler.currentLimits = () => limits;
+    expect(snapshot(s.deps).engine.limits).toEqual(limits);
+
+    limits = { hotBytes: 3, diskBytes: 4 };
+    expect(snapshot(s.deps).engine.limits).toEqual(limits);
+    s.history.close();
+  });
+});
+
 describe("pulls API", () => {
   test("lists, starts, reads, cancels and forgets downloads", async () => {
     const s = setup();
@@ -229,5 +241,178 @@ describe("pulls API", () => {
       "remove 4",
     ]);
     s.history.close();
+  });
+});
+
+// A manager with the surface the routes use; the real one is tested in
+// test/engine/install.test.ts.
+function fakeManager(options: { remote?: boolean; busy?: string } = {}) {
+  const calls: string[] = [];
+  const state = { engine: { mode: "managed" }, spy: { version: "vtest" } };
+  const guard = () => {
+    if (options.remote) {
+      throw new EngineManagerError(403, "mlx-serve is not on this host");
+    }
+  };
+  const act =
+    (name: string) =>
+    (...args: unknown[]) => {
+      guard();
+      calls.push(`${name}:${JSON.stringify(args)}`);
+      return state;
+    };
+  const manager = {
+    pageState: () => state,
+    running: () => options.busy ?? null,
+    check: act("check"),
+    install: act("install"),
+    upgrade: act("upgrade"),
+    cancel: act("cancel"),
+    applyConfig: (config: { port: number }) => {
+      guard();
+      if (config.port !== 11234) {
+        throw new EngineManagerError(422, "configuration refused", [
+          { field: "port", message: "mlx-spy is watching port 11234." },
+        ]);
+      }
+      calls.push("applyConfig");
+      return state;
+    },
+    setPreReleases: act("setPreReleases"),
+    service: act("service"),
+    rollback: act("rollback"),
+    dismiss: act("dismiss"),
+    uninstall: act("uninstall"),
+  };
+  return { manager, calls, state };
+}
+
+describe("engine management routes", () => {
+  const withManager = (options: Parameters<typeof fakeManager>[0] = {}) => {
+    const { deps, history } = setup();
+    const fake = fakeManager(options);
+    const exits: number[] = [];
+    const next = {
+      ...deps,
+      manager: fake.manager,
+      spyRestart: {
+        isLaunchd: () => true,
+        exit: (code: number) => exits.push(code),
+        delayMs: 0,
+      },
+    } as unknown as WebDeps;
+    return { deps: next, history, exits, ...fake };
+  };
+
+  test("reads answer the page state, writes reach the manager", async () => {
+    const { deps, calls, state, history } = withManager();
+    const read = await response(deps, "/api/engine");
+    expect(read.status).toBe(200);
+    expect(await read.json()).toEqual(state);
+    const config = DEFAULTS("/m", "http://127.0.0.1:11234");
+    const install = await response(deps, "/api/engine/install", "POST", {
+      tag: "v26.9.4",
+      config,
+    });
+    expect(install.status).toBe(202);
+    expect(
+      (await response(deps, "/api/engine/upgrade", "POST", { tag: "v1.0.0" }))
+        .status,
+    ).toBe(202);
+    for (const [path, method, value] of [
+      ["/api/engine/check", "POST", undefined],
+      ["/api/engine/cancel", "POST", undefined],
+      ["/api/engine/config", "PUT", config],
+      ["/api/engine/settings", "PUT", { preReleases: true }],
+      ["/api/engine/service", "POST", { op: "stop" }],
+      ["/api/engine/rollback", "POST", undefined],
+      ["/api/engine/dismiss", "POST", undefined],
+      ["/api/engine", "DELETE", undefined],
+    ] as const) {
+      const result = await response(deps, path, method, value);
+      expect(`${path} ${result.status}`).toBe(`${path} 200`);
+    }
+    expect(calls).toEqual([
+      `install:${JSON.stringify(["v26.9.4", config])}`,
+      'upgrade:["v1.0.0"]',
+      "check:[]",
+      "cancel:[]",
+      "applyConfig",
+      "setPreReleases:[true]",
+      'service:["stop"]',
+      "rollback:[]",
+      "dismiss:[]",
+      "uninstall:[]",
+    ]);
+    history.close();
+  });
+
+  test("bad bodies, wrong methods and typos are told apart", async () => {
+    const { deps, calls, history } = withManager();
+    const status = async (
+      path: string,
+      method: string,
+      value?: unknown,
+      origin?: string,
+    ) => (await response(deps, path, method, value, origin)).status;
+    expect(await status("/api/engine/service", "POST", { op: "kill" })).toBe(
+      400,
+    );
+    expect(await status("/api/engine/settings", "PUT", {})).toBe(400);
+    expect(await status("/api/engine/install", "POST", { tag: 1 })).toBe(400);
+    expect(await status("/api/engine/rollback", "GET")).toBe(405);
+    expect(await status("/api/engine/typo", "GET")).toBe(404);
+    expect(
+      await status("/api/engine/rollback", "POST", undefined, "http://evil"),
+    ).toBe(403);
+    expect(
+      await status("/api/spy/restart", "POST", undefined, "http://evil"),
+    ).toBe(403);
+    expect(calls).toEqual([]);
+    history.close();
+  });
+
+  test("a refused configuration is 422 with the issues", async () => {
+    const { deps, history } = withManager();
+    const result = await response(deps, "/api/engine/config", "PUT", {
+      ...DEFAULTS("/m", "http://127.0.0.1:11234"),
+      port: 11500,
+    });
+    expect(result.status).toBe(422);
+    expect(await result.json()).toEqual({
+      error: "configuration refused",
+      issues: [{ field: "port", message: "mlx-spy is watching port 11234." }],
+    });
+    history.close();
+  });
+
+  test("a remote engine: writes are 403, the read and mlx-spy's restart work", async () => {
+    const { deps, exits, history } = withManager({ remote: true });
+    expect((await response(deps, "/api/engine")).status).toBe(200);
+    expect((await response(deps, "/api/engine/rollback", "POST")).status).toBe(
+      403,
+    );
+    expect((await response(deps, "/api/engine", "DELETE")).status).toBe(403);
+    expect((await response(deps, "/api/spy/restart", "POST")).status).toBe(200);
+    await Bun.sleep(5);
+    expect(exits).toEqual([0]);
+    history.close();
+  });
+
+  test("mlx-spy's restart is refused mid-operation and outside launchd", async () => {
+    const busy = withManager({ busy: "upgrade" });
+    const held = await response(busy.deps, "/api/spy/restart", "POST");
+    expect(held.status).toBe(409);
+    expect(await held.json()).toEqual({ error: "upgrade is still running" });
+    busy.history.close();
+    const plain = withManager();
+    (plain.deps.spyRestart as { isLaunchd: () => boolean }).isLaunchd = () =>
+      false;
+    const refused = await response(plain.deps, "/api/spy/restart", "POST");
+    expect(refused.status).toBe(409);
+    await Bun.sleep(5);
+    expect(busy.exits).toEqual([]);
+    expect(plain.exits).toEqual([]);
+    plain.history.close();
   });
 });

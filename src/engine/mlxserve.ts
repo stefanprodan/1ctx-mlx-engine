@@ -14,8 +14,8 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { EngineConfig } from "./manage.ts";
 import type {
-  CacheLimits,
   Capability,
   Engine,
   EngineMetrics,
@@ -112,11 +112,20 @@ export function parseProps(body: any): EngineProps {
   return { version, limits };
 }
 
+export type MlxServeOptions = {
+  managed?: () => boolean;
+  config?: () => EngineConfig | null;
+  home?: string;
+};
+
 export class MlxServe implements Engine {
   readonly id = "mlxserve" as const;
   readonly url: string;
 
-  constructor(url: string) {
+  constructor(
+    url: string,
+    private readonly options: MlxServeOptions = {},
+  ) {
     this.url = url.replace(/\/+$/, "");
   }
 
@@ -209,91 +218,29 @@ export class MlxServe implements Engine {
     ]);
   }
 
-  // The SSD prefix cache tier: one <fingerprint>/ directory per model.
+  // The managed marker changes ownership, never merely the presence of a
+  // plist. Until activation succeeds, actions keep targeting the old job.
   cacheDirs(): string[] {
-    return [join(homedir(), ".mlx-serve", "kv-cache")];
+    const home = this.options.home ?? homedir();
+    return [join(home, ".mlx-serve", "kv-cache")];
   }
 
   logFile(): string | null {
-    const port = new URL(this.url).port || "80";
-    return join(homedir(), ".mlx-serve", "logs", `mlx-serve-${port}.log`);
+    const managedPort = this.options.managed?.()
+      ? this.options.config?.()?.port
+      : null;
+    const port = String(managedPort ?? (new URL(this.url).port || "80"));
+    const home = this.options.home ?? homedir();
+    return join(home, ".mlx-serve", "logs", `mlx-serve-${port}.log`);
   }
 
   processNames(): string[] {
     return ["mlx-serve"];
   }
 
-  // The LaunchAgent from the homelab notes; a fresh process has no default
-  // model, so a restart is the reliable way to free the RAM.
   serviceLabel(): string {
-    return "com.ddalcu.mlx-serve";
+    return this.options.managed?.()
+      ? "com.stefanprodan.mlx-serve"
+      : "com.ddalcu.mlx-serve";
   }
-
-  // The budgets are launch flags on the LaunchAgent and no endpoint reports
-  // them (only /props would, and that is off limits), so read the plist.
-  async cacheLimits(): Promise<CacheLimits | null> {
-    const plist = join(
-      homedir(),
-      "Library",
-      "LaunchAgents",
-      `${this.serviceLabel()}.plist`,
-    );
-    try {
-      const args = parseLaunchdArgs(await Bun.file(plist).text());
-      return args.length ? limitsFromArgs(args) : null;
-    } catch {
-      return null;
-    }
-  }
-}
-
-// ---------- launch configuration ----------
-
-// mlx-serve's own size grammar (parseSizeArg in main.zig): <n>{KB,MB,GB},
-// a bare number of bytes, or "0"/"off". Binary units, as the engine uses.
-export function parseSize(s: string): number | null {
-  const v = s.trim();
-  if (v === "off" || v === "0") return 0;
-  const m = /^(\d+)\s*(KB|MB|GB|B)?$/i.exec(v);
-  if (!m) return null;
-  const unit = (m[2] ?? "B").toUpperCase();
-  const mult = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 }[unit] ?? 1;
-  return Number(m[1]) * mult;
-}
-
-// The <string> children of the ProgramArguments array in a launchd plist.
-// The plist is our own XML file, so a scan for the array after the key is
-// enough; a binary plist yields no arguments.
-export function parseLaunchdArgs(xml: string): string[] {
-  const key = xml.indexOf("<key>ProgramArguments</key>");
-  if (key === -1) return [];
-  const start = xml.indexOf("<array>", key);
-  const end = xml.indexOf("</array>", start);
-  if (start === -1 || end === -1) return [];
-  const body = xml.slice(start, end);
-  return [...body.matchAll(/<string>([^<]*)<\/string>/g)].map((m) =>
-    m[1]
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'")
-      .replace(/&amp;/g, "&"),
-  );
-}
-
-// Hot budget defaults to 2 GB and the SSD tier to off, as in mlx-serve.
-export function limitsFromArgs(args: string[]): CacheLimits {
-  const limits: CacheLimits = { hotBytes: 2 * 1024 ** 3, diskBytes: 0 };
-  for (let i = 0; i < args.length; i++) {
-    const [name, inline] = args[i].split(/=(.*)/s);
-    if (name !== "--prefix-cache-mem" && name !== "--prefix-cache-disk") {
-      continue;
-    }
-    const raw = inline ?? args[++i];
-    const bytes = raw === undefined ? null : parseSize(raw);
-    if (bytes === null) continue;
-    if (name === "--prefix-cache-mem") limits.hotBytes = bytes;
-    else limits.diskBytes = bytes;
-  }
-  return limits;
 }

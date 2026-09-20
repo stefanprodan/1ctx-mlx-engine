@@ -23,6 +23,14 @@ import {
   truncate,
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
+import {
+  abortPromise as aborted,
+  DOWNLOAD_DISK_MARGIN,
+  DOWNLOAD_STALL_MS,
+  describeError as describe,
+  fetchRedirected,
+  sleepWithSignal as sleep,
+} from "./download.ts";
 import type { Engine } from "./engine/types.ts";
 import { diskSpace } from "./host/info.ts";
 import {
@@ -33,6 +41,7 @@ import {
   parseRepoId,
   resolveUrl,
 } from "./hub.ts";
+import type { Log } from "./log.ts";
 import type { Pull, PullFile, PullStore } from "./pulls.ts";
 
 const RETRIES = 5;
@@ -40,11 +49,9 @@ const RETRY_DELAY_MS = 2000;
 const PROGRESS_EVERY_MS = 500;
 const WRITE_EVERY_MS = 1000;
 const SPEED_WINDOW_MS = 5000;
-const MAX_REDIRECTS = 5;
-const DISK_MARGIN = 1024 ** 3;
+const DISK_MARGIN = DOWNLOAD_DISK_MARGIN;
 const HASH_CHUNK = 4 * 1024 * 1024;
-// a body that sends nothing for this long is dropped and retried
-const STALL_MS = 60_000;
+const STALL_MS = DOWNLOAD_STALL_MS;
 
 export class PullError extends Error {
   constructor(
@@ -64,7 +71,7 @@ export type PullRunnerDeps = {
   token: string | null;
   engine: Engine;
   refreshModels: () => Promise<unknown>;
-  log: (line: string) => void;
+  log: Log;
   now?: () => number;
   // tests: a fake Hub, no wait between retries
   hub?: string;
@@ -430,11 +437,13 @@ export class PullRunner {
       signal.addEventListener("abort", onAbort, { once: true });
       try {
         const reader = res.body.getReader();
+        // once per file, not per chunk: each call adds a listener that
+        // stays until the signal is collected, and a checkpoint is
+        // hundreds of thousands of chunks
+        const stalled = aborted(stall.signal);
+        stalled.catch(() => undefined);
         while (true) {
-          const next = await Promise.race([
-            reader.read(),
-            aborted(stall.signal),
-          ]);
+          const next = await Promise.race([reader.read(), stalled]);
           if (next.done) break;
           const chunk = next.value;
           clearTimeout(timer);
@@ -488,28 +497,14 @@ export class PullRunner {
     from: number,
     signal: AbortSignal,
   ): Promise<Response> {
-    let current = url;
-    let authorized = true;
-    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      const headers = hubHeaders(authorized ? this.deps.token : null);
-      if (from > 0) headers.range = `bytes=${from}-`;
-      let res: Response;
-      try {
-        res = await fetch(current, { headers, signal, redirect: "manual" });
-      } catch (err) {
-        if (signal.aborted) throw err;
-        throw new Retryable(describe(err));
-      }
-      if (res.status < 300 || res.status >= 400) return res;
-      const location = res.headers.get("location");
-      await res.body?.cancel();
-      if (!location) throw new Retryable(`redirect without location`);
-      const next = new URL(location, current);
-      // another origin (a CDN host, or plain http) never sees the bearer
-      authorized = authorized && next.origin === new URL(current).origin;
-      current = next.toString();
+    const headers = hubHeaders(this.deps.token);
+    if (from > 0) headers.range = `bytes=${from}-`;
+    try {
+      return await fetchRedirected(url, { headers, signal });
+    } catch (error) {
+      if (signal.aborted) throw error;
+      throw new Retryable(describe(error));
     }
-    throw new Retryable("too many redirects");
   }
 
   // Progress to the tabs twice a second and to the database once a second;
@@ -600,16 +595,6 @@ async function hashOf(path: string, signal: AbortSignal): Promise<string> {
   return hasher.digest("hex");
 }
 
-// rejects when the signal fires; races a read that may never resolve
-function aborted(signal: AbortSignal): Promise<never> {
-  return new Promise((_, reject) => {
-    if (signal.aborted) return reject(new Error("aborted"));
-    signal.addEventListener("abort", () => reject(new Error("aborted")), {
-      once: true,
-    });
-  });
-}
-
 async function hashFile(
   path: string,
   hasher: Bun.CryptoHasher,
@@ -651,23 +636,4 @@ function statusError(status: number): Error {
   if (status === 404) return new PullError(404, "file not found on the Hub");
   if (status === 416) return new Retryable("range refused");
   return new Retryable(`HTTP ${status}`);
-}
-
-function sleep(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolveSleep, reject) => {
-    if (signal.aborted) return reject(signal.reason);
-    const timer = setTimeout(() => {
-      signal.removeEventListener("abort", onAbort);
-      resolveSleep();
-    }, ms);
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(signal.reason);
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-  });
-}
-
-function describe(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

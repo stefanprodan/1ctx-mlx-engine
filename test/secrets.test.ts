@@ -36,12 +36,14 @@ describe("key files", () => {
     }
   });
 
-  test("resolves source and binary secret directories", () => {
-    expect(secretsDirFor("/r/src/main.ts", "/opt/bun")).toBe(
+  test("resolves source and Homebrew secret directories", () => {
+    expect(secretsDirFor("/r/src/main.ts", "/Users/x")).toBe(
       "/r/.preview/secrets",
     );
-    expect(
-      secretsDirFor("/$bunfs/root/mlx-spy", "/u/.mlx-spy/bin/mlx-spy"),
-    ).toBe("/u/.mlx-spy/secrets");
+    // a compiled binary reports /$bunfs/root/<name> as Bun.main, whatever
+    // Cellar version it was launched from; the keys must not follow it
+    expect(secretsDirFor("/$bunfs/root/mlx-spy", "/Users/x")).toBe(
+      "/Users/x/.mlx-spy/secrets",
+    );
   });
 });

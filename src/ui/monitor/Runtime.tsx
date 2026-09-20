@@ -7,7 +7,7 @@
 // this machine, not the engine's, and the head says so.
 
 import type { Sample } from "../../sample.ts";
-import { DASH, diskSize, duration, gb, num } from "../format.ts";
+import { DASH, diskSize, duration, gb, num, sizeText } from "../format.ts";
 import { busy, connection, type Snapshot } from "../store.ts";
 import { engineLocal, engineName, runAction } from "./actions.ts";
 
@@ -145,7 +145,7 @@ export function Runtime({
           <dd class="mono">{snap?.engine.url ?? ""}</dd>
           <dt>Weights</dt>
           <Fact
-            text={s?.engineUp ? `${gb(s.mem.weights, 0)} GB` : DASH}
+            text={s?.engineUp ? sizeText(s.mem.weights) : DASH}
             note={
               loaded
                 ? `${loaded} model${loaded === 1 ? "" : "s"} resident`
@@ -154,8 +154,8 @@ export function Runtime({
           />
           <dt>Memory</dt>
           <Fact
-            text={s && pid != null ? `${gb(s.mem.procFootprint, 0)} GB` : DASH}
-            note={s ? `RSS ${gb(s.mem.procRss, 0)} GB` : ""}
+            text={s && pid != null ? sizeText(s.mem.procFootprint) : DASH}
+            note={s ? `RSS ${sizeText(s.mem.procRss)}` : ""}
             extra={pid == null ? why : ""}
           />
           <dt>CPU</dt>

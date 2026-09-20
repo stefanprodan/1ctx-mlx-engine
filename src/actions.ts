@@ -15,6 +15,8 @@ import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { Engine } from "./engine/types.ts";
 import type { History } from "./history.ts";
+import { ExclusiveLock, LockBusyError } from "./lock.ts";
+import type { Log } from "./log.ts";
 import type { Sampler } from "./sampler.ts";
 
 export const ACTION_NAMES = [
@@ -60,7 +62,8 @@ export type ActionDeps = {
   sampler: Sampler;
   history: History;
   local: boolean;
-  log: (line: string) => void;
+  log: Log;
+  lock?: ExclusiveLock;
   // launchd domain owner; the service runs in the user's gui domain
   uid?: number;
   now?: () => number;
@@ -98,7 +101,7 @@ export async function clearDirContents(root: string): Promise<number> {
 
 export class Actions {
   readonly events: ActionEvent[] = [];
-  private busy: ActionName | null = null;
+  private readonly lock: ExclusiveLock;
   private readonly listeners = new Set<(e: ActionEvent) => void>();
   private readonly now: () => number;
   private readonly spawn: (cmd: string[]) => Promise<SpawnResult>;
@@ -106,6 +109,7 @@ export class Actions {
   private readonly uid: number;
 
   constructor(private readonly deps: ActionDeps) {
+    this.lock = deps.lock ?? new ExclusiveLock();
     this.now = deps.now ?? Date.now;
     this.spawn = deps.spawn ?? bunSpawn;
     this.clearDir = deps.clearDir ?? clearDirContents;
@@ -118,7 +122,7 @@ export class Actions {
   }
 
   running(): ActionName | null {
-    return this.busy;
+    return this.lock.running() as ActionName | null;
   }
 
   // Validates, runs, logs. Throws ActionError with the status to answer.
@@ -142,45 +146,46 @@ export class Actions {
       );
     }
     const model = this.modelFor(name, body);
-    if (this.busy) {
-      throw new ActionError(409, `${this.busy} is still running`);
-    }
-    this.busy = name;
-    const started = this.now();
-    let ok = true;
-    let detail = "";
-    // a refusal keeps its own status; an adapter, spawn or file failure is 502
-    let status = 502;
     try {
-      try {
-        detail = await this.perform(name, model);
-      } catch (err) {
-        ok = false;
-        detail = err instanceof Error ? err.message : String(err);
-        if (err instanceof ActionError) status = err.status;
+      return await this.lock.run(name, async () => {
+        const started = this.now();
+        let ok = true;
+        let detail = "";
+        // a refusal keeps its own status; an adapter, spawn or file failure is 502
+        let status = 502;
+        try {
+          detail = await this.perform(name, model);
+        } catch (err) {
+          ok = false;
+          detail = err instanceof Error ? err.message : String(err);
+          if (err instanceof ActionError) status = err.status;
+        }
+        // the table must reflect the new residency without waiting 5 s; the
+        // action stays busy until every tab has the event so a second one
+        // cannot start on a stale picture
+        await this.deps.sampler.refreshModels();
+        const event: ActionEvent = {
+          t: this.now(),
+          action: name,
+          model,
+          ok,
+          ms: this.now() - started,
+          detail,
+        };
+        this.events.push(event);
+        if (this.events.length > EVENTS_KEPT) this.events.shift();
+        this.deps.log(
+          `action ${name}${model ? ` ${model}` : ""}: ${ok ? "ok" : "failed"} in ${event.ms} ms${detail ? ` (${detail})` : ""}`,
+        );
+        for (const fn of this.listeners) fn(event);
+        if (!ok) throw new ActionError(status, detail);
+        return event;
+      });
+    } catch (error) {
+      if (error instanceof LockBusyError) {
+        throw new ActionError(409, error.message);
       }
-      // the table must reflect the new residency without waiting 5 s; the
-      // action stays busy until every tab has the event so a second one
-      // cannot start on a stale picture
-      await this.deps.sampler.refreshModels();
-      const event: ActionEvent = {
-        t: this.now(),
-        action: name,
-        model,
-        ok,
-        ms: this.now() - started,
-        detail,
-      };
-      this.events.push(event);
-      if (this.events.length > EVENTS_KEPT) this.events.shift();
-      this.deps.log(
-        `action ${name}${model ? ` ${model}` : ""}: ${ok ? "ok" : "failed"} in ${event.ms} ms${detail ? ` (${detail})` : ""}`,
-      );
-      for (const fn of this.listeners) fn(event);
-      if (!ok) throw new ActionError(status, detail);
-      return event;
-    } finally {
-      this.busy = null;
+      throw error;
     }
   }
 

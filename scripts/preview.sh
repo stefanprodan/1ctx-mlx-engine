@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# The local preview: mlx-spy from source against the Studio's engine, on
-# 127.0.0.1:11236, detached, with its pid, db and log under .preview/
-# (`clean` stops it and removes them).
+# The local preview: mlx-spy from source on 127.0.0.1:11236, detached, with
+# its pid, db and log under .preview/ (`clean` stops it and removes them).
+# It watches this machine's engine on 127.0.0.1:11234 and the real model
+# directory, ~/.mlx-spy/models, so development needs no other host: the
+# Engine page installs mlx-serve here, as a real LaunchAgent with a real
+# build under ~/.mlx-spy/engine, and a small checkpoint serves requests.
+# PREVIEW_ENGINE=studio watches the Studio named in scripts/studio.env
+# instead (read-only there: managing is local-only); any other value is
+# taken as the engine URL. PREVIEW_MODEL_DIR overrides the directory.
 # MLX_SPY_DEV=1 turns on Bun's dev server: style.css hot-reloads in the
 # browser, an edit under src/ui/ reloads the page; --watch restarts the
 # process on server-side TypeScript changes.
@@ -27,16 +33,23 @@ stop() {
 }
 
 start() {
-  [ -f scripts/studio.env ] || { echo "scripts/studio.env missing; copy studio.env.example" >&2; exit 2; }
-  . scripts/studio.env
+  local engine=${PREVIEW_ENGINE:-http://127.0.0.1:11234}
+  local models=${PREVIEW_MODEL_DIR:-$HOME/.mlx-spy/models}
+  if [ "$engine" = studio ]; then
+    [ -f scripts/studio.env ] || { echo "scripts/studio.env missing; copy studio.env.example" >&2; exit 2; }
+    . scripts/studio.env
+    engine="http://$STUDIO_HOST:11234"
+    # downloads made while watching a remote engine are scratch
+    models=${PREVIEW_MODEL_DIR:-$DIR/models}
+  fi
   mkdir -p "$DIR"
-  MLX_SPY_DEV=1 nohup bun --watch src/main.ts --engine "http://$STUDIO_HOST:11234" \
+  MLX_SPY_DEV=1 nohup bun --watch src/main.ts --engine "$engine" \
     --listen "127.0.0.1:$PORT" --db "$DIR/mlx-spy.db" \
-    --model-dir "$DIR/models" >"$LOG" 2>&1 &
+    --model-dir "$models" >"$LOG" 2>&1 &
   echo $! >"$PID"
   for _ in $(seq 1 50); do
     if curl -sf -o /dev/null "$URL/api/snapshot"; then
-      echo "preview up at $URL (pid $(cat "$PID"), log $LOG)"
+      echo "preview up at $URL (pid $(cat "$PID"), log $LOG), engine $engine"
       return 0
     fi
     running || break

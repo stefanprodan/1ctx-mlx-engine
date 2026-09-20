@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { DASH } from "../../src/ui/format.ts";
+import { DASH, size } from "../../src/ui/format.ts";
 import {
   apply,
   disconnect,
@@ -200,7 +200,8 @@ describe("tiles", () => {
     });
     const list = tiles(initialTiles, s, null, limits, true);
     const cache = byKey(list, "cache");
-    expect(cache.value).toBe("4");
+    expect(cache.value).toBe("4.0");
+    expect(cache.unit).toBe("GB est.");
     expect(cache.bar).toEqual({ pct: 25, level: "", off: false });
     expect(cache.sub).toEqual(["of 16 GB for 2 models"]);
     const hit = tiles(
@@ -266,8 +267,8 @@ describe("tiles on a recorded engine reading", () => {
       { hotBytes: 8 * GB, diskBytes: 0 },
       false,
     );
-    expect(byKey(list, "mem").value).toBe(gbOf(s.mem.procFootprint));
-    expect(byKey(list, "cache").value).toBe(gbOf(s.mem.hotCacheEst));
+    expect(byKey(list, "mem").value).toBe(size(s.mem.procFootprint).value);
+    expect(byKey(list, "cache").value).toBe(size(s.mem.hotCacheEst).value);
     expect(byKey(list, "cache").sub).toEqual([
       `of ${gbOf(8 * GB * s.models.filter((m) => m.loaded).length)} GB for ${
         s.models.filter((m) => m.loaded).length

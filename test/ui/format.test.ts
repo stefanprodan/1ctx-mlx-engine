@@ -9,6 +9,8 @@ import {
   gb,
   num,
   orderModels,
+  size,
+  sizeText,
 } from "../../src/ui/format.ts";
 
 describe("format", () => {
@@ -17,6 +19,13 @@ describe("format", () => {
     expect(gb(96 * 2 ** 30, 0)).toBe("96");
     expect(gb(null)).toBe(DASH);
     expect(gb(undefined)).toBe(DASH);
+    // whole GB from 10 up, a decimal below, MB under one: a 320 MB
+    // checkpoint must not read "0 GB"
+    expect(sizeText(38.2 * 2 ** 30)).toBe("38 GB");
+    expect(sizeText(10 * 2 ** 30)).toBe("10 GB");
+    expect(sizeText(2.1 * 2 ** 30)).toBe("2.1 GB");
+    expect(sizeText(320 * 2 ** 20)).toBe("320 MB");
+    expect(size(0)).toEqual({ value: "0", unit: "GB" });
   });
 
   test("diskSize is decimal, as Finder labels it", () => {

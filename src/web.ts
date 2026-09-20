@@ -8,9 +8,16 @@
 import { networkInterfaces } from "node:os";
 import type { HTMLBundle } from "bun";
 import { ActionError, type ActionEvent, type Actions } from "./actions.ts";
+import { type EngineManager, EngineManagerError } from "./engine/install.ts";
+import type {
+  EngineConfig,
+  EnginePageState,
+  ServiceBody,
+} from "./engine/manage.ts";
 import type { CacheLimits, Engine } from "./engine/types.ts";
 import { type History, RANGES, type Range } from "./history.ts";
 import { diskSpace, type HostInfo } from "./host/info.ts";
+import type { ExclusiveLock } from "./lock.ts";
 import { PullError, type PullRunner } from "./pull.ts";
 import type { Pull } from "./pulls.ts";
 import type { Sample } from "./sample.ts";
@@ -41,9 +48,17 @@ export type WebDeps = {
   history: History;
   actions: Actions;
   pulls: PullRunner;
+  manager?: EngineManager;
+  spyRestart?: {
+    isLaunchd: () => boolean;
+    exit: (code: number) => void;
+    delayMs?: number;
+    // the lock the actions and the manager share
+    lock?: ExclusiveLock;
+  };
   version: string;
   local: boolean;
-  limits: CacheLimits | null;
+  currentLimits: () => CacheLimits | null;
   host: HostInfo | null;
   // where downloads land; null when the host cannot say (tests)
   modelDir: string | null;
@@ -64,12 +79,16 @@ export function snapshot(deps: HandleDeps) {
       id: deps.engine.id,
       url: deps.engine.url,
       local: deps.local,
-      // the build the engine stated about itself, null until it has
-      version: deps.sampler.currentVersion(),
+      // A managed tree states its build without touching /props. Otherwise
+      // the sampler's guarded engine fact remains the source of truth.
+      version:
+        deps.manager?.state().mode === "managed"
+          ? (deps.manager.state().active?.version ?? null)
+          : deps.sampler.currentVersion(),
       capabilities: [...deps.engine.capabilities()],
-      // the launch flags and the plist, else what the engine stated about
-      // its own process (the only source for a remote engine)
-      limits: deps.limits ?? deps.sampler.currentLimits(),
+      // The provider applies current launch configuration and CLI overrides,
+      // then falls back to facts reported by the running engine.
+      limits: deps.currentLimits(),
     },
     host: deps.host
       ? { ...deps.host, disk: diskSpace(deps.host.diskPath) }
@@ -88,7 +107,8 @@ export type WsMessage =
   | { type: "snapshot"; data: ReturnType<typeof snapshot> }
   | { type: "sample"; data: Sample }
   | { type: "event"; data: ActionEvent }
-  | { type: "pull"; data: Pull };
+  | { type: "pull"; data: Pull }
+  | { type: "engine"; data: EnginePageState };
 
 export function sameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
@@ -235,6 +255,145 @@ async function pullsRoute(req: Request, deps: HandleDeps): Promise<Response> {
   return json({ error: "method not allowed" }, 405);
 }
 
+function engineConfig(value: unknown): EngineConfig {
+  const config = object(value);
+  const nullableString = (name: string) =>
+    config[name] === null || typeof config[name] === "string";
+  const nullableNumber = (name: string) =>
+    config[name] === null || typeof config[name] === "number";
+  const booleans = ["mtp", "pld", "noVision"];
+  const nullableStrings = [
+    "prefixCacheMem",
+    "prefixCacheDisk",
+    "maxResidentMem",
+  ];
+  const nullableNumbers = [
+    "prefixCacheEntries",
+    "maxResidentModels",
+    "ctxSize",
+    "idleEvictSeconds",
+    "temp",
+    "topP",
+    "topK",
+  ];
+  if (
+    (config.host !== "127.0.0.1" && config.host !== "0.0.0.0") ||
+    typeof config.port !== "number" ||
+    !Array.isArray(config.modelDirs) ||
+    !config.modelDirs.every((item) => typeof item === "string") ||
+    !nullableStrings.every(nullableString) ||
+    !nullableNumbers.every(nullableNumber) ||
+    !booleans.every((name) => typeof config[name] === "boolean") ||
+    !["off", "4", "8", "turbo2", "turbo4"].includes(config.kvQuant as string) ||
+    !["debug", "info", "warn", "error"].includes(config.logLevel as string) ||
+    !Array.isArray(config.extraArgs) ||
+    !config.extraArgs.every((item) => typeof item === "string")
+  ) {
+    throw new HttpError(400, "body is not an EngineConfig");
+  }
+  return config as EngineConfig;
+}
+
+async function engineRoute(req: Request, deps: HandleDeps): Promise<Response> {
+  const manager = deps.manager;
+  if (!manager) return json({ error: "not found" }, 404);
+  const path = new URL(req.url).pathname;
+  if (path === "/api/engine" && req.method === "GET") {
+    return json(manager.pageState());
+  }
+  if (path === "/api/engine/check" && req.method === "POST") {
+    await body(req, true);
+    return json(await manager.check());
+  }
+  if (path === "/api/engine/install" && req.method === "POST") {
+    const value = await body(req);
+    const tag = stringField(value, "tag", true)!;
+    return json(manager.install(tag, engineConfig(value.config)), 202);
+  }
+  if (path === "/api/engine/upgrade" && req.method === "POST") {
+    const value = await body(req);
+    return json(manager.upgrade(stringField(value, "tag", true)!), 202);
+  }
+  if (path === "/api/engine/cancel" && req.method === "POST") {
+    await body(req, true);
+    return json(await manager.cancel());
+  }
+  if (path === "/api/engine/config" && req.method === "PUT") {
+    return json(await manager.applyConfig(engineConfig(await body(req))));
+  }
+  if (path === "/api/engine/settings" && req.method === "PUT") {
+    const value = await body(req);
+    if (typeof value.preReleases !== "boolean") {
+      throw new HttpError(400, "preReleases must be a boolean");
+    }
+    return json(await manager.setPreReleases(value.preReleases));
+  }
+  if (path === "/api/engine/service" && req.method === "POST") {
+    const value = await body(req);
+    if (!["start", "stop", "restart"].includes(value.op as string)) {
+      throw new HttpError(400, "op must be start, stop, or restart");
+    }
+    return json(await manager.service(value.op as ServiceBody["op"]));
+  }
+  if (path === "/api/engine/rollback" && req.method === "POST") {
+    await body(req, true);
+    return json(await manager.rollback());
+  }
+  if (path === "/api/engine/dismiss" && req.method === "POST") {
+    await body(req, true);
+    return json(await manager.dismiss());
+  }
+  if (path === "/api/engine" && req.method === "DELETE") {
+    return json(await manager.uninstall());
+  }
+  // a path this API has, asked the wrong way, is 405; a typo is 404
+  return ENGINE_PATHS.has(path)
+    ? json({ error: "method not allowed" }, 405)
+    : json({ error: "not found" }, 404);
+}
+
+const ENGINE_PATHS = new Set([
+  "/api/engine",
+  ...[
+    "check",
+    "install",
+    "upgrade",
+    "cancel",
+    "config",
+    "settings",
+    "service",
+    "rollback",
+    "dismiss",
+  ].map((name) => `/api/engine/${name}`),
+]);
+
+async function spyRestartRoute(
+  req: Request,
+  deps: HandleDeps,
+): Promise<Response> {
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  await body(req, true);
+  const restart = deps.spyRestart;
+  if (!restart?.isLaunchd()) {
+    return json({ error: "mlx-spy restart requires the launchd service" }, 409);
+  }
+  const holder = deps.manager?.running() ?? deps.actions.running();
+  if (holder) return json({ error: `${holder} is still running` }, 409);
+  const state = deps.manager?.pageState() ?? { ok: true };
+  // The exit waits for the response to leave, and holds the shared lock
+  // while it does: an install accepted in that gap would be killed by it.
+  const exit = () =>
+    new Promise<void>((resolve) => {
+      setTimeout(() => {
+        restart.exit(0);
+        resolve();
+      }, restart.delayMs ?? 25);
+    });
+  if (restart.lock) void restart.lock.run("restart", exit).catch(() => {});
+  else void exit();
+  return json(state);
+}
+
 export async function handle(
   req: Request,
   deps: HandleDeps,
@@ -246,6 +405,15 @@ export async function handle(
   try {
     const action = /^\/api\/actions\/([a-zA-Z]+)$/.exec(url.pathname);
     if (action) return await actionRoute(req, deps, action[1]);
+    if (
+      url.pathname === "/api/engine" ||
+      url.pathname.startsWith("/api/engine/")
+    ) {
+      return await engineRoute(req, deps);
+    }
+    if (url.pathname === "/api/spy/restart") {
+      return await spyRestartRoute(req, deps);
+    }
     if (
       url.pathname === "/api/pulls" ||
       url.pathname.startsWith("/api/pulls/")
@@ -277,6 +445,14 @@ export async function handle(
         return json({ error: "not found" }, 404);
     }
   } catch (err) {
+    if (err instanceof EngineManagerError) {
+      return json(
+        err.issues
+          ? { error: err.message, issues: err.issues }
+          : { error: err.message },
+        err.status,
+      );
+    }
     if (err instanceof PullError || err instanceof HttpError) {
       return json({ error: err.message }, err.status);
     }
@@ -299,6 +475,7 @@ export function serve(
     routes: {
       "/": page,
       "/requests": page,
+      "/engine": page,
     },
     fetch(req, server) {
       if (new URL(req.url).pathname === "/ws") {
@@ -336,6 +513,9 @@ export function serve(
   );
   return {
     server,
+    publishEngine(state: EnginePageState) {
+      publish({ type: "engine", data: state });
+    },
     stop() {
       unsubscribe();
       unsubscribeEvents();

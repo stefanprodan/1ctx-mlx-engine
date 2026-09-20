@@ -7,7 +7,7 @@
 
 import type { Series } from "../../history.ts";
 import type { Sample } from "../../sample.ts";
-import { count, DASH, gb, num } from "../format.ts";
+import { count, DASH, gb, num, size, sizeText } from "../format.ts";
 import { inView, inViewMean, rangeTotal, whole } from "./range.ts";
 
 // Cache hit and TTFT are per finished request, so most windows carry null;
@@ -248,14 +248,14 @@ export function tiles(
   const loaded = s.models.filter((x) => x.loaded).length;
   const hotMax =
     limits && limits.hotBytes > 0 ? limits.hotBytes * Math.max(1, loaded) : 0;
-  const cache = s.engineUp ? gb(s.mem.hotCacheEst, 0) : DASH;
+  const cache = s.engineUp ? size(s.mem.hotCacheEst) : null;
   const ssd = s.disk.reduce((n, d) => n + d.bytes, 0);
   const dirs = s.disk.length;
   const ssdMax =
     limits && limits.diskBytes > 0 ? limits.diskBytes * Math.max(1, dirs) : 0;
-  const ssdText = engineLocal ? gb(ssd, 0) : DASH;
+  const ssdSize = engineLocal ? size(ssd) : null;
   const eff = num(m.lastCacheTok);
-  const mem = gb(s.mem.procFootprint, 0);
+  const mem = size(s.mem.procFootprint);
   const total = s.mem.hostTotal;
   const avail = s.mem.hostFree + s.mem.hostInactive;
   return [
@@ -313,18 +313,18 @@ export function tiles(
     {
       key: "mem",
       label: "Memory",
-      value: mem,
-      unit: "GB",
-      none: mem === DASH,
+      value: mem.value,
+      unit: mem.unit,
+      none: false,
       bar: bar(total > 0 ? (s.mem.procFootprint / total) * 100 : 0),
       sub: [total > 0 ? `${gb(avail, 0)} GB free of ${gb(total, 0)}` : ""],
     },
     {
       key: "cache",
       label: "RAM cache",
-      value: cache,
-      unit: "GB est.",
-      none: cache === DASH,
+      value: cache?.value ?? DASH,
+      unit: `${cache?.unit ?? "GB"} est.`,
+      none: cache === null,
       bar: bar(
         hotMax ? (s.mem.hotCacheEst / hotMax) * 100 : 0,
         !hotMax || !s.engineUp,
@@ -334,25 +334,25 @@ export function tiles(
           ? `${num(m.lastCacheHit)}% of lookups hit`
           : hotMax
             ? loaded > 1
-              ? `of ${gb(hotMax, 0)} GB for ${loaded} models`
-              : `of ${gb(hotMax, 0)} GB per model`
+              ? `of ${sizeText(hotMax)} for ${loaded} models`
+              : `of ${sizeText(hotMax)} per model`
             : "",
       ],
     },
     {
       key: "ssd",
       label: "SSD cache",
-      value: ssdText,
-      unit: "GB",
-      none: ssdText === DASH,
+      value: ssdSize?.value ?? DASH,
+      unit: ssdSize?.unit ?? "GB",
+      none: ssdSize === null,
       bar: bar(ssdMax ? (ssd / ssdMax) * 100 : 0, !engineLocal || !ssdMax),
       sub: [
         !engineLocal
           ? ""
           : ssdMax
             ? dirs > 1
-              ? `of ${gb(ssdMax, 0)} GB for ${dirs} model dirs`
-              : `of ${gb(ssdMax, 0)} GB per model`
+              ? `of ${sizeText(ssdMax)} for ${dirs} model dirs`
+              : `of ${sizeText(ssdMax)} per model`
             : dirs
               ? `${dirs} model dir${dirs === 1 ? "" : "s"} on disk`
               : "",

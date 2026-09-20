@@ -12,6 +12,7 @@ from the dashboard's own host. Every JSON response carries
 |---|---|
 | `GET /` | Monitor: tiles, charts, models, runtime |
 | `GET /requests` | The request in flight and the last 50 finished ones |
+| `GET /engine` | mlx-spy's own service, the mlx-serve install and its configuration |
 
 ## Monitoring
 
@@ -90,9 +91,39 @@ Errors are 400 (not a repository id), 403 (gated or private, no token),
 answer). A pull that needs more disk than the model directory has free,
 plus 1 GB, fails at start with the numbers in `error`.
 
+## Engine management
+
+Every route answers the page state, `{engine, spy}`: the mode (`remote`,
+`unmanaged`, `absent` or `managed`), the active and previous installs,
+launchd's view of the job, the applied configuration and its defaults,
+the release check, the release on offer, the operation in flight and the
+last failure; and mlx-spy's own version, resources and release check.
+Everything but the reads is refused with 403 when `--engine` is not on
+this host, and with 409 while another operation or action holds the lock.
+
+| Route | Body | Answer |
+|---|---|---|
+| `GET /api/engine` | | the page state |
+| `POST /api/engine/check` | | asks GitHub for the releases of both programs now |
+| `POST /api/engine/install` | `{tag, config}` | 202. The first install: downloads, verifies and unpacks the release, writes the LaunchAgent from `config` and starts it. 422 with `{error, issues: [{field, message}]}` when the configuration is refused; refused when something already answers on the port |
+| `POST /api/engine/upgrade` | `{tag}` | 202. The same, then the swap to the new build with the applied configuration. A failed swap rolls back to the running build |
+| `POST /api/engine/cancel` | | stops a download, a verify or an unpack and removes the partial files. 409 once the swap has begun |
+| `PUT /api/engine/config` | the configuration | validates, rewrites the LaunchAgent and restarts mlx-serve; answers when it is verified. 422 as above; a configuration the engine does not come up on is rolled back |
+| `PUT /api/engine/settings` | `{preReleases}` | whether pre-releases are offered |
+| `POST /api/engine/service` | `{op}`: `start`, `stop` or `restart` | `stop` unloads the job until `start` or the next login |
+| `POST /api/engine/rollback` | | back to the previous build; the build it leaves is removed |
+| `POST /api/engine/dismiss` | | clears the last failure |
+| `DELETE /api/engine` | | removes the LaunchAgent and the installed builds; models, caches and logs stay |
+| `POST /api/spy/restart` | | mlx-spy exits and launchd starts it again. Refused when it does not run under launchd |
+
+A tag is accepted only when it is in the stored release list. Progress
+arrives on the socket.
+
 ## WebSocket
 
 `WS /ws` sends `{type: "snapshot"}` on connect (the same body as
 `/api/snapshot`), then `{type: "sample"}` once a second, `{type: "event"}` when
 an action finishes in any tab, `{type: "pull"}` with the pull as `data`
-on every change of a download's state and twice a second while one runs.
+on every change of a download's state and twice a second while one runs,
+and `{type: "engine"}` with the engine page state as `data` on every change
+of the manager's state and twice a second during an engine download.
