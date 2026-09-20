@@ -53,7 +53,7 @@ the host key changed (a reinstall):
 | What | Value |
 |---|---|
 | Version | mlx-serve 26.9.5-pre-release.1 from the Homebrew tap `ddalcu/mlx-serve`, binary `/opt/homebrew/bin/mlx-serve` (was 26.9.2 until the upgrade on 2026-09-20) |
-| launchd agent | label `com.ddalcu.mlx-serve`, plist `~/Library/LaunchAgents/com.ddalcu.mlx-serve.plist`, copy `scripts/com.ddalcu.mlx-serve.plist` in this repo (the Studio file is what runs; `RunAtLoad`, `KeepAlive`, 10 s throttle) |
+| launchd agent | label `com.ddalcu.mlx-serve`, plist `~/Library/LaunchAgents/com.ddalcu.mlx-serve.plist` (the Studio file is the current source of truth; `RunAtLoad`, `KeepAlive`, 10 s throttle) |
 | Port | 11234, bound on `0.0.0.0`; from the MacBook `http://$STUDIO_HOST:11234` |
 | Models | checkpoints under `~/models/<org>/<name>` (shared with oMLX through the `~/.omlx/models` symlink); serve mode lists them all and ids are `<org>/<name>` |
 | Per-request log | `~/.mlx-serve/logs/mlx-serve-11234.log` (rotates at 32 MB) |
@@ -132,9 +132,10 @@ ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootstrap gui/$(id -u) ~/Library/Lau
 ssh -o BatchMode=yes $STUDIO_SSH 'rm -rf ~/.mlx-serve/kv-cache/*'
 ```
 
-To change the engine flags: edit `scripts/com.ddalcu.mlx-serve.plist`, scp it
-to `~/Library/LaunchAgents/` on the Studio, then bootout and bootstrap (kickstart does not reread a
-plist). Tell the user what changed; the flags are their policy.
+Until mlx-spy's engine manager is implemented, change engine flags only with
+an explicit user-approved edit of the Studio's plist, followed by bootout,
+the exit wait, and bootstrap. There is deliberately no checked-in copy that
+can drift from the running policy.
 
 ### Never, on the engine
 
@@ -170,11 +171,11 @@ plist). Tell the user what changed; the flags are their policy.
 | What | Where |
 |---|---|
 | Binary | `~/.mlx-spy/bin/mlx-spy` |
-| launchd agent | label `com.stefanprodan.mlx-spy`, plist `~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist`, reference copy `scripts/com.stefanprodan.mlx-spy.plist` in this repo; `RunAtLoad` and `KeepAlive` (5 s throttle), so it comes back on a crash and at login |
+| launchd agent | label `com.stefanprodan.mlx-spy`, generated plist `~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist`; `RunAtLoad` and `KeepAlive` (5 s throttle), so it comes back on a crash and at login |
 | Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235 --model-dir /Users/stefanprodan/models`, like the engine bound on every interface; the default db; downloads land in the engine's own model directory (set 2026-09-09) |
 | URL | `http://$STUDIO_HOST:11235` from the tailnet; `http://127.0.0.1:11235` on the box |
 | Database | `~/.mlx-spy/mlx-spy.db` (WAL mode, so `-shm` and `-wal` files sit next to it) |
-| Log | `~/.mlx-spy/mlx-spy.log` (stdout and stderr of the agent, appended) |
+| Log | `~/.mlx-spy/mlx-spy.log`, opened and rotated by mlx-spy at 8 MB to one `.1`; launchd stdout/stderr goes to the crash catcher `~/.mlx-spy/launchd.log`, rotated during a reload |
 | Working dir | `~/.mlx-spy` |
 | Secrets | `~/.mlx-spy/secrets/` (mode 700, files mode 600): `hf.key`, a Hugging Face token for gated repos and faster downloads, written from the shell's `HF_TOKEN` on 2026-09-09; the boot log's `hf key:` line names the file found, or `none`. `hf.key` is the only key file; the `exa.key`, `firecrawl.key` and `openrouter.key` left from the chat were deleted on 2026-09-20 |
 
@@ -193,61 +194,39 @@ curl -s http://$STUDIO_HOST:11235/api/snapshot | head -c 300
 make deploy-studio
 ```
 
-That runs `scripts/deploy-studio.sh`: `make build`, scp the binary to
-`~/.mlx-spy/bin/mlx-spy.new`, one ssh command that moves it into place and
-runs `launchctl kickstart -k gui/$(id -u)/com.stefanprodan.mlx-spy`, then
-polls `/api/snapshot` until the new process answers (about 45 s, most of
-it the 62 MB upload). Exit code 0 with the version printed means the deploy
-is verified; anything else prints the log tail.
-
-A change to mlx-spy's own flags is a plist change, and a kickstart does
-not reread a plist: edit `scripts/com.stefanprodan.mlx-spy.plist`, scp it
-to `~/Library/LaunchAgents/`, then bootout, wait for the process to exit,
-and bootstrap (verified 2026-09-09 when `--model-dir` was added):
+That runs `scripts/deploy-studio.sh`: build, copy the binary directly to
+`~/.mlx-spy/bin/mlx-spy`, then run one SSH command:
 
 ```sh
-scp -q scripts/com.stefanprodan.mlx-spy.plist $STUDIO_SSH:~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist
-ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanprodan.mlx-spy; for i in $(seq 1 30); do pgrep -x mlx-spy >/dev/null || break; sleep 1; done; launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist'
+~/.mlx-spy/bin/mlx-spy service install --restart \
+  --engine http://127.0.0.1:11234 \
+  --listen 0.0.0.0:11235 \
+  --model-dir /Users/stefanprodan/models
 ```
+
+The binary renders and stages its own plist, waits for the old process to
+exit, installs the new plist atomically, rotates the stopped launchd log,
+bootstraps the agent and waits for `/api/snapshot`. A successful command
+prints the running version and URL. Re-run `service install --restart` with
+the complete desired flags to change policy; never edit the generated plist.
 
 A model downloaded from the Monitor page lands in `~/models/<owner>/<name>`
 and mlx-spy asks the engine to rescan when it completes, so it shows in
 the list without an engine restart. The residency policy above still
 applies: never load a third large model.
 
-Manually, the same three steps:
+Service lifecycle commands are also owned by the binary:
 
 ```sh
-make build
-scp -q bin/mlx-spy $STUDIO_SSH:~/.mlx-spy/bin/mlx-spy.new
-ssh -o BatchMode=yes $STUDIO_SSH 'mv ~/.mlx-spy/bin/mlx-spy.new ~/.mlx-spy/bin/mlx-spy && launchctl kickstart -k gui/$(id -u)/com.stefanprodan.mlx-spy'
+ssh -o BatchMode=yes $STUDIO_SSH '~/.mlx-spy/bin/mlx-spy service status'
+ssh -o BatchMode=yes $STUDIO_SSH '~/.mlx-spy/bin/mlx-spy service stop'
+ssh -o BatchMode=yes $STUDIO_SSH '~/.mlx-spy/bin/mlx-spy service start'
+ssh -o BatchMode=yes $STUDIO_SSH '~/.mlx-spy/bin/mlx-spy service restart'
 ```
 
-Kickstart sends SIGTERM: mlx-spy closes the db and exits; launchd starts
-the new binary at once. The upload goes to
-a `.new` name and is moved because the running binary must not be
-overwritten in place.
-
-Stop for real and start again:
-
-```sh
-ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanprodan.mlx-spy'
-ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist'
-```
-
-`pkill` alone does nothing useful: KeepAlive restarts it in 5 s.
-
-### Changing the agent
-
-Edit `scripts/com.stefanprodan.mlx-spy.plist`, then scp it and reload the
-agent. The loop waits for the old process to exit: a bootstrap during the
-graceful shutdown fails with "Bootstrap failed: 5" and leaves the agent
-unloaded (seen 2026-09-08), in which case run the bootstrap again.
-
-```sh
-scp -q scripts/com.stefanprodan.mlx-spy.plist $STUDIO_SSH:~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist
-ssh -o BatchMode=yes $STUDIO_SSH 'launchctl bootout gui/$(id -u)/com.stefanprodan.mlx-spy; for i in $(seq 1 30); do pgrep -x mlx-spy >/dev/null || break; sleep 1; done; launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist'
-```
+`service uninstall` removes the agent and plist. Its optional `--purge`
+also removes the database and both logs, but never the secrets directory or
+models.
 
 ### The database
 

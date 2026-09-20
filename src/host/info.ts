@@ -32,6 +32,13 @@ function plistString(xml: string, key: string): string | null {
   return m ? m[1] : null;
 }
 
+export function osMajor(version: string): number | null {
+  const match = /(?:^|\s)(\d+)(?:\.|\s|$)/.exec(version.trim());
+  if (!match) return null;
+  const major = Number(match[1]);
+  return Number.isInteger(major) ? major : null;
+}
+
 export function macosVersion(): string | null {
   try {
     const xml = readFileSync(

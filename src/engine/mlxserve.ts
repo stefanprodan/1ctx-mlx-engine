@@ -14,6 +14,7 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { EngineConfig } from "./manage.ts";
 import type {
   Capability,
   Engine,
@@ -111,11 +112,20 @@ export function parseProps(body: any): EngineProps {
   return { version, limits };
 }
 
+export type MlxServeOptions = {
+  managed?: () => boolean;
+  config?: () => EngineConfig | null;
+  home?: string;
+};
+
 export class MlxServe implements Engine {
   readonly id = "mlxserve" as const;
   readonly url: string;
 
-  constructor(url: string) {
+  constructor(
+    url: string,
+    private readonly options: MlxServeOptions = {},
+  ) {
     this.url = url.replace(/\/+$/, "");
   }
 
@@ -208,23 +218,29 @@ export class MlxServe implements Engine {
     ]);
   }
 
-  // The SSD prefix cache tier: one <fingerprint>/ directory per model.
+  // The managed marker changes ownership, never merely the presence of a
+  // plist. Until activation succeeds, actions keep targeting the old job.
   cacheDirs(): string[] {
-    return [join(homedir(), ".mlx-serve", "kv-cache")];
+    const home = this.options.home ?? homedir();
+    return [join(home, ".mlx-serve", "kv-cache")];
   }
 
   logFile(): string | null {
-    const port = new URL(this.url).port || "80";
-    return join(homedir(), ".mlx-serve", "logs", `mlx-serve-${port}.log`);
+    const managedPort = this.options.managed?.()
+      ? this.options.config?.()?.port
+      : null;
+    const port = String(managedPort ?? (new URL(this.url).port || "80"));
+    const home = this.options.home ?? homedir();
+    return join(home, ".mlx-serve", "logs", `mlx-serve-${port}.log`);
   }
 
   processNames(): string[] {
     return ["mlx-serve"];
   }
 
-  // The LaunchAgent from the homelab notes; a fresh process has no default
-  // model, so a restart is the reliable way to free the RAM.
   serviceLabel(): string {
-    return "com.ddalcu.mlx-serve";
+    return this.options.managed?.()
+      ? "com.stefanprodan.mlx-serve"
+      : "com.ddalcu.mlx-serve";
   }
 }

@@ -82,4 +82,16 @@ describe("parseCli", () => {
       argv: ["install", "--listen=:11236"],
     });
   });
+
+  test("parses log file paths and off", () => {
+    const file = parseCli(["--log-file", "/tmp/mlx-spy.log"]);
+    expect(file.kind).toBe("run");
+    if (file.kind === "run") {
+      expect(file.options.logFile).toBe("/tmp/mlx-spy.log");
+    }
+    const off = parseCli(["--log-file=off"]);
+    expect(off.kind).toBe("run");
+    if (off.kind === "run") expect(off.options.logFile).toBe("off");
+    expect(error(["--log-file="])).toBe("--log-file must not be empty");
+  });
 });

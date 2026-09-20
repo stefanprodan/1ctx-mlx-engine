@@ -5,6 +5,7 @@
 
 import { AppError, runApp } from "./app.ts";
 import { HELP, parseCli, VERSION } from "./cli.ts";
+import { runService, ServiceError } from "./service.ts";
 
 export { VERSION };
 
@@ -18,8 +19,13 @@ if (result.kind === "help") {
   console.error(`error: ${result.message}\n\n${HELP}`);
   process.exitCode = 1;
 } else if (result.kind === "service") {
-  console.error(`error: unknown command: service\n\n${HELP}`);
-  process.exitCode = 1;
+  try {
+    await runService(result.argv);
+  } catch (error) {
+    if (!(error instanceof ServiceError)) throw error;
+    console.error(`error: ${error.message}`);
+    process.exitCode = 1;
+  }
 } else {
   try {
     const exitCode = await runApp(result.options);

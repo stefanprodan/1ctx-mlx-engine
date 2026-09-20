@@ -3,6 +3,7 @@ import { mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  ACTION_NAMES,
   ActionError,
   type ActionEvent,
   Actions,
@@ -16,6 +17,7 @@ import type {
   ModelInfo,
 } from "../src/engine/types.ts";
 import { History } from "../src/history.ts";
+import { ExclusiveLock } from "../src/lock.ts";
 import type { Log } from "../src/log.ts";
 import { Sampler } from "../src/sampler.ts";
 import { handle } from "../src/web.ts";
@@ -98,12 +100,14 @@ async function setup(local = true) {
   const logs: string[] = [];
   const spawned: string[][] = [];
   const cleared: string[] = [];
+  const lock = new ExclusiveLock();
   const actions = new Actions({
     engine,
     sampler,
     history,
     local,
     log: testLog((l) => logs.push(l)),
+    lock,
     uid: 501,
     now: () => 5000,
     spawn: async (cmd) => {
@@ -115,7 +119,16 @@ async function setup(local = true) {
       return 2;
     },
   });
-  return { engine, history, sampler, actions, logs, spawned, cleared };
+  return {
+    engine,
+    history,
+    sampler,
+    actions,
+    lock,
+    logs,
+    spawned,
+    cleared,
+  };
 }
 
 const rejects = async (p: Promise<unknown>, status: number, re: RegExp) => {
@@ -305,6 +318,31 @@ describe("Actions", () => {
     s.history.close();
   });
 
+  test("the manager lock refuses every action", async () => {
+    const s = await setup();
+    let release!: () => void;
+    const held = s.lock.run(
+      "upgrade",
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    await Bun.sleep(0);
+    for (const name of ACTION_NAMES) {
+      const body =
+        name === "unload"
+          ? { model: QWEN }
+          : name === "load" || name === "default" || name === "favorite"
+            ? { model: APODEX }
+            : {};
+      await rejects(s.actions.run(name, body), 409, /upgrade is still running/);
+    }
+    release();
+    await held;
+    expect(s.engine.calls).toEqual([]);
+    s.history.close();
+  });
   test("busy holds through the model refresh after the action", async () => {
     const s = await setup();
     let release!: (list: ModelInfo[]) => void;

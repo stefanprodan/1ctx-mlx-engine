@@ -63,6 +63,7 @@ export type ActionDeps = {
   history: History;
   local: boolean;
   log: Log;
+  lock?: ExclusiveLock;
   // launchd domain owner; the service runs in the user's gui domain
   uid?: number;
   now?: () => number;
@@ -100,7 +101,7 @@ export async function clearDirContents(root: string): Promise<number> {
 
 export class Actions {
   readonly events: ActionEvent[] = [];
-  private readonly lock = new ExclusiveLock();
+  private readonly lock: ExclusiveLock;
   private readonly listeners = new Set<(e: ActionEvent) => void>();
   private readonly now: () => number;
   private readonly spawn: (cmd: string[]) => Promise<SpawnResult>;
@@ -108,6 +109,7 @@ export class Actions {
   private readonly uid: number;
 
   constructor(private readonly deps: ActionDeps) {
+    this.lock = deps.lock ?? new ExclusiveLock();
     this.now = deps.now ?? Date.now;
     this.spawn = deps.spawn ?? bunSpawn;
     this.clearDir = deps.clearDir ?? clearDirContents;

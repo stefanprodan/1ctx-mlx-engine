@@ -10,15 +10,18 @@ import { DEFAULT_PORT } from "./web.ts";
 const buildVersion = process.env.MLX_SPY_BUILD_VERSION;
 export const VERSION = buildVersion || `v${pkg.version}`;
 
-const DEFAULT_ENGINE = "http://127.0.0.1:11234";
-const DEFAULT_DB = join(homedir(), ".mlx-spy", "mlx-spy.db");
-const DEFAULT_MODEL_DIR = join(homedir(), ".mlx-spy", "models");
-const DEFAULT_RETENTION_DAYS = 7;
+export const DEFAULT_ENGINE = "http://127.0.0.1:11234";
+export const DEFAULT_DB = join(homedir(), ".mlx-spy", "mlx-spy.db");
+export const DEFAULT_MODEL_DIR = join(homedir(), ".mlx-spy", "models");
+export const DEFAULT_RETENTION_DAYS = 7;
 
 export const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inference server
 
 \x1b[1mUsage:\x1b[0m
   mlx-spy [options]
+  mlx-spy service install [options] [--restart]
+  mlx-spy service status|start|stop|restart
+  mlx-spy service uninstall [--purge]
 
 \x1b[1mOptions:\x1b[0m
   --engine <url>       engine base URL (default: ${DEFAULT_ENGINE})
@@ -33,6 +36,7 @@ export const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inferenc
   --hot-cache-max <n>  hot cache budget per model, e.g. 16GB (default: read
                        from the engine's launchd plist when local)
   --disk-cache-max <n> SSD cache tier budget per model, e.g. 50GB (same)
+  --log-file <path|off> append logs to a rotating file (default: off)
   --once               print one JSON sample and exit
   -v, --version        show version
   -h, --help           show this help
@@ -73,6 +77,7 @@ export interface Options {
   once: boolean;
   hotMax: number | null;
   diskMax: number | null;
+  logFile: string;
 }
 
 export type CliResult =
@@ -93,6 +98,34 @@ function parseListen(value: string): ListenAddress | string {
   return { hostname: match[1] ?? (match[2] || null), port };
 }
 
+export function formatListen(listen: ListenAddress): string {
+  const hostname = listen.hostname ?? "";
+  const formatted = hostname.includes(":") ? `[${hostname}]` : hostname;
+  return listen.port === null ? formatted : `${formatted}:${listen.port}`;
+}
+
+export function optionsToArgs(options: Options): string[] {
+  const args = [
+    "--engine",
+    options.engineUrl,
+    "--db",
+    options.dbPath,
+    "--retention",
+    String(options.retentionDays),
+    "--model-dir",
+    options.modelDir,
+  ];
+  if (options.listen) args.push("--listen", formatListen(options.listen));
+  if (options.hotMax !== null) {
+    args.push("--hot-cache-max", String(options.hotMax));
+  }
+  if (options.diskMax !== null) {
+    args.push("--disk-cache-max", String(options.diskMax));
+  }
+  args.push("--log-file", options.logFile);
+  return args;
+}
+
 export function parseCli(argv: string[]): CliResult {
   if (argv[0] === "service") {
     return { kind: "service", argv: argv.slice(1) };
@@ -106,6 +139,7 @@ export function parseCli(argv: string[]): CliResult {
   let once = false;
   let hotMax: number | null = null;
   let diskMax: number | null = null;
+  let logFile = "off";
 
   function value(i: number): [string, number] | CliResult {
     const arg = argv[i];
@@ -139,7 +173,8 @@ export function parseCli(argv: string[]): CliResult {
       name !== "--model-dir" &&
       name !== "--retention" &&
       name !== "--hot-cache-max" &&
-      name !== "--disk-cache-max"
+      name !== "--disk-cache-max" &&
+      name !== "--log-file"
     ) {
       return { kind: "error", message: `unknown argument: ${arg}` };
     }
@@ -151,12 +186,17 @@ export function parseCli(argv: string[]): CliResult {
 
     if (name === "--engine") engineUrl = raw;
     else if (name === "--listen") listenValue = raw;
-    else if (name === "--db") dbPath = raw;
+    else if (name === "--db") dbPath = raw === ":memory:" ? raw : resolve(raw);
     else if (name === "--model-dir") {
       if (raw === "") {
         return { kind: "error", message: "--model-dir must not be empty" };
       }
       modelDir = resolve(raw);
+    } else if (name === "--log-file") {
+      if (raw === "") {
+        return { kind: "error", message: "--log-file must not be empty" };
+      }
+      logFile = raw === "off" ? raw : resolve(raw);
     } else if (name === "--retention") {
       retentionDays = Number(raw);
       if (!Number.isFinite(retentionDays) || retentionDays <= 0) {
@@ -204,6 +244,7 @@ export function parseCli(argv: string[]): CliResult {
       once,
       hotMax,
       diskMax,
+      logFile,
     },
   };
 }
