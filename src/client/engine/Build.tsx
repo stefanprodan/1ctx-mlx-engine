@@ -6,8 +6,8 @@
 // failure. The row keeps its place in every state so the card's shape
 // does not depend on what there is to offer.
 
-import type { EngineState } from "../../server/engine/manage.ts";
-import type { Sample } from "../../server/monitor/sample.ts";
+import type { EngineState } from "../../shared/engine.ts";
+import type { Sample } from "../../shared/sample.ts";
 import { DASH } from "../format.ts";
 import { Lock } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";

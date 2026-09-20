@@ -9,7 +9,7 @@
 # instead (read-only there: managing is local-only); any other value is
 # taken as the engine URL. PREVIEW_MODEL_DIR overrides the directory.
 # MLX_SPY_DEV=1 turns on Bun's dev server: style.css hot-reloads in the
-# browser, an edit under src/ui/ reloads the page; --watch restarts the
+# browser, an edit under src/client/ reloads the page; --watch restarts the
 # process on server-side TypeScript changes.
 set -euo pipefail
 

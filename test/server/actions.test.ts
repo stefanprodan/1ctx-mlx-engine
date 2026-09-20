@@ -3,24 +3,19 @@ import { mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  ACTION_NAMES,
   ActionError,
-  type ActionEvent,
   Actions,
   clearDirContents,
 } from "../../src/server/actions.ts";
 import { parseMetrics, parseModels } from "../../src/server/engine/mlxserve.ts";
-import type {
-  Capability,
-  Engine,
-  EngineMetrics,
-  ModelInfo,
-} from "../../src/server/engine/types.ts";
+import type { Engine, EngineMetrics } from "../../src/server/engine/types.ts";
 import { ExclusiveLock } from "../../src/server/lib/lock.ts";
 import type { Log } from "../../src/server/lib/log.ts";
 import { History } from "../../src/server/monitor/history.ts";
 import { Sampler } from "../../src/server/monitor/sampler.ts";
 import { handle } from "../../src/server/web/index.ts";
+import { ACTION_NAMES, type ActionEvent } from "../../src/shared/actions.ts";
+import type { Capability, ModelInfo } from "../../src/shared/models.ts";
 import metricsFixture from "../fixtures/metrics.json";
 import modelsFixture from "../fixtures/models.json";
 

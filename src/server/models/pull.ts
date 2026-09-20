@@ -23,6 +23,7 @@ import {
   truncate,
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
+import type { Pull } from "../../shared/downloads.ts";
 import type { Engine } from "../engine/types.ts";
 import { diskSpace } from "../host/info.ts";
 import {
@@ -42,7 +43,7 @@ import {
   parseRepoId,
   resolveUrl,
 } from "./hub.ts";
-import type { Pull, PullFile, PullStore } from "./pulls.ts";
+import type { PullFile, PullStore } from "./pulls.ts";
 
 const RETRIES = 5;
 const RETRY_DELAY_MS = 2000;

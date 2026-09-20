@@ -10,7 +10,7 @@ import {
   pullState,
   visiblePulls,
 } from "../../src/client/monitor/pull.ts";
-import type { Pull } from "../../src/server/models/pulls.ts";
+import type { Pull } from "../../src/shared/downloads.ts";
 
 const GB = 2 ** 30;
 

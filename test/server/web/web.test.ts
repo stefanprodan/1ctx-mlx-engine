@@ -2,11 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { DEFAULTS } from "../../../src/server/engine/config.ts";
 import { EngineManagerError } from "../../../src/server/engine/install.ts";
 import type {
-  CacheLimits,
-  Capability,
   Engine,
   EngineMetrics,
-  ModelInfo,
 } from "../../../src/server/engine/types.ts";
 import { PullError } from "../../../src/server/models/pull.ts";
 import { History } from "../../../src/server/monitor/history.ts";
@@ -15,6 +12,11 @@ import {
   snapshot,
   type WebDeps,
 } from "../../../src/server/web/index.ts";
+import type {
+  CacheLimits,
+  Capability,
+  ModelInfo,
+} from "../../../src/shared/models.ts";
 
 const MODEL = "org/model";
 const model: ModelInfo = {

@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Range } from "../../server/monitor/history.ts";
+import type { Range } from "../../shared/history.ts";
 import { Trash } from "../icons.tsx";
 import { busy } from "../store.ts";
 import { runAction } from "./actions.ts";

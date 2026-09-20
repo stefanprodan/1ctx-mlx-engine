@@ -1,6 +1,8 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { DiskDir } from "../../shared/host.ts";
+
 export type HostMemory = {
   total: number;
   free: number;
@@ -16,12 +18,6 @@ export type ProcessMemory = {
   rss: number;
   startedAt: number; // unix ms the process started, 0 when unknown
   cpuNs: number; // user + system CPU time so far, in nanoseconds
-};
-
-export type DiskDir = {
-  path: string;
-  bytes: number; // allocated bytes, like du
-  modelId: string | null; // filled by the log tail (milestone 6)
 };
 
 export interface HostProbes {

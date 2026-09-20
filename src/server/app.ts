@@ -4,11 +4,11 @@
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import page from "../client/index.html";
+import type { EnginePageState } from "../shared/engine.ts";
 import { Actions } from "./actions.ts";
 import { BUILD, type Options, VERSION } from "./cli.ts";
 import { cacheLimits, configToArgs, limitsFromArgs } from "./engine/config.ts";
 import { EngineManager } from "./engine/install.ts";
-import type { EnginePageState } from "./engine/manage.ts";
 import { MlxServe } from "./engine/mlxserve.ts";
 import { EngineStore } from "./engine/store.ts";
 import { createHostProbes } from "./host/index.ts";

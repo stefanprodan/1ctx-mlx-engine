@@ -3,17 +3,15 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  abbreviateHome,
   configToArgs,
   DEFAULTS,
-  expandHome,
   limitsFromArgs,
   parseLaunchdArgs,
   parseSize,
   validateConfig,
 } from "../../../src/server/engine/config.ts";
-import type { EngineConfig } from "../../../src/server/engine/manage.ts";
 import { parseProps } from "../../../src/server/engine/mlxserve.ts";
+import type { EngineConfig } from "../../../src/shared/engine.ts";
 import propsFixture from "../../fixtures/props.json";
 
 const PINNED = "/Users/x/.mlx-spy/models";
@@ -216,15 +214,6 @@ describe("managed engine configuration", () => {
     expect(
       issues(config({ maxResidentMem: "automatic" })).map((item) => item.field),
     ).toEqual(["maxResidentMem"]);
-  });
-
-  test("abbreviates and expands only the home prefix", () => {
-    expect(abbreviateHome("/Users/x/models", "/Users/x")).toBe("~/models");
-    expect(abbreviateHome("/Users/xy/models", "/Users/x")).toBe(
-      "/Users/xy/models",
-    );
-    expect(expandHome("~/models", "/Users/x")).toBe("/Users/x/models");
-    expect(expandHome("/Volumes/models", "/Users/x")).toBe("/Volumes/models");
   });
 });
 

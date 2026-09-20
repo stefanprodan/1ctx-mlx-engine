@@ -10,7 +10,6 @@ import { Runtime } from "../../src/client/monitor/Runtime.tsx";
 import { Tiles } from "../../src/client/monitor/Tiles.tsx";
 import { PLACEHOLDER, type Tile } from "../../src/client/monitor/tiles.ts";
 import { Requests, requests } from "../../src/client/requests/Requests.tsx";
-import type { Snapshot } from "../../src/client/store.ts";
 import {
   busy,
   connection,
@@ -19,9 +18,10 @@ import {
   sample,
   snapshot,
 } from "../../src/client/store.ts";
-import type { Pull } from "../../src/server/models/pulls.ts";
-import type { LastRequest } from "../../src/server/monitor/requests.ts";
-import type { Sample } from "../../src/server/monitor/sample.ts";
+import type { Pull } from "../../src/shared/downloads.ts";
+import type { LastRequest } from "../../src/shared/requests.ts";
+import type { Sample } from "../../src/shared/sample.ts";
+import type { Snapshot } from "../../src/shared/socket.ts";
 
 const startedAt = new Date(2026, 8, 9, 10, 0, 0).getTime();
 const last: LastRequest = {

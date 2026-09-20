@@ -7,20 +7,22 @@
 
 import { networkInterfaces } from "node:os";
 import type { HTMLBundle } from "bun";
-import { ActionError, type ActionEvent, type Actions } from "../actions.ts";
-import { type EngineManager, EngineManagerError } from "../engine/install.ts";
 import type {
   EngineConfig,
   EnginePageState,
   ServiceBody,
-} from "../engine/manage.ts";
-import type { CacheLimits, Engine } from "../engine/types.ts";
-import { diskSpace, type HostInfo } from "../host/info.ts";
+} from "../../shared/engine.ts";
+import { RANGES, type Range } from "../../shared/history.ts";
+import type { HostInfo } from "../../shared/host.ts";
+import type { CacheLimits } from "../../shared/models.ts";
+import type { Snapshot, WsMessage } from "../../shared/socket.ts";
+import { ActionError, type Actions } from "../actions.ts";
+import { type EngineManager, EngineManagerError } from "../engine/install.ts";
+import type { Engine } from "../engine/types.ts";
+import { diskSpace } from "../host/info.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
 import { PullError, type PullRunner } from "../models/pull.ts";
-import type { Pull } from "../models/pulls.ts";
-import { type History, RANGES, type Range } from "../monitor/history.ts";
-import type { Sample } from "../monitor/sample.ts";
+import type { History } from "../monitor/history.ts";
 import type { Sampler } from "../monitor/sampler.ts";
 
 export const DEFAULT_PORT = 11235;
@@ -74,7 +76,7 @@ type HandleDeps = Omit<WebDeps, "pulls" | "modelDir"> & {
   modelDir?: string | null;
 };
 
-export function snapshot(deps: HandleDeps) {
+export function snapshot(deps: HandleDeps): Snapshot {
   return {
     version: deps.version,
     build: deps.build ?? null,
@@ -105,13 +107,6 @@ export function snapshot(deps: HandleDeps) {
     modelDir: deps.modelDir ?? null,
   };
 }
-
-export type WsMessage =
-  | { type: "snapshot"; data: ReturnType<typeof snapshot> }
-  | { type: "sample"; data: Sample }
-  | { type: "event"; data: ActionEvent }
-  | { type: "pull"; data: Pull }
-  | { type: "engine"; data: EnginePageState };
 
 export function sameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");

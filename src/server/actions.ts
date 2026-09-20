@@ -13,37 +13,16 @@
 
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  type ActionEvent,
+  type ActionName,
+  isActionName,
+} from "../shared/actions.ts";
 import type { Engine } from "./engine/types.ts";
 import { ExclusiveLock, LockBusyError } from "./lib/lock.ts";
 import type { Log } from "./lib/log.ts";
 import type { History } from "./monitor/history.ts";
 import type { Sampler } from "./monitor/sampler.ts";
-
-export const ACTION_NAMES = [
-  "load",
-  "unload",
-  "default",
-  "free",
-  "diskClear",
-  "historyClear",
-  "requestsClear",
-  "favorite",
-] as const;
-export type ActionName = (typeof ACTION_NAMES)[number];
-
-export function isActionName(v: string): v is ActionName {
-  return (ACTION_NAMES as readonly string[]).includes(v);
-}
-
-// one row of the action log, also pushed to the dashboard
-export type ActionEvent = {
-  t: number;
-  action: ActionName;
-  model: string | null;
-  ok: boolean;
-  ms: number;
-  detail: string;
-};
 
 // carries the HTTP status the route should answer with
 export class ActionError extends Error {

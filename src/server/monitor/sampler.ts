@@ -7,15 +7,13 @@
 // hands the Sample to the history and to listeners. tick() is public and the
 // clock injectable so tests drive it without timers or a network.
 
-import type {
-  CacheLimits,
-  Engine,
-  EngineCounters,
-  ModelInfo,
-} from "../engine/types.ts";
+import type { DiskDir } from "../../shared/host.ts";
+import type { CacheLimits, ModelInfo } from "../../shared/models.ts";
+import type { Sample } from "../../shared/sample.ts";
+import type { Engine, EngineCounters } from "../engine/types.ts";
 import { cacheDirSizes } from "../host/disk.ts";
 import { NULL_PROBES } from "../host/index.ts";
-import type { DiskDir, HostProbes, HostSnapshot } from "../host/types.ts";
+import type { HostProbes, HostSnapshot } from "../host/types.ts";
 import type { Log } from "../lib/log.ts";
 import type { History } from "./history.ts";
 import {
@@ -32,7 +30,6 @@ import {
   type LiveState,
   type Reading,
   readEngine,
-  type Sample,
 } from "./sample.ts";
 
 export const TICK_MS = 1000;

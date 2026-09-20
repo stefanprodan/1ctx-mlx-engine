@@ -6,8 +6,8 @@
 // the /ws event show the outcome in every tab.
 
 import { computed } from "@preact/signals";
-import type { ActionEvent, ActionName } from "../../server/actions.ts";
-import type { Capability } from "../../server/engine/types.ts";
+import type { ActionEvent, ActionName } from "../../shared/actions.ts";
+import type { Capability } from "../../shared/models.ts";
 import { gb } from "../format.ts";
 import { confirm } from "../shell/Confirm.tsx";
 import {

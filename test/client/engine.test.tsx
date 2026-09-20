@@ -6,9 +6,7 @@ import { render } from "preact-render-to-string";
 import { Build } from "../../src/client/engine/Build.tsx";
 import { Config, ConfigHead } from "../../src/client/engine/Config.tsx";
 import {
-  abbreviate,
   changedFields,
-  expand,
   refusalLine,
   toConfig,
   toForm,
@@ -38,7 +36,8 @@ import type {
   EngineState,
   Operation,
   Release,
-} from "../../src/server/engine/manage.ts";
+} from "../../src/shared/engine.ts";
+import { abbreviateHome, expandHome } from "../../src/shared/paths.ts";
 import { sample, startedAt } from "./helpers.ts";
 
 const HOME = "/Users/me";
@@ -140,12 +139,12 @@ beforeEach(resetEngineState);
 
 describe("the form model", () => {
   test("paths are shown with ~ and stored absolute", () => {
-    expect(abbreviate(PINNED, HOME)).toBe("~/.mlx-spy/models");
-    expect(abbreviate("/Volumes/x", HOME)).toBe("/Volumes/x");
-    expect(abbreviate(`${HOME}er/x`, HOME)).toBe(`${HOME}er/x`);
-    expect(expand("~/models", HOME)).toBe(`${HOME}/models`);
-    expect(expand("~", HOME)).toBe(HOME);
-    expect(expand(" /abs ", HOME)).toBe("/abs");
+    expect(abbreviateHome(PINNED, HOME)).toBe("~/.mlx-spy/models");
+    expect(abbreviateHome("/Volumes/x", HOME)).toBe("/Volumes/x");
+    expect(abbreviateHome(`${HOME}er/x`, HOME)).toBe(`${HOME}er/x`);
+    expect(expandHome("~/models", HOME)).toBe(`${HOME}/models`);
+    expect(expandHome("~", HOME)).toBe(HOME);
+    expect(expandHome(" /abs ", HOME)).toBe("/abs");
   });
 
   test("a config survives the round trip through the form", () => {

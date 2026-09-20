@@ -6,10 +6,11 @@
 // Activity is engine-wide (the engine does not say which model is busy)
 // and lives in the section head, see Monitor.tsx.
 
-import type { ActionName } from "../../server/actions.ts";
-import type { Capability, ModelInfo } from "../../server/engine/types.ts";
+import type { ActionName } from "../../shared/actions.ts";
+import type { Capability, ModelInfo } from "../../shared/models.ts";
+import type { Snapshot } from "../../shared/socket.ts";
 import { orderModels, sizeText } from "../format.ts";
-import { busy, pulls, type Snapshot } from "../store.ts";
+import { busy, pulls } from "../store.ts";
 import { runAction } from "./actions.ts";
 import { PullRow } from "./Pull.tsx";
 import { visiblePulls } from "./pull.ts";

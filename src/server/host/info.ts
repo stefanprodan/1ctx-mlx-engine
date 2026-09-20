@@ -9,20 +9,7 @@
 
 import { readFileSync, statfsSync } from "node:fs";
 import { cpus, homedir, hostname, release, totalmem } from "node:os";
-
-export type HostInfo = {
-  hostname: string;
-  os: string; // "macOS 26.6.2 (25G83)", or the kernel release elsewhere
-  chip: string | null; // "Apple M5 Max"
-  cpuCores: number;
-  perfCores: number | null;
-  effCores: number | null;
-  gpuCores: number | null;
-  memTotal: number;
-  diskPath: string; // the volume reported by diskSpace()
-};
-
-export type DiskSpace = { total: number; free: number };
+import type { DiskSpace, HostInfo } from "../../shared/host.ts";
 
 // The <string> that follows a <key> in a small Apple plist.
 function plistString(xml: string, key: string): string | null {

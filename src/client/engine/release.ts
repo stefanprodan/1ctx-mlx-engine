@@ -8,8 +8,8 @@ import type {
   Operation,
   Release,
   ReleaseCheck,
-} from "../../server/engine/manage.ts";
-import type { Sample } from "../../server/monitor/sample.ts";
+} from "../../shared/engine.ts";
+import type { Sample } from "../../shared/sample.ts";
 import { duration } from "../format.ts";
 
 const mb = (bytes: number) => (bytes / 1e6).toFixed(1);

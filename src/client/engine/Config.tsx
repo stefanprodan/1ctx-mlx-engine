@@ -12,11 +12,11 @@ import type {
   EngineState,
   KvQuant,
   LogLevel,
-} from "../../server/engine/manage.ts";
+} from "../../shared/engine.ts";
+import { abbreviateHome } from "../../shared/paths.ts";
 import { Trash } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
 import {
-  abbreviate,
   type Form,
   HOST_NOTES,
   KV_QUANTS,
@@ -326,7 +326,7 @@ export function Config({ engine }: { engine: EngineState | null }) {
     );
   }
   const off = locked.value;
-  const pinned = abbreviate(engine.pinnedModelDir, engine.home);
+  const pinned = abbreviateHome(engine.pinnedModelDir, engine.home);
   const select = (field: "host" | "kvQuant" | "logLevel") =>
     `${field === "host" ? "w9" : "w7"}${
       changed.value.has(field) ? " changed" : ""

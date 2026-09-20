@@ -5,8 +5,8 @@
 // keeps between samples (values that are per request and null in between).
 // Pure; tested in test/ui/tiles.test.ts.
 
-import type { Series } from "../../server/monitor/history.ts";
-import type { Sample } from "../../server/monitor/sample.ts";
+import type { Series } from "../../shared/history.ts";
+import type { Sample } from "../../shared/sample.ts";
 import { count, DASH, gb, num, size, sizeText } from "../format.ts";
 import { inView, inViewMean, rangeTotal, whole } from "./range.ts";
 

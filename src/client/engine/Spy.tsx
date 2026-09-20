@@ -5,7 +5,7 @@
 // line. Its job is always on the host serving this page, so it is gated
 // by the manager's lock and never by where mlx-serve is.
 
-import type { SpyState } from "../../server/engine/manage.ts";
+import type { SpyState } from "../../shared/engine.ts";
 import { DASH, duration, num } from "../format.ts";
 import { Copy } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";

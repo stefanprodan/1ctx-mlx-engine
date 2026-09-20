@@ -4,8 +4,8 @@
 // The raw 1h series and the live samples that extend it. Pure; tested in
 // test/ui/series.test.ts.
 
-import type { Series } from "../../server/monitor/history.ts";
-import type { Sample } from "../../server/monitor/sample.ts";
+import type { Series } from "../../shared/history.ts";
+import type { Sample } from "../../shared/sample.ts";
 import { DASH } from "../format.ts";
 
 const HOUR = 3_600_000;

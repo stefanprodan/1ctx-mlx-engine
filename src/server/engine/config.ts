@@ -4,8 +4,12 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
-import type { ConfigField, ConfigIssue, EngineConfig } from "./manage.ts";
-import type { CacheLimits } from "./types.ts";
+import type {
+  ConfigField,
+  ConfigIssue,
+  EngineConfig,
+} from "../../shared/engine.ts";
+import type { CacheLimits } from "../../shared/models.ts";
 
 // mlx-serve's own size grammar (parseSizeArg in main.zig): <n>{KB,MB,GB},
 // a bare number of bytes, or "0"/"off". Binary units, as the engine uses.
@@ -17,18 +21,6 @@ export function parseSize(s: string): number | null {
   const unit = (m[2] ?? "B").toUpperCase();
   const mult = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 }[unit] ?? 1;
   return Number(m[1]) * mult;
-}
-
-export function expandHome(path: string, home: string): string {
-  if (path === "~") return home;
-  if (path.startsWith("~/")) return `${home}/${path.slice(2)}`;
-  return path;
-}
-
-export function abbreviateHome(path: string, home: string): string {
-  if (path === home) return "~";
-  if (path.startsWith(`${home}/`)) return `~/${path.slice(home.length + 1)}`;
-  return path;
 }
 
 function loopback(host: string): boolean {

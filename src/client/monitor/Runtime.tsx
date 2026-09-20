@@ -6,9 +6,10 @@
 // snapshot (the static half). For a remote engine the host facts describe
 // this machine, not the engine's, and the head says so.
 
-import type { Sample } from "../../server/monitor/sample.ts";
+import type { Sample } from "../../shared/sample.ts";
+import type { Snapshot } from "../../shared/socket.ts";
 import { DASH, diskSize, duration, gb, num, sizeText } from "../format.ts";
-import { busy, connection, type Snapshot } from "../store.ts";
+import { busy, connection } from "../store.ts";
 import { engineLocal, engineName, runAction } from "./actions.ts";
 
 // a fact with an optional note; the dash carries no note

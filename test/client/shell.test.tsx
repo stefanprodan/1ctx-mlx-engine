@@ -9,7 +9,8 @@ import { render } from "preact-render-to-string";
 import { Footer } from "../../src/client/shell/Footer.tsx";
 import { Header } from "../../src/client/shell/Header.tsx";
 import { Pill } from "../../src/client/shell/Pill.tsx";
-import { connection, type Snapshot, snapshot } from "../../src/client/store.ts";
+import { connection, snapshot } from "../../src/client/store.ts";
+import type { Snapshot } from "../../src/shared/socket.ts";
 
 describe("shell", () => {
   test("header marks the current page and carries no pill", () => {

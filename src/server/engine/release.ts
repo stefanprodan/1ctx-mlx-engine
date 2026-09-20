@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Release, ReleaseCheck } from "./manage.ts";
+import type { Release, ReleaseCheck } from "../../shared/engine.ts";
 
 export const ENGINE_ASSET = "mlx-serve-bin-macos-arm64.tar.gz";
 export const SPY_ASSET = "mlx-spy_darwin_arm64.tar.gz";

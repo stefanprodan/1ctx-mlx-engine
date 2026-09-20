@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import {
-  DAY_MS,
-  History,
-  RING_SIZE,
-} from "../../../src/server/monitor/history.ts";
-import type { Sample } from "../../../src/server/monitor/sample.ts";
+import { History, RING_SIZE } from "../../../src/server/monitor/history.ts";
+import { DAY_MS } from "../../../src/shared/history.ts";
+import type { Sample } from "../../../src/shared/sample.ts";
 
 function sample(t: number, over: Partial<Sample> = {}): Sample {
   return {

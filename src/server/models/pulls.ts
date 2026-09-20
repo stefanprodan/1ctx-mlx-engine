@@ -8,29 +8,8 @@
 // second, so a crash loses at most that.
 
 import type { Database } from "bun:sqlite";
+import type { Pull, PullStatus } from "../../shared/downloads.ts";
 import type { HubFile } from "./hub.ts";
-
-export type PullStatus = "queued" | "running" | "done" | "failed" | "cancelled";
-
-export type Pull = {
-  id: number;
-  repo: string;
-  revision: string;
-  dir: string;
-  status: PullStatus;
-  bytesTotal: number;
-  bytesDone: number;
-  filesTotal: number;
-  filesDone: number;
-  // the file in flight, null between files and when not running
-  file: string | null;
-  error: string | null;
-  createdAt: number;
-  updatedAt: number;
-  finishedAt: number | null;
-  // bytes per second over the last seconds; only while running, never stored
-  speedBps: number | null;
-};
 
 export type PullFile = HubFile & {
   pullId: number;

@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { modelsKeyOf, pageOf, replaced } from "../../src/client/store.ts";
-import type { ModelInfo } from "../../src/server/engine/types.ts";
+import type { ModelInfo } from "../../src/shared/models.ts";
 
 const model = (over: Partial<ModelInfo> = {}): ModelInfo => ({
   id: "org/model",

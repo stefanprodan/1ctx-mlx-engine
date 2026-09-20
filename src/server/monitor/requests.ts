@@ -10,29 +10,8 @@
 // numbers (two completions in one tick merge into one entry that says so).
 // With one request in flight, the common case, the picture is exact.
 
+import type { InFlight, LastRequest } from "../../shared/requests.ts";
 import type { Reading } from "./sample.ts";
-
-export type InFlight = {
-  startedAt: number; // unix ms, the oldest request still open
-  prefillMs: number; // engine time spent with a prefill running
-  decodeMs: number; // engine time spent generating with no prefill
-};
-
-export type LastRequest = {
-  startedAt: number | null; // null when the start was not seen (restart)
-  finishedAt: number;
-  count: number; // requests that completed in the same tick
-  cancelled: boolean;
-  generated: number; // tokens
-  promptTokens: number; // the prompt, cached or not (0 when unknown)
-  prefillTokens: number; // prompt tokens computed (not cached)
-  prefillMs: number; // the engine's own timings
-  decodeMs: number;
-  ttftMs: number | null;
-  // the engine reports nothing per model: the sampler fills this in from
-  // the models resident at the finish (see attributeModel), null when none
-  model?: string | null;
-};
 
 // Which resident model served a request. The engine does not say, so the
 // answer is a guess: the only resident one; among several, the user's

@@ -18,13 +18,13 @@ import {
   EngineManagerError,
   MANAGED_LABEL,
 } from "../../../src/server/engine/install.ts";
-import type { EngineConfig } from "../../../src/server/engine/manage.ts";
 import { EngineStore } from "../../../src/server/engine/store.ts";
 import { ExclusiveLock } from "../../../src/server/lib/lock.ts";
 import type { Log } from "../../../src/server/lib/log.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import type { LaunchdInfo } from "../../../src/server/service/launchd.ts";
 import { plistPath, renderPlist } from "../../../src/server/service/plist.ts";
+import type { EngineConfig } from "../../../src/shared/engine.ts";
 
 const servers: Bun.Server<unknown>[] = [];
 const roots: string[] = [];

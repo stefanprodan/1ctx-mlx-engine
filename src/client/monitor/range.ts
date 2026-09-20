@@ -4,7 +4,7 @@
 // Totals and means over the loaded range of the history series. Pure;
 // tested in test/ui/range.test.ts.
 
-import type { Series } from "../../server/monitor/history.ts";
+import type { Series } from "../../shared/history.ts";
 import { DASH } from "../format.ts";
 
 // whole tok/s; anything under one that is not zero reads as 1

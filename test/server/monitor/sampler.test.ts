@@ -5,16 +5,15 @@ import {
   parseModels,
 } from "../../../src/server/engine/mlxserve.ts";
 import type {
-  Capability,
   Engine,
   EngineMetrics,
-  ModelInfo,
 } from "../../../src/server/engine/types.ts";
 import type { HostProbes } from "../../../src/server/host/types.ts";
 import type { Log } from "../../../src/server/lib/log.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import { Sampler } from "../../../src/server/monitor/sampler.ts";
 import { handle, isRange, snapshot } from "../../../src/server/web/index.ts";
+import type { Capability, ModelInfo } from "../../../src/shared/models.ts";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
 

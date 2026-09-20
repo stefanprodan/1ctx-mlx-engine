@@ -6,29 +6,12 @@
 // src/engine/, not a rewrite. Names are normalised here: adapters translate
 // their server's counter names into these fields.
 
-export type EngineId = "mlxserve" | "omlx";
-
-export type Capability =
-  | "load"
-  | "unload"
-  | "default"
-  | "restart"
-  | "diskClear"
-  | "rescan";
-
-export type ModelInfo = {
-  id: string;
-  loaded: boolean;
-  state: string; // engine's own word: "ready", "unloaded", "loading", ...
-  bytesResident: number;
-  bytesOnDisk: number;
-  contextLength: number | null;
-  capabilities: string[]; // engine words: chat, tool_use, vision, ...
-  // undefined when the engine does not expose which model is its default
-  isDefault?: boolean;
-  // mlx-spy's own mark: the one model the user calls their daily driver
-  favorite?: boolean;
-};
+import type {
+  CacheLimits,
+  Capability,
+  EngineId,
+  ModelInfo,
+} from "../../shared/models.ts";
 
 // Monotonic counters. All reset to zero when the engine process restarts;
 // the sampler detects that as a new epoch.
@@ -74,13 +57,6 @@ export type EngineMetrics = {
   counters: EngineCounters;
   gauges: EngineGauges;
   histograms: EngineHistograms;
-};
-
-// The engine's cache budgets, per resident model (mlx-serve applies both to
-// each model it loads). 0 means that tier is off. Null when unknown.
-export type CacheLimits = {
-  hotBytes: number;
-  diskBytes: number;
 };
 
 // What the running engine says about itself when asked directly: its build

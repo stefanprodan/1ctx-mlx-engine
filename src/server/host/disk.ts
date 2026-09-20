@@ -8,7 +8,7 @@
 
 import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { DiskDir } from "./types.ts";
+import type { DiskDir } from "../../shared/host.ts";
 
 async function treeBytes(dir: string): Promise<number> {
   let total = 0;

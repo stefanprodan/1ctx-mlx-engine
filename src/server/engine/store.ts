@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Database } from "bun:sqlite";
-import type { EngineConfig, InstallRecord, OperationKind } from "./manage.ts";
+import type {
+  EngineConfig,
+  InstallRecord,
+  OperationKind,
+} from "../../shared/engine.ts";
 import type { CachedReleaseCheck } from "./release.ts";
 
 export type EngineJournal = {

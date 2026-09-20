@@ -13,6 +13,20 @@ import {
 } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import type {
+  ConfigIssue,
+  EngineConfig,
+  EnginePageState,
+  EngineState,
+  Failure,
+  InstallRecord,
+  Operation,
+  OperationKind,
+  ReleaseCheck,
+  ServiceBody,
+  ServiceState,
+  SpyState,
+} from "../../shared/engine.ts";
 import { diskSpace } from "../host/info.ts";
 import type { HostProbes } from "../host/types.ts";
 import {
@@ -38,20 +52,6 @@ import {
 } from "../service/launchd.ts";
 import { type PlistSpec, plistPath } from "../service/plist.ts";
 import { configToArgs, DEFAULTS, validateConfig } from "./config.ts";
-import type {
-  ConfigIssue,
-  EngineConfig,
-  EnginePageState,
-  EngineState,
-  Failure,
-  InstallRecord,
-  Operation,
-  OperationKind,
-  ReleaseCheck,
-  ServiceBody,
-  ServiceState,
-  SpyState,
-} from "./manage.ts";
 import {
   type CachedReleaseCheck,
   coreVersion,

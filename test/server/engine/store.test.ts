@@ -3,9 +3,9 @@
 
 import { describe, expect, test } from "bun:test";
 import { DEFAULTS } from "../../../src/server/engine/config.ts";
-import type { InstallRecord } from "../../../src/server/engine/manage.ts";
 import { EngineStore } from "../../../src/server/engine/store.ts";
 import { History } from "../../../src/server/monitor/history.ts";
+import type { InstallRecord } from "../../../src/shared/engine.ts";
 
 const PINNED = "/Users/x/.mlx-spy/models";
 

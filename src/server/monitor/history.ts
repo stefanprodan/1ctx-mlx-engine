@@ -7,46 +7,22 @@
 // version one so graphs survive reloads and every tab sees the same series.
 
 import { Database } from "bun:sqlite";
+import {
+  DAY_MS,
+  RANGES,
+  type Range,
+  type Series,
+} from "../../shared/history.ts";
+import type { LastRequest } from "../../shared/requests.ts";
+import type { Sample } from "../../shared/sample.ts";
 import type { EngineCounters, EngineProps } from "../engine/types.ts";
-import type { LastRequest } from "./requests.ts";
-import type { Sample } from "./sample.ts";
 
 export const RING_SIZE = 3600; // one hour at 1 Hz
 export const REQUESTS_KEPT = 50; // finished requests the Requests page lists
-export const DAY_MS = 86_400_000;
-
-export const RANGES = {
-  "1h": 3_600_000,
-  "6h": 21_600_000,
-  "24h": DAY_MS,
-  "7d": 7 * DAY_MS,
-} as const;
-export type Range = keyof typeof RANGES;
 
 // About this many points per series regardless of range: 1h stays raw,
 // longer ranges are averaged into buckets so a 7 day query is not 600k rows.
 const TARGET_POINTS = 900;
-
-// Columnar, ready for uPlot: one array per series, aligned on `t`.
-// Only what the page reads back is persisted. The memory, host and disk
-// gauges are live-only: the tiles read them off the Sample and no chart
-// plots them, so storing them at 1 Hz for 7 days bought nothing.
-export type Series = {
-  t: number[];
-  engineUp: (0 | 1)[];
-  epoch: number[];
-  decodeTps: (number | null)[];
-  prefillTps: (number | null)[];
-  cacheHitPct: (number | null)[];
-  cacheTokenPct: (number | null)[];
-  ttftMs: (number | null)[]; // mean over the bucket, weighted by ttftN
-  ttftN: number[]; // requests the mean covers
-  generationTokens: number[];
-  requestsTotal: number[];
-  promptTokens: number[];
-  cachedPromptTokens: number[];
-  requestsCancelled: number[];
-};
 
 // What the sampler needs back after a restart to keep the epoch honest:
 // the last counters it saw, so the first new reading can be compared.

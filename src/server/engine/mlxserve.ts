@@ -14,14 +14,13 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { EngineConfig } from "./manage.ts";
+import type { EngineConfig } from "../../shared/engine.ts";
+import type { Capability, ModelInfo } from "../../shared/models.ts";
 import type {
-  Capability,
   Engine,
   EngineMetrics,
   EngineProps,
   HistogramSummary,
-  ModelInfo,
 } from "./types.ts";
 
 // Every request from the sampler must fail fast: a hung engine must not

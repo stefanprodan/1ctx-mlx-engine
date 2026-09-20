@@ -18,15 +18,15 @@ import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type {
-  Capability,
   Engine,
   EngineMetrics,
-  ModelInfo,
 } from "../../../src/server/engine/types.ts";
 import type { Log } from "../../../src/server/lib/log.ts";
 import { PullError, PullRunner } from "../../../src/server/models/pull.ts";
-import { type Pull, PullStore } from "../../../src/server/models/pulls.ts";
+import { PullStore } from "../../../src/server/models/pulls.ts";
 import { History } from "../../../src/server/monitor/history.ts";
+import type { Pull } from "../../../src/shared/downloads.ts";
+import type { Capability, ModelInfo } from "../../../src/shared/models.ts";
 
 const testLog = (write: (line: string) => void): Log =>
   Object.assign(write, { warn: write, error: write });

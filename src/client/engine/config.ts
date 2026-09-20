@@ -12,7 +12,8 @@ import type {
   EngineConfig,
   KvQuant,
   LogLevel,
-} from "../../server/engine/manage.ts";
+} from "../../shared/engine.ts";
+import { abbreviateHome, expandHome } from "../../shared/paths.ts";
 
 export type Form = {
   host: BindHost;
@@ -44,21 +45,6 @@ export const KV_QUANTS: KvQuant[] = ["off", "4", "8", "turbo2", "turbo4"];
 export const LOG_LEVELS: LogLevel[] = ["info", "warn", "error", "debug"];
 export const MAX_MODEL_DIRS = 8;
 
-// launchd does not expand ~, so the config holds absolute paths; the page
-// shows and accepts the short form because the prefix is the same on
-// every row and says nothing.
-export function abbreviate(path: string, home: string): string {
-  if (!home) return path;
-  if (path === home) return "~";
-  return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
-}
-
-export function expand(path: string, home: string): string {
-  const p = path.trim();
-  if (p === "~") return home;
-  return p.startsWith("~/") ? `${home}${p.slice(1)}` : p;
-}
-
 const text = (value: number | string | null) =>
   value === null ? "" : String(value);
 
@@ -66,7 +52,7 @@ export function toForm(config: EngineConfig, home: string): Form {
   return {
     host: config.host,
     port: String(config.port),
-    modelDirs: config.modelDirs.map((d) => abbreviate(d, home)),
+    modelDirs: config.modelDirs.map((d) => abbreviateHome(d, home)),
     prefixCacheMem: text(config.prefixCacheMem),
     prefixCacheDisk: text(config.prefixCacheDisk),
     prefixCacheEntries: text(config.prefixCacheEntries),
@@ -130,7 +116,7 @@ export function toConfig(
     host: form.host,
     port: numbers.port ?? 0,
     modelDirs: form.modelDirs
-      .map((d) => expand(d, home))
+      .map((d) => expandHome(d, home))
       .filter((d) => d !== ""),
     prefixCacheMem: size(form.prefixCacheMem),
     prefixCacheDisk: size(form.prefixCacheDisk),
