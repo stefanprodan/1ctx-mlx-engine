@@ -165,4 +165,16 @@ describe("parseTimings", () => {
     expect(() => parseTimings({ choices: [] })).toThrow("no timings");
     expect(() => parseTimings(null)).toThrow("no timings");
   });
+
+  test("a missing or impossible figure is an error, never a 0", () => {
+    const { timings } = chatFixture;
+    const without = { ...timings, predicted_ms: undefined };
+    expect(() => parseTimings({ ...chatFixture, timings: without })).toThrow(
+      "bad timings.predicted_ms",
+    );
+    const negative = { ...timings, cached_n: -1 };
+    expect(() => parseTimings({ ...chatFixture, timings: negative })).toThrow(
+      "bad timings.cached_n",
+    );
+  });
 });

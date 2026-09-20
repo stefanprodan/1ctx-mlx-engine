@@ -65,7 +65,8 @@ A row opens to the rest: the preset, the share of the later turns' prompt
 tokens that came from the cache, the engine process footprint at its
 highest (sampled once a second), the latency of the warm turns, decode on the
 first and on the last turn (the slope with depth), the spread between
-repetitions, MLX's peak active memory, and every turn as the engine stated
+repetitions (half the distance from the slowest to the fastest, as a share
+of the median), MLX's peak active memory from the first restart on, and every turn as the engine stated
 it. The turns are where a cache problem shows: a `cached` that stops
 growing from one turn to the next is a hot cache budget too small for the
 session. Copy report puts all of it on the clipboard as plain text.
@@ -99,6 +100,7 @@ only left out of the first and last turn rates. The turns table marks it.
 
 Tick two runs. The second ticked shows its change against the first under
 each figure, green when better and amber when worse; under one percent
-reads as the same. Runs compare only when they replayed the same session:
-the same preset and the same generator, which the script id in the opened
-row names.
+reads as the same. Only finished runs compare, and only when they replayed
+the same session: the same preset, generator and request settings, and the
+same sizes, which a model with a small context window shrinks. The script id
+in the opened row names all of that.

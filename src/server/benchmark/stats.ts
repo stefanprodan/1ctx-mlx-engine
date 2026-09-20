@@ -74,7 +74,7 @@ function figure(values: (number | null)[]): Figure {
   if (mid === null) return { median: null, spreadPct: null };
   const spread =
     seen.length > 1 && mid > 0
-      ? ((Math.max(...seen) - Math.min(...seen)) / mid) * 100
+      ? ((Math.max(...seen) - Math.min(...seen)) / 2 / mid) * 100
       : null;
   return { median: mid, spreadPct: spread };
 }

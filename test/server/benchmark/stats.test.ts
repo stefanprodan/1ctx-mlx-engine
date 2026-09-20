@@ -94,7 +94,8 @@ test("the figure is the median over the repetitions, with the spread", () => {
   });
   const s = summarize([rep(1, 1000), rep(2, 1280), rep(3, 1600)]);
   expect(s.decodeTps.median).toBe(200);
-  expect(s.decodeTps.spreadPct).toBeCloseTo(((256 - 160) / 200) * 100, 6);
+  // half the range: what a plus-minus says
+  expect(s.decodeTps.spreadPct).toBeCloseTo(((256 - 160) / 2 / 200) * 100, 6);
 });
 
 test("a clean run has no suspects", () => {

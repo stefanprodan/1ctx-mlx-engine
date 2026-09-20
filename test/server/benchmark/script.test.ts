@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, test } from "bun:test";
+import { scriptHash } from "../../../src/server/benchmark/hash.ts";
 import {
   buildSession,
   piecesOf,
   ratiosOf,
   requestFor,
-  scriptHash,
   targetsOf,
   turnsOf,
 } from "../../../src/server/benchmark/script.ts";
@@ -110,7 +110,17 @@ test("a turn carries the calls and results before it, and only those", () => {
 });
 
 test("the hash names the workload, not the run", () => {
-  expect(scriptHash("40K")).toBe(scriptHash("40K"));
-  expect(scriptHash("40K")).not.toBe(scriptHash("20K"));
-  expect(scriptHash("40K")).toMatch(/^[0-9a-f]{16}$/);
+  const hash = (
+    preset: "20K" | "40K",
+    window: number | null = null,
+    max = 256,
+  ) => scriptHash(preset, window, max);
+  expect(hash("40K")).toBe(hash("40K"));
+  expect(hash("40K")).not.toBe(hash("20K"));
+  expect(hash("40K")).toMatch(/^[0-9a-f]{16}$/);
+  // a window that fits the session changes nothing; one that shrinks it,
+  // or another generation length, is another workload
+  expect(hash("40K", 262_144)).toBe(hash("40K"));
+  expect(hash("40K", 40_960)).not.toBe(hash("40K"));
+  expect(hash("40K", null, 512)).not.toBe(hash("40K"));
 });

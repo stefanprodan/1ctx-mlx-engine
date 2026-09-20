@@ -1,6 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Fragment } from "preact";
 import { useState } from "preact/hooks";
 import type { Benchmark } from "../../shared/benchmark.ts";
 import { DASH, sizeText } from "../format.ts";
@@ -99,7 +100,7 @@ function RunRow({
           name={`compare-${run.id}`}
           aria-label="Compare"
           checked={ticked}
-          disabled={run.summary === null}
+          disabled={run.status !== "done"}
           onClick={(e) => e.stopPropagation()}
           onChange={() => togglePick(run.id)}
         />
@@ -188,7 +189,8 @@ export function Runs() {
 
   const toggle = (id: number) => {
     setOpen((current) => (current === id ? null : id));
-    if (!details.value[id]) fetchDetail(id);
+    // one read while its run went on holds the turns it had then
+    if (details.value[id]?.benchmark.status !== "done") fetchDetail(id);
   };
 
   return (
@@ -207,9 +209,8 @@ export function Runs() {
         </thead>
         <tbody>
           {list.map((run) => (
-            <>
+            <Fragment key={run.id}>
               <RunRow
-                key={run.id}
                 run={run}
                 baseline={
                   run.id === second && baseline && comparable(run, baseline)
@@ -219,8 +220,8 @@ export function Runs() {
                 open={open === run.id}
                 onToggle={() => toggle(run.id)}
               />
-              {open === run.id && <Detail key={`d${run.id}`} run={run} />}
-            </>
+              {open === run.id && <Detail run={run} />}
+            </Fragment>
           ))}
         </tbody>
       </table>

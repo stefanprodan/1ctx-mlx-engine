@@ -194,6 +194,8 @@ src/server/
   benchmark/script.ts
                      pure: the generated agentic session a run replays,
                      seeded, the same for every model but for its tag
+  benchmark/hash.ts  pure: the name of a workload, what two runs share to
+                     compare
   benchmark/stats.ts pure: the figures and the suspect rules over the
                      engine's timings
   benchmark/store.ts benchmarks and benchmark_turns over the same sqlite file

@@ -137,11 +137,13 @@ peakMemoryBytes, peakActiveBytes, startedAt, finishedAt}`. `status` is
 `running`, `done`, `failed` (the reason in `error`), `cancelled` or
 `interrupted` (1ctx-mlx-engine went away mid-run); `phase` is where it is
 or where it ended: `fit`, `prepare`, `warmup`, `turns`, `finish`. Two runs
-compare when their `scriptHash` is the same. The peaks are the engine
-process footprint and MLX's active memory, sampled once a second.
+compare when both are `done` and their `scriptHash` is the same: it covers
+the last turn's whole request and the sizes after a small context window
+shrank them. The peaks are the engine process footprint and MLX's active
+memory, sampled once a second from the run's first restart on.
 
-`summary` holds the figures, each `{median, spreadPct}` over the
-repetitions and `null` where nothing was observed: `coldLatencyMs` and
+`summary` holds the figures, each `{median, spreadPct}` (half the range
+over the median, in percent) over the repetitions and `null` where nothing was observed: `coldLatencyMs` and
 `coldPrefillTps` (the first turn, nothing cached), `warmLatencyMs` and
 `warmPrefillTps` (the later turns; a turn that prefilled under 256 tokens
 is left out of the rate), `decodeTps` with `decodeFirstTps` and

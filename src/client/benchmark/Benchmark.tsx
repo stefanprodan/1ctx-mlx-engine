@@ -4,7 +4,7 @@
 // The Benchmark page: run a scripted agent session against a model and
 // compare the runs. It measures the engine, never the answers.
 
-import { effect } from "@preact/signals";
+import { computed, effect } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";
@@ -15,6 +15,9 @@ import { comparable } from "./report.ts";
 import { fetchRuns, runs, picked as ticked } from "./state.ts";
 import "./benchmark.css";
 
+// the run's id, not its progress: every turn replaces the progress object
+const activeId = computed(() => benchmark.value?.benchmark.id ?? null);
+
 export function Benchmark() {
   // The list is read again whenever it can have changed: a run started or
   // ended, in this tab, another one or a script, and every snapshot, which
@@ -23,7 +26,7 @@ export function Benchmark() {
   useEffect(() => {
     const stop = effect(() => {
       benchmarksEnded.value;
-      benchmark.value?.benchmark.id;
+      activeId.value;
       fetchRuns();
     });
     const unlisten = listen((message) => {

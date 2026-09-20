@@ -26,12 +26,12 @@ import type { Sample } from "../../shared/sample.ts";
 import type { Engine } from "../engine/types.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
 import type { Log } from "../lib/log.ts";
+import { scriptHash } from "./hash.ts";
 import {
   buildSession,
   piecesOf,
   ratiosOf,
   requestFor,
-  scriptHash,
   targetsOf,
   turnsOf,
 } from "./script.ts";
@@ -170,6 +170,10 @@ export class BenchmarkRunner {
     if (holder !== null) {
       throw new BenchmarkError(409, `${holder} is still running`);
     }
+    // a run whose last write failed has let the lock go and is still here
+    if (this.progress !== null) {
+      throw new BenchmarkError(409, `${LOCK_LABEL} is still running`);
+    }
     const benchmark = this.deps.store.create({
       status: "running",
       phase: "fit",
@@ -181,7 +185,7 @@ export class BenchmarkRunner {
       repetitions: this.repetitions,
       maxTokens: this.maxTokens,
       schema: SCHEMA,
-      scriptHash: scriptHash(preset),
+      scriptHash: scriptHash(preset, known.contextLength, this.maxTokens),
       firstPromptTokens: null,
       ...this.deps.facts(),
       summary: null,
@@ -209,7 +213,10 @@ export class BenchmarkRunner {
     const { model, preset } = progress.benchmark;
     let peakMemory = 0;
     let peakActive = 0;
+    // from the first restart on: what was resident before is not the run's
+    let watching = false;
     const stopWatching = this.deps.sampler.onSample((s) => {
+      if (!watching) return;
       peakMemory = Math.max(peakMemory, s.mem.procFootprint);
       peakActive = Math.max(peakActive, s.mem.mlxActive);
     });
@@ -217,6 +224,10 @@ export class BenchmarkRunner {
     const target = targetsOf(preset, window, this.maxTokens).first;
     this.deps.log(`benchmark ${model} (${preset}): started`);
     try {
+      // The route's idle check reads the sampler's last second; a request
+      // that began since would die in the restart below.
+      if (await this.serving())
+        throw new Error("The engine is serving a request");
       // The fit: the generated pieces tokenize differently (a JSON
       // inventory worse than a YAML list) and every tokenizer differs, so
       // each piece of a draft session is counted by the model's own
@@ -241,6 +252,9 @@ export class BenchmarkRunner {
         this.step(progress, "prepare", rep, 0);
         await this.deps.prepare.restart();
         await this.healthy(signal);
+        watching = true;
+        // a fresh process: anything past the warmup and the turns is not ours
+        const before = await this.requestCount();
         await this.deps.prepare.clearDisk();
         await this.deps.engine.load(model, true);
         await this.deps.sampler.refreshModels();
@@ -265,7 +279,6 @@ export class BenchmarkRunner {
           window,
           maxTokens: this.maxTokens,
         });
-        const before = await this.requestCount();
         for (let turn = 1; turn <= progress.benchmark.turns; turn++) {
           this.step(progress, "turns", rep, turn);
           const timings = await this.chat(
@@ -281,11 +294,14 @@ export class BenchmarkRunner {
           this.publish(progress);
         }
         const served = (await this.requestCount()) - before;
+        const own = progress.benchmark.turns + 1;
         // fewer means the counters went back: the engine restarted under us
-        if (served < progress.benchmark.turns) {
+        if (served < own) {
           throw new Error("the engine restarted during the run");
         }
-        if (served > progress.benchmark.turns) otherRequests = true;
+        // the counters only: the running gauge drops a moment after the
+        // engine has answered, so it reads 1 right after our own last turn
+        if (served > own) otherRequests = true;
       }
       this.end(progress, "done", null);
     } catch (err) {
@@ -308,21 +324,30 @@ export class BenchmarkRunner {
           : [];
       b.peakMemoryBytes = peakMemory > 0 ? peakMemory : null;
       b.peakActiveBytes = peakActive > 0 ? peakActive : null;
-      this.deps.store.finish(b);
-      this.deps.log(
-        `benchmark ${model} (${preset}): ${b.status}` +
-          (b.error ? ` (${b.error})` : ""),
-      );
-      this.progress = null;
-      this.controller = null;
-      await this.deps.sampler.refreshModels().catch(() => {});
-      this.publish(progress);
+      // a write that fails must not leave a run that never ends in memory
+      try {
+        this.deps.store.finish(b);
+        this.deps.log(
+          `benchmark ${model} (${preset}): ${b.status}` +
+            (b.error ? ` (${b.error})` : ""),
+        );
+      } finally {
+        this.progress = null;
+        this.controller = null;
+        await this.deps.sampler.refreshModels().catch(() => {});
+        this.publish(progress);
+      }
     }
   }
 
   private async chat(body: unknown, signal: AbortSignal) {
     if (signal.aborted) throw new Cancelled();
     return this.deps.engine.chat!(body, signal);
+  }
+
+  private async serving(): Promise<boolean> {
+    const { gauges } = await this.deps.engine.metrics();
+    return gauges.requestsRunning + gauges.requestsWaiting > 0;
   }
 
   private async requestCount(): Promise<number> {

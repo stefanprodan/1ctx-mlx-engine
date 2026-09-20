@@ -107,17 +107,25 @@ export function parseModels(body: any): ModelInfo[] {
 // for tests.
 export function parseTimings(body: any): ChatTimings {
   const t = body?.timings;
-  if (typeof t?.prompt_n !== "number" || typeof t?.predicted_n !== "number") {
+  if (typeof t !== "object" || t === null) {
     throw new Error("/v1/chat/completions: no timings");
   }
+  // a missing figure read as 0 would end as a wrong rate, not as an error
+  const field = (name: string): number => {
+    const value = t[name];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+      throw new Error(`/v1/chat/completions: bad timings.${name}`);
+    }
+    return value;
+  };
   const finish = body?.choices?.[0]?.finish_reason;
   return {
-    promptN: num(t.prompt_n),
-    cachedN: num(t.cached_n),
-    promptMs: num(t.prompt_ms),
-    predictedN: num(t.predicted_n),
-    predictedMs: num(t.predicted_ms),
-    tokenizeMs: num(t.tokenize_ms),
+    promptN: field("prompt_n"),
+    cachedN: field("cached_n"),
+    promptMs: field("prompt_ms"),
+    predictedN: field("predicted_n"),
+    predictedMs: field("predicted_ms"),
+    tokenizeMs: field("tokenize_ms"),
     finishReason: typeof finish === "string" ? finish : null,
   };
 }

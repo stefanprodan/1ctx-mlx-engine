@@ -15,7 +15,7 @@ import type { BenchmarkPreset } from "../../shared/benchmark.ts";
 
 // bump when the generated text or the sizes change: runs with different
 // hashes do not compare
-const GENERATOR = 1;
+export const GENERATOR = 1;
 
 // the generated text is YAML and JSON heavy; the fit replaces the guess
 const CHARS_PER_TOKEN = 2.6;
@@ -223,18 +223,6 @@ export function requestFor(
 }
 
 // Identifies the workload: the generator, the preset's sizes and the text.
-export function scriptHash(preset: BenchmarkPreset): string {
-  const session = buildSession({
-    preset,
-    tag: "",
-    ratios: null,
-    window: null,
-    maxTokens: 0,
-  });
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(JSON.stringify({ GENERATOR, preset, session }));
-  return hasher.digest("hex").slice(0, 16);
-}
 
 const USER =
   "Audit the delivery pipeline of this cluster: list what is deployed, " +

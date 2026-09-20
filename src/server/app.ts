@@ -179,7 +179,7 @@ export async function runApp(
       if (manager.state().mode !== "managed") {
         return "A benchmark only runs on an engine 1ctx-mlx-engine manages";
       }
-      if (downloads.running()) return "A download is running";
+      if (downloads.busy()) return "A download is running";
       const latest = history.latest();
       if (!latest?.engineUp) return "The engine is not running";
       if (latest.requestsRunning + latest.requestsWaiting > 0) {

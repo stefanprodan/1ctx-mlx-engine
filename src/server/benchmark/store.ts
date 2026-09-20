@@ -79,14 +79,17 @@ export class BenchmarkStore {
     return rows.length;
   }
 
+  // the record carries its id, so the row and the record land together
   create(benchmark: Omit<Benchmark, "id">): Benchmark {
-    const row = this.db
-      .query(
-        `INSERT INTO benchmarks (status, started_at, record)
-         VALUES (?, ?, '{}') RETURNING id`,
-      )
-      .get(benchmark.status, benchmark.startedAt) as { id: number };
-    return this.save({ ...benchmark, id: row.id });
+    return this.db.transaction(() => {
+      const row = this.db
+        .query(
+          `INSERT INTO benchmarks (status, started_at, record)
+           VALUES (?, ?, '{}') RETURNING id`,
+        )
+        .get(benchmark.status, benchmark.startedAt) as { id: number };
+      return this.save({ ...benchmark, id: row.id });
+    })();
   }
 
   save(benchmark: Benchmark): Benchmark {

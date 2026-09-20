@@ -105,7 +105,7 @@ export function Select<T extends string>(props: Props<T>) {
         aria-label={label}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={list}
+        aria-controls={open ? list : undefined}
         aria-activedescendant={open ? `${list}-${active}` : undefined}
         aria-invalid={props.invalid ? "true" : undefined}
         aria-describedby={props.describedBy}

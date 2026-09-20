@@ -112,6 +112,11 @@ export class Downloader {
     return this.active ? this.get(this.active.id) : null;
   }
 
+  // also one whose Hub listing is still pending: it is about to write
+  busy(): boolean {
+    return this.active !== null || this.starting.size > 0;
+  }
+
   // Downloads left queued or running by the previous process continue.
   resume() {
     for (const download of this.deps.store.unfinished()) {
@@ -162,6 +167,9 @@ export class Downloader {
     } finally {
       this.starting.delete(repo);
     }
+    // again: a benchmark can have taken the lock while the Hub answered
+    const since = this.deps.blocked?.();
+    if (since) throw new DownloadError(409, since);
     const dir = join(this.deps.modelDir, ...repo.split("/"));
     const download = this.deps.store.create(
       repo,

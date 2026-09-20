@@ -19,10 +19,20 @@ export const details = signal<Record<number, BenchmarkDetail>>({});
 export const picked = signal<number[]>([]);
 export const failure = signal<string | null>(null);
 
+// an answer that a later read has overtaken is dropped
+let reads = 0;
+
 export function fetchRuns() {
+  const read = ++reads;
   void api<Benchmark[]>("/api/benchmarks")
     .then((list) => {
+      if (read !== reads) return;
       runs.value = list;
+      // a detail read while its run went on is stale once the run ends
+      for (const b of list) {
+        const held = details.value[b.id]?.benchmark;
+        if (held && held.status !== b.status) fetchDetail(b.id);
+      }
       const ids = new Set(list.map((b) => b.id));
       picked.value = picked.value.filter((id) => ids.has(id));
     })

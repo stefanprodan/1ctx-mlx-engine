@@ -40,7 +40,9 @@ function fakeEngine() {
     failAt: 0,
     chats: 0,
     extraRequests: 0,
+    serving: 0,
     up: true,
+    onClear: () => {},
   };
   const engine = {
     id: "mlxserve" as const,
@@ -51,6 +53,8 @@ function fakeEngine() {
       const m = parseMetrics(metricsFixture);
       m.counters.requestsSuccess = served + state.extraRequests;
       m.counters.requestsCancelled = 0;
+      m.gauges.requestsRunning = state.serving;
+      m.gauges.requestsWaiting = 0;
       return m;
     },
     load: async (id: string, asDefault: boolean) => {
@@ -128,7 +132,10 @@ function setup(over: Partial<RunnerDeps> = {}) {
         fake.state.calls.push("restart");
         fake.restarted();
       },
-      clearDisk: async () => void fake.state.calls.push("clearDisk"),
+      clearDisk: async () => {
+        fake.state.calls.push("clearDisk");
+        fake.state.onClear();
+      },
     },
     refusal: () => null,
     facts: () => ({
@@ -161,7 +168,9 @@ test("a run prepares every repetition on its own, in order", async () => {
   expect(started.status).toBe("running");
   expect(t.lock.running()).toBe("benchmark");
   expect(t.runner.active()?.benchmark.id).toBe(started.id);
-  t.sample(5e9, 4e9);
+  // what was resident before the first restart is not the run's peak
+  t.sample(9e9, 9e9);
+  t.state.onClear = () => t.sample(5e9, 4e9);
   await t.runner.idle();
 
   const rep = [
@@ -298,6 +307,48 @@ test("requests from somebody else make the run suspect", async () => {
   stop();
   const { benchmark } = t.runner.detail(started.id);
   expect(benchmark.suspect).toEqual(["other requests ran"]);
+});
+
+test("a request that began after the route's check fails the run before any restart", async () => {
+  const t = setup();
+  t.state.serving = 1;
+  const started = t.runner.start(body);
+  await t.runner.idle();
+  const { benchmark } = t.runner.detail(started.id);
+  expect(benchmark.status).toBe("failed");
+  expect(benchmark.error).toBe("The engine is serving a request");
+  expect(t.state.calls).toEqual([]);
+  expect(t.lock.running()).toBeNull();
+});
+
+test("a request during the warmup makes the run suspect too", async () => {
+  const t = setup();
+  const started = t.runner.start(body);
+  const stop = t.runner.onProgress((p) => {
+    if (p.benchmark.phase === "warmup") t.state.extraRequests = 1;
+  });
+  await t.runner.idle();
+  stop();
+  expect(t.runner.detail(started.id).benchmark.suspect).toEqual([
+    "other requests ran",
+  ]);
+});
+
+test("a final write that fails still ends the run in memory", async () => {
+  const t = setup();
+  const finish = t.store.finish.bind(t.store);
+  let broken = true;
+  t.store.finish = (b) => {
+    if (broken) throw new Error("disk full");
+    return finish(b);
+  };
+  t.runner.start(body);
+  await t.runner.idle();
+  expect(t.runner.active()).toBeNull();
+  expect(t.lock.running()).toBeNull();
+  broken = false;
+  expect(t.runner.start(body).status).toBe("running");
+  await t.runner.idle();
 });
 
 test("a run left running by a dead process is interrupted at start", () => {

@@ -83,9 +83,13 @@ export function deltaCopy(
   };
 }
 
-// Two runs compare when they replayed the same generated session.
+// Two runs compare when both finished and replayed the same session: a
+// failed or cancelled one has figures over the turns it got to, no more.
 export const comparable = (a: Benchmark, b: Benchmark) =>
-  a.scriptHash === b.scriptHash && a.schema === b.schema;
+  a.status === "done" &&
+  b.status === "done" &&
+  a.scriptHash === b.scriptHash &&
+  a.schema === b.schema;
 
 const PHASES: Record<Benchmark["phase"], string> = {
   fit: "Sizing the prompts",
