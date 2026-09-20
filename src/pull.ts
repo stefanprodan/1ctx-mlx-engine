@@ -33,6 +33,7 @@ import {
   parseRepoId,
   resolveUrl,
 } from "./hub.ts";
+import type { Log } from "./log.ts";
 import type { Pull, PullFile, PullStore } from "./pulls.ts";
 
 const RETRIES = 5;
@@ -64,7 +65,7 @@ export type PullRunnerDeps = {
   token: string | null;
   engine: Engine;
   refreshModels: () => Promise<unknown>;
-  log: (line: string) => void;
+  log: Log;
   now?: () => number;
   // tests: a fake Hub, no wait between retries
   hub?: string;

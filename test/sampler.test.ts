@@ -9,10 +9,14 @@ import type {
 } from "../src/engine/types.ts";
 import { History } from "../src/history.ts";
 import type { HostProbes } from "../src/host/types.ts";
+import type { Log } from "../src/log.ts";
 import { Sampler } from "../src/sampler.ts";
 import { handle, isRange, snapshot } from "../src/web.ts";
 import metricsFixture from "./fixtures/metrics.json";
 import modelsFixture from "./fixtures/models.json";
+
+const testLog = (write: (line: string) => void): Log =>
+  Object.assign(write, { warn: write, error: write });
 
 // A scripted engine: each metrics() call pops the next body (a function of
 // the fixture), or throws when the script says the engine is down.
@@ -548,7 +552,7 @@ describe("web", () => {
       sampler,
       history,
       local: false,
-      log() {},
+      log: testLog(() => {}),
     });
     return {
       engine,

@@ -10,6 +10,7 @@ import { History } from "./history.ts";
 import { createHostProbes } from "./host/index.ts";
 import { hostInfo } from "./host/info.ts";
 import { isLocalUrl } from "./host/local.ts";
+import { createLog } from "./log.ts";
 import { PullRunner } from "./pull.ts";
 import { PullStore } from "./pulls.ts";
 import { takeSample } from "./sample.ts";
@@ -50,8 +51,7 @@ export async function runApp(options: Options): Promise<number | undefined> {
     if (options.listen.port !== null) port = options.listen.port;
   }
 
-  const log = (line: string) =>
-    console.error(`${new Date().toISOString()} ${line}`);
+  const log = createLog();
 
   // A bad key file fails loud and plain without unrelated usage text.
   const keyDir = secretsDir();

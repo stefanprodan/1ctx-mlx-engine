@@ -16,6 +16,7 @@ import type {
   ModelInfo,
 } from "../src/engine/types.ts";
 import { History } from "../src/history.ts";
+import type { Log } from "../src/log.ts";
 import { Sampler } from "../src/sampler.ts";
 import { handle } from "../src/web.ts";
 import metricsFixture from "./fixtures/metrics.json";
@@ -24,6 +25,9 @@ import modelsFixture from "./fixtures/models.json";
 const QWEN = "Jundot/Qwen3.8-27B-oQ4e-mtp";
 const APODEX = "stefanprodan/Apodex-1.1-mini-oQ4e-mtp";
 const ORNITH = "stefanprodan/Ornith-1.5-35B-A3B-BigBang-oQ4e-mtp";
+
+const testLog = (write: (line: string) => void): Log =>
+  Object.assign(write, { warn: write, error: write });
 
 // An engine whose load/unload mutate its model list, as mlx-serve does.
 class ControlEngine implements Engine {
@@ -102,7 +106,7 @@ async function setup(local = true) {
     sampler,
     history,
     local,
-    log: (l) => logs.push(l),
+    log: testLog((l) => logs.push(l)),
     uid: 501,
     now: () => 5000,
     spawn: async (cmd) => {
@@ -267,7 +271,7 @@ describe("Actions", () => {
       sampler: s.sampler,
       history: s.history,
       local: true,
-      log() {},
+      log: testLog(() => {}),
       spawn: async () => ({ code: 3, stderr: "no such service" }),
     });
     await rejects(actions.run("free", {}), 502, /exited 3: no such service/);

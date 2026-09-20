@@ -24,8 +24,12 @@ import type {
   ModelInfo,
 } from "../src/engine/types.ts";
 import { History } from "../src/history.ts";
+import type { Log } from "../src/log.ts";
 import { PullError, PullRunner } from "../src/pull.ts";
 import { type Pull, PullStore } from "../src/pulls.ts";
+
+const testLog = (write: (line: string) => void): Log =>
+  Object.assign(write, { warn: write, error: write });
 
 const REPO = "org/model";
 const REV = "0123456789abcdef";
@@ -313,7 +317,7 @@ function runner(
     refreshModels: async () => {
       refreshed++;
     },
-    log: (line) => logs.push(line),
+    log: testLog((line) => logs.push(line)),
     hub: hub.url,
     retryDelayMs: 1,
     freeSpace: () => 10 * 1024 ** 3,

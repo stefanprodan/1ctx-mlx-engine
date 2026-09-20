@@ -16,6 +16,7 @@ import { join } from "node:path";
 import type { Engine } from "./engine/types.ts";
 import type { History } from "./history.ts";
 import { ExclusiveLock, LockBusyError } from "./lock.ts";
+import type { Log } from "./log.ts";
 import type { Sampler } from "./sampler.ts";
 
 export const ACTION_NAMES = [
@@ -61,7 +62,7 @@ export type ActionDeps = {
   sampler: Sampler;
   history: History;
   local: boolean;
-  log: (line: string) => void;
+  log: Log;
   // launchd domain owner; the service runs in the user's gui domain
   uid?: number;
   now?: () => number;
