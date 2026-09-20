@@ -8,7 +8,7 @@
 
 import type { ActionName } from "../../actions.ts";
 import type { Capability, ModelInfo } from "../../engine/types.ts";
-import { gb, orderModels } from "../format.ts";
+import { orderModels, sizeText } from "../format.ts";
 import { busy, pulls, type Snapshot } from "../store.ts";
 import { runAction } from "./actions.ts";
 import { PullRow } from "./Pull.tsx";
@@ -135,7 +135,7 @@ export function Models({ snap }: { snap: Snapshot | null }) {
           {models.map((m) => {
             const slash = m.id.lastIndexOf("/");
             const facts = [
-              `${gb(m.loaded ? m.bytesResident : m.bytesOnDisk)} GB`,
+              sizeText(m.loaded ? m.bytesResident : m.bytesOnDisk),
             ];
             if (m.contextLength != null) {
               facts.push(`${Math.round(m.contextLength / 1024)}K ctx`);
