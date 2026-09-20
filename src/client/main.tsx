@@ -18,12 +18,12 @@ const page = pageOf(location.pathname);
 render(<Header page={page} />, $("top"));
 render(<Footer />, $("foot"));
 if (page === "requests") {
-  document.title = "mlx-spy · requests";
+  document.title = "1ctx-mlx-engine · requests";
   $("view-monitor").hidden = true;
   $("view-requests").hidden = false;
   render(<Requests />, $("view-requests"));
 } else if (page === "engine") {
-  document.title = "mlx-spy · engine";
+  document.title = "1ctx-mlx-engine · engine";
   $("view-monitor").hidden = true;
   $("view-engine").hidden = false;
   render(<Engine />, $("view-engine"));

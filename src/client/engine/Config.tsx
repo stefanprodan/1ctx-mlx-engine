@@ -127,8 +127,8 @@ export function Config({ engine }: { engine: EngineState | null }) {
   if (engine.mode === "remote") {
     return (
       <div class="locked">
-        mlx-serve is on another host, so its configuration is not mlx-spy's to
-        read or write.
+        mlx-serve is on another host, so its configuration is not
+        1ctx-mlx-engine's to read or write.
       </div>
     );
   }

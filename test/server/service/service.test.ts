@@ -59,7 +59,7 @@ function harness() {
   };
   const deps: ServiceDeps = {
     home: "/Users/test",
-    execPath: "/opt/homebrew/Cellar/mlx-spy/1.2.3/bin/mlx-spy",
+    execPath: "/Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine",
     osVersion: () => "macOS 26.6 (25G83)",
     defaultHostname: () => "127.0.0.1",
     write: (line) => output.push(line),
@@ -98,16 +98,22 @@ describe("service install", () => {
 
     expect(h.events.slice(0, 3)).toEqual([
       "isLoaded",
-      "mkdir:/Users/test/.mlx-spy",
+      "mkdir:/Users/test/.1ctx-mlx-engine",
       "reload",
     ]);
     const path = `/Users/test/Library/LaunchAgents/${SERVICE_LABEL}.plist`;
     const xml = new TextDecoder().decode(h.files.get(path));
-    expect(xml).toContain("/opt/homebrew/opt/mlx-spy/bin/mlx-spy");
+    expect(xml).toContain("/Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine");
     expect(xml).toContain("<string>--log-file</string>");
-    expect(xml).toContain("<string>/Users/test/.mlx-spy/mlx-spy.log</string>");
-    expect(xml).toContain("<string>/Users/test/.mlx-spy/launchd.log</string>");
-    expect(h.output).toEqual(["mlx-spy v1.2.3 up at http://127.0.0.1:11235"]);
+    expect(xml).toContain(
+      "<string>/Users/test/.1ctx-mlx-engine/1ctx-mlx-engine.log</string>",
+    );
+    expect(xml).toContain(
+      "<string>/Users/test/.1ctx-mlx-engine/launchd.log</string>",
+    );
+    expect(h.output).toEqual([
+      "1ctx-mlx-engine v1.2.3 up at http://127.0.0.1:11235",
+    ]);
   });
 
   test("requires restart when an agent is already loaded", async () => {
@@ -139,7 +145,7 @@ describe("service lifecycle", () => {
     expect(h.output[0]).toContain("state: running");
     expect(h.output[0]).toContain("pid: 42");
     expect(h.output[0]).toContain(
-      "binary: /opt/homebrew/opt/mlx-spy/bin/mlx-spy",
+      "binary: /Users/test/.1ctx-mlx-engine/bin/1ctx-mlx-engine",
     );
     expect(h.output[0]).toContain("version: v1.2.3");
     expect(h.output[0]).toContain("url: http://127.0.0.1:11235");
@@ -163,7 +169,7 @@ describe("service lifecycle", () => {
     expect(h.events).toContain("bootout");
     expect(h.removed).toContain("/Users/test/data/history.db");
     expect(h.removed).toContain("/Users/test/logs/spy.log");
-    expect(h.removed).toContain("/Users/test/.mlx-spy/launchd.log");
+    expect(h.removed).toContain("/Users/test/.1ctx-mlx-engine/launchd.log");
     expect(h.removed.some((path) => path.includes("secrets"))).toBe(false);
     expect(h.removed.some((path) => path.includes("models"))).toBe(false);
   });

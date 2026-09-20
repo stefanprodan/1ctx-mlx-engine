@@ -14,7 +14,7 @@ import { parseProps } from "../../../src/server/engine/mlxserve.ts";
 import type { EngineConfig } from "../../../src/shared/engine.ts";
 import propsFixture from "../../fixtures/props.json";
 
-const PINNED = "/Users/x/.mlx-spy/models";
+const PINNED = "/Users/x/.1ctx-mlx-engine/models";
 
 function config(over: Partial<EngineConfig> = {}): EngineConfig {
   return { ...DEFAULTS(PINNED, "http://127.0.0.1:11234"), ...over };
@@ -153,12 +153,12 @@ describe("managed engine configuration", () => {
     );
   });
 
-  test("refuses a port that mlx-spy does not watch", () => {
+  test("refuses a port that 1ctx-mlx-engine does not watch", () => {
     expect(issues(config({ port: 11235 }))).toContainEqual({
       field: "port",
       message:
-        "mlx-spy is watching port 11234. Change where it looks with " +
-        "mlx-spy service install --engine.",
+        "1ctx-mlx-engine is watching port 11234. Change where it looks with " +
+        "1ctx-mlx-engine service install --engine.",
     });
   });
 
@@ -171,7 +171,7 @@ describe("managed engine configuration", () => {
     expect(found).toContainEqual({
       field: "host",
       message:
-        "mlx-spy reaches mlx-serve at studio.local; a loopback-only " +
+        "1ctx-mlx-engine reaches mlx-serve at studio.local; a loopback-only " +
         "listener would hide it.",
     });
   });
@@ -182,7 +182,7 @@ describe("managed engine configuration", () => {
     );
     expect(issues(config({ modelDirs: ["/tmp/models"] }))).toContainEqual({
       field: "modelDirs",
-      message: "mlx-spy's model directory must stay in the list.",
+      message: "1ctx-mlx-engine's model directory must stay in the list.",
     });
     expect(issues(config({ modelDirs: [PINNED, "relative"] }))).toContainEqual({
       field: "modelDirs",

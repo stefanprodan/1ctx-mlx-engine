@@ -94,6 +94,9 @@
     border-radius: 6px;
     padding: 4px 9px;
     user-select: all;
+    /* the install one-liner is one long word to the line breaker */
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   /* a button inside a mono fact stays a button */
@@ -304,6 +307,12 @@
     }
     .notice {
       align-items: flex-start;
+    }
+    /* nobody runs a shell command from a phone: the row only says that a
+       release is out */
+    .notice .cmd,
+    .notice .cmd + .ibtn {
+      display: none;
     }
   }
 }

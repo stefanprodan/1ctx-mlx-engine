@@ -187,7 +187,7 @@ describe("Actions", () => {
     s.history.close();
   });
 
-  test("favorite toggles mlx-spy's own mark, one model at most", async () => {
+  test("favorite toggles 1ctx-mlx-engine's own mark, one model at most", async () => {
     const s = await setup(false); // no engine call: works remotely too
     const fav = () =>
       s.sampler.currentModels().find((m) => m.favorite)?.id ?? null;
@@ -421,7 +421,7 @@ describe("Actions", () => {
 
 describe("clearDirContents", () => {
   test("removes children, keeps the root, tolerates a missing root", async () => {
-    const root = await mkdtemp(join(tmpdir(), "mlx-spy-cache-"));
+    const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-cache-"));
     await writeFile(join(root, "a"), "x");
     await Bun.write(join(root, "fp1", "shard"), "y");
     expect(await clearDirContents(root)).toBe(2);

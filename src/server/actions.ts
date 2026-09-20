@@ -5,7 +5,7 @@
 // adapter; free (a launchd restart of the service) and disk clear (delete
 // the SSD cache tier contents) are the program's only spawns and deletions,
 // and both run only when the engine is on this host; history clear wipes
-// mlx-spy's own sample database and touches no engine, as does favorite
+// 1ctx-mlx-engine's own sample database and touches no engine, as does favorite
 // (the daily-driver mark on one model). Every action is an
 // explicit user request from the UI, is checked against the engine's
 // capabilities and the current model list, runs one at a time, and is logged

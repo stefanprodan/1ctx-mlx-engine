@@ -1,10 +1,10 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The engine adapter contract. Everything mlx-spy knows about an inference
-// server goes through this interface, so a second engine is a new file under
-// src/engine/, not a rewrite. Names are normalised here: adapters translate
-// their server's counter names into these fields.
+// The engine adapter contract. Everything 1ctx-mlx-engine knows about an
+// inference server goes through this interface, so a second engine is a new
+// file under src/engine/, not a rewrite. Names are normalised here: adapters
+// translate their server's counter names into these fields.
 
 import type {
   CacheLimits,

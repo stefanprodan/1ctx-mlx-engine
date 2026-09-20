@@ -9,11 +9,11 @@ export function Footer() {
     <>
       <a
         class="footlink"
-        href="https://github.com/stefanprodan/mlx-spy"
+        href="https://github.com/stefanprodan/1ctx-mlx-engine"
         target="_blank"
         rel="noopener"
       >
-        {v ? `mlx-spy ${v}` : "mlx-spy"}
+        {v ? `1ctx-mlx-engine ${v}` : "1ctx-mlx-engine"}
       </a>
       <span class="grow" />
       <span>

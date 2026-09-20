@@ -1,4 +1,4 @@
-# mlx-spy - Makefile
+# 1ctx-mlx-engine - Makefile
 #
 # Thin wrapper over the package.json scripts: each task runs the script of the
 # same name, so `make <task>` and `bun run <task>` are interchangeable. The

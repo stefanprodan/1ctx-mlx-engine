@@ -98,8 +98,8 @@ describe("file logging", () => {
   });
 
   test("creates and appends to a file", async () => {
-    const root = await mkdtemp(join(tmpdir(), "mlx-spy-log-"));
-    const path = join(root, "mlx-spy.log");
+    const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-log-"));
+    const path = join(root, "1ctx-mlx-engine.log");
     try {
       await writeFile(path, "before\n");
       const sink = createFileSink(path);
@@ -112,8 +112,8 @@ describe("file logging", () => {
   });
 
   test("rotates at the boundary and keeps one previous file", async () => {
-    const root = await mkdtemp(join(tmpdir(), "mlx-spy-log-"));
-    const path = join(root, "mlx-spy.log");
+    const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-log-"));
+    const path = join(root, "1ctx-mlx-engine.log");
     try {
       await writeFile(path, "12345678");
       await writeFile(`${path}.1`, "older");
@@ -130,7 +130,7 @@ describe("file logging", () => {
   });
 
   test("rotates stopped launchd files only at the threshold", async () => {
-    const root = await mkdtemp(join(tmpdir(), "mlx-spy-log-"));
+    const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-log-"));
     const path = join(root, "launchd.log");
     try {
       await writeFile(path, "1234567");

@@ -84,10 +84,10 @@ describe("parseCli", () => {
   });
 
   test("parses log file paths and off", () => {
-    const file = parseCli(["--log-file", "/tmp/mlx-spy.log"]);
+    const file = parseCli(["--log-file", "/tmp/1ctx-mlx-engine.log"]);
     expect(file.kind).toBe("run");
     if (file.kind === "run") {
-      expect(file.options.logFile).toBe("/tmp/mlx-spy.log");
+      expect(file.options.logFile).toBe("/tmp/1ctx-mlx-engine.log");
     }
     const off = parseCli(["--log-file=off"]);
     expect(off.kind).toBe("run");

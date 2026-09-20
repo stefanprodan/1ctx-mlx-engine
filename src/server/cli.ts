@@ -7,37 +7,39 @@ import pkg from "../../package.json";
 import { parseSize } from "./engine/config.ts";
 import { DEFAULT_PORT } from "./lib/net.ts";
 
-const buildVersion = process.env.MLX_SPY_BUILD_VERSION;
+const buildVersion = process.env.ONECTX_MLX_BUILD_VERSION;
 export const VERSION = buildVersion || `v${pkg.version}`;
 // When the binary was compiled, injected like the version. It is what
 // tells an open page that the server behind it was replaced: every dev
 // build reports the same VERSION, so the version cannot. Null from
 // source, where Bun's dev server reloads the page itself.
-export const BUILD = process.env.MLX_SPY_BUILD_ID || null;
+export const BUILD = process.env.ONECTX_MLX_BUILD_ID || null;
 
 export const DEFAULT_ENGINE = "http://127.0.0.1:11234";
-export const DEFAULT_DB = join(homedir(), ".mlx-spy", "mlx-spy.db");
-export const DEFAULT_MODEL_DIR = join(homedir(), ".mlx-spy", "models");
+export const DEFAULT_DB = join(homedir(), ".1ctx-mlx-engine", "engine.db");
+export const DEFAULT_MODEL_DIR = join(homedir(), ".1ctx-mlx-engine", "models");
 export const DEFAULT_RETENTION_DAYS = 7;
 
-export const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inference server
+export const HELP = `\x1b[1m1ctx-mlx-engine\x1b[0m - monitor and control an LLM inference server
 
 \x1b[1mUsage:\x1b[0m
-  mlx-spy [options]
-  mlx-spy service install [options] [--restart]
-  mlx-spy service status|start|stop|restart
-  mlx-spy service uninstall [--purge]
+  1ctx-mlx-engine [options]
+  1ctx-mlx-engine service install [options] [--restart]
+  1ctx-mlx-engine service status|start|stop|restart
+  1ctx-mlx-engine service uninstall [--purge]
 
 \x1b[1mOptions:\x1b[0m
   --engine <url>       engine base URL (default: ${DEFAULT_ENGINE})
   --listen <host:port> bind address (default: the Tailscale address, else
                        127.0.0.1, port ${DEFAULT_PORT})
-  --db <path>          SQLite history file (default: ~/.mlx-spy/mlx-spy.db;
-                       ":memory:" keeps nothing)
+  --db <path>          SQLite history file (default:
+                       ~/.1ctx-mlx-engine/engine.db; ":memory:" keeps
+                       nothing)
   --retention <days>   history retention (default: ${DEFAULT_RETENTION_DAYS})
   --model-dir <path>   where downloads from the Hugging Face Hub land, as
-                       <owner>/<name> directories (default: ~/.mlx-spy/models;
-                       point it at the engine's model directory)
+                       <owner>/<name> directories (default:
+                       ~/.1ctx-mlx-engine/models; point it at the
+                       engine's model directory)
   --hot-cache-max <n>  hot cache budget per model, e.g. 16GB (default: read
                        from the engine's launchd plist when local)
   --disk-cache-max <n> SSD cache tier budget per model, e.g. 50GB (same)
@@ -45,9 +47,9 @@ export const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inferenc
   --once               print one JSON sample and exit
   -v, --version        show version
   -h, --help           show this help
-  Keys: ~/.mlx-spy/secrets/hf.key when installed (.preview/secrets/ from
-                       source); the Hub is anonymous when the file is
-                       missing; read at start
+  Keys: ~/.1ctx-mlx-engine/secrets/hf.key when installed
+                       (.preview/secrets/ from source); the Hub is
+                       anonymous when the file is missing; read at start
 
 \x1b[1mAPI:\x1b[0m
   GET /                        the dashboard
@@ -65,8 +67,8 @@ export const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inferenc
                                favorite (toggles the daily-driver star)
 
 \x1b[1mExamples:\x1b[0m
-  mlx-spy --engine http://127.0.0.1:11234 --once
-  mlx-spy --engine http://studio.tailnet:11234 --listen 127.0.0.1:11235`;
+  1ctx-mlx-engine --engine http://127.0.0.1:11234 --once
+  1ctx-mlx-engine --engine http://studio.tailnet:11234 --listen 127.0.0.1:11235`;
 
 export interface ListenAddress {
   hostname: string | null;

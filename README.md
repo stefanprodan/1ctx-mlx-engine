@@ -1,19 +1,18 @@
 <p align="center">
-  <a href="docs/screens/mlx-spy-monitor.png">
-    <img src="docs/screens/mlx-spy-banner.png" alt="mlx-spy monitor dashboard">
+  <a href="docs/screens/monitor.png">
+    <img src="docs/screens/banner.png" alt="1ctx-mlx-engine monitor dashboard">
   </a>
 </p>
 
-# mlx-spy
+# 1ctx-mlx-engine
 
-[![test](https://github.com/stefanprodan/mlx-spy/actions/workflows/test.yml/badge.svg)](https://github.com/stefanprodan/mlx-spy/actions/workflows/test.yml)
+[![test](https://github.com/stefanprodan/1ctx-mlx-engine/actions/workflows/test.yml/badge.svg)](https://github.com/stefanprodan/1ctx-mlx-engine/actions/workflows/test.yml)
 
-Monitoring and control for LLM inference servers on Apple Silicon.
-
-mlx-spy runs next to [mlx-serve](https://github.com/ddalcu/mlx-serve)
-and shows what the engine is doing in real time: the request in flight,
-the throughput, the caches and the memory, with a week of history behind
-them. A single Bun binary, no dependencies.
+1ctx-mlx-engine installs, runs and watches an MLX inference engine
+([mlx-serve](https://github.com/ddalcu/mlx-serve)) on an Apple Silicon Mac:
+one page for the engine's install and configuration, the request in
+flight, the throughput, the caches and the memory, with a week of history
+behind them. A single binary, no dependencies.
 
 ## Features
 
@@ -33,6 +32,40 @@ them. A single Bun binary, no dependencies.
 
 - The last 50 requests with tokens, cached share, rates, time to first
   token and duration.
+
+**Engine**
+
+- Install, upgrade, roll back and configure mlx-serve as a LaunchAgent.
+
+## Install
+
+On macOS 26 or later, on Apple Silicon:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/stefanprodan/1ctx-mlx-engine/main/scripts/install.sh | bash
+```
+
+The script downloads the latest release, verifies its checksum, puts the
+binary in `~/.1ctx-mlx-engine/bin` and starts it as a LaunchAgent, then
+prints the URL of the page. Running it again is the upgrade. It never
+uses `sudo` and touches no shell file.
+
+Arguments go to `service install`, and `VERSION` picks a release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/stefanprodan/1ctx-mlx-engine/main/scripts/install.sh | bash -s -- --listen 0.0.0.0:11235
+curl -fsSL https://raw.githubusercontent.com/stefanprodan/1ctx-mlx-engine/main/scripts/install.sh | VERSION=v0.2.0-rc.1 bash
+```
+
+Use the script, not a browser download: the binary is not notarized yet,
+and macOS refuses an archive a browser has quarantined.
+
+For the command on your `PATH`:
+`ln -s ~/.1ctx-mlx-engine/bin/1ctx-mlx-engine /usr/local/bin/`.
+
+To uninstall, run
+`~/.1ctx-mlx-engine/bin/1ctx-mlx-engine service uninstall --purge`, then
+remove `~/.1ctx-mlx-engine`.
 
 ## Docs
 

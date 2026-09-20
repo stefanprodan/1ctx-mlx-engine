@@ -9,7 +9,7 @@ import { loadKey, secretsDirFor } from "../../../src/server/lib/secrets.ts";
 
 describe("key files", () => {
   test("loads valid keys and rejects invalid files with their paths", () => {
-    const dir = mkdtempSync(join(tmpdir(), "mlx-spy-secrets-"));
+    const dir = mkdtempSync(join(tmpdir(), "1ctx-mlx-engine-secrets-"));
     try {
       const missing = join(dir, "missing.key");
       expect(loadKey(missing)).toBeNull();
@@ -36,14 +36,14 @@ describe("key files", () => {
     }
   });
 
-  test("resolves source and Homebrew secret directories", () => {
+  test("resolves source and installed secret directories", () => {
     expect(secretsDirFor("/r/src/main.ts", "/Users/x")).toBe(
       "/r/.preview/secrets",
     );
-    // a compiled binary reports /$bunfs/root/<name> as Bun.main, whatever
-    // Cellar version it was launched from; the keys must not follow it
-    expect(secretsDirFor("/$bunfs/root/mlx-spy", "/Users/x")).toBe(
-      "/Users/x/.mlx-spy/secrets",
+    // a compiled binary reports /$bunfs/root/<name> as Bun.main, wherever
+    // it was launched from; the keys must not follow it
+    expect(secretsDirFor("/$bunfs/root/1ctx-mlx-engine", "/Users/x")).toBe(
+      "/Users/x/.1ctx-mlx-engine/secrets",
     );
   });
 });

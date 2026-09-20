@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The mlx-serve section head: the state pill and the service buttons.
-// There are buttons only for a job mlx-spy wrote; an engine that is
+// There are buttons only for a job 1ctx-mlx-engine wrote; an engine that is
 // remote, unmanaged or not installed has nothing here to press.
 
 import type { EngineState } from "../../shared/engine.ts";

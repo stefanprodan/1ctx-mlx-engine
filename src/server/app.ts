@@ -163,7 +163,7 @@ export async function runApp(
       actions,
       downloads,
       manager,
-      spyRestart: {
+      selfRestart: {
         // launchd names the job in the environment of what it starts. A
         // parent pid of 1 is no sign of it: a detached `nohup` process
         // has one too, and an exit there is just a dead server.
@@ -189,7 +189,7 @@ export async function runApp(
   void manager.reconcile();
   manager.startPolling();
   log(
-    `mlx-spy ${VERSION} on http://${web.server.hostname}:${web.server.port}, engine ${options.engineUrl} (${local ? "local" : "remote"}), history ${options.dbPath}, models ${options.modelDir}`,
+    `1ctx-mlx-engine ${VERSION} on http://${web.server.hostname}:${web.server.port}, engine ${options.engineUrl} (${local ? "local" : "remote"}), history ${options.dbPath}, models ${options.modelDir}`,
   );
 
   const shutdown = () => {

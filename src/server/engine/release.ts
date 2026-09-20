@@ -4,7 +4,7 @@
 import type { Release, ReleaseCheck } from "../../shared/engine.ts";
 
 export const ENGINE_ASSET = "mlx-serve-bin-macos-arm64.tar.gz";
-export const SPY_ASSET = "mlx-spy_darwin_arm64.tar.gz";
+export const SELF_ASSET = "1ctx-mlx-engine_darwin_arm64.tar.gz";
 const TIMEOUT_MS = 3000;
 
 export type ReleaseAsset = {
@@ -212,7 +212,7 @@ export async function fetchReleases(
     : timeout;
   const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
-    "user-agent": "mlx-spy",
+    "user-agent": "1ctx-mlx-engine",
     "x-github-api-version": "2022-11-28",
   };
   if (options.token) headers.authorization = `Bearer ${options.token}`;

@@ -42,7 +42,7 @@ afterEach(async () => {
 });
 
 async function archive(top = "mlx-serve-macos-arm64"): Promise<Uint8Array> {
-  const root = await mkdtemp(join(tmpdir(), "mlx-spy-archive-"));
+  const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-archive-"));
   roots.push(root);
   const path = join(root, "engine.tar.gz");
   await Bun.Archive.write(
@@ -97,11 +97,11 @@ type HarnessOptions = {
 };
 
 async function harness(options: HarnessOptions = {}) {
-  const root = await mkdtemp(join(tmpdir(), "mlx-spy-install-"));
+  const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-install-"));
   roots.push(root);
   const home = join(root, "home");
   const engineRoot = join(root, "engine");
-  const pinned = join(home, ".mlx-spy", "models");
+  const pinned = join(home, ".1ctx-mlx-engine", "models");
   const history = new History(":memory:");
   const store = new EngineStore(history.db);
   const lock = new ExclusiveLock();
@@ -213,7 +213,7 @@ async function harness(options: HarnessOptions = {}) {
     },
   };
   const manager = new EngineManager(deps);
-  // a second manager over the same store: mlx-spy after a restart
+  // a second manager over the same store: 1ctx-mlx-engine after a restart
   const restarted = () => new EngineManager(deps);
   const config = DEFAULTS(pinned, "http://127.0.0.1:11234");
   const settled = async () => {
@@ -263,7 +263,7 @@ describe("the port probe", () => {
   });
 });
 
-describe("spy process rate", () => {
+describe("own process rate", () => {
   test("computes percent of one core from cpuUsage deltas", () => {
     expect(
       cpuPercent(
@@ -368,7 +368,7 @@ describe("EngineManager install", () => {
     value.manager.install(value.tag, value.config);
     await value.settled();
     expect(value.manager.state().failure?.message).toBe(
-      "Port 11234 is in use by an mlx-serve that mlx-spy did not install. Stop it first.",
+      "Port 11234 is in use by an mlx-serve that 1ctx-mlx-engine did not install. Stop it first.",
     );
     expect(value.served?.hits()).toBe(0);
     value.history.close();
@@ -586,7 +586,7 @@ describe("EngineManager upgrade and configuration", () => {
     value.history.close();
   });
 
-  test("a restarted mlx-spy reads launchd once at start", async () => {
+  test("a restarted 1ctx-mlx-engine reads launchd once at start", async () => {
     const value = await installed();
     // a new process over the same store: the cache is empty
     const again = value.restarted();

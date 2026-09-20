@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The Runtime section: the engine's residency and process from the sample
-// (the live half), and facts about the host mlx-spy runs on from the
+// (the live half), and facts about the host 1ctx-mlx-engine runs on from the
 // snapshot (the static half). For a remote engine the host facts describe
 // this machine, not the engine's, and the head says so.
 
@@ -117,7 +117,7 @@ export function Runtime({
   const why = s && local && s.engineUp ? "no mlx-serve process found" : "";
   const h = snap?.host ?? null;
   // the build the engine stated about itself; unknown until a model has
-  // been resident since mlx-spy started
+  // been resident since 1ctx-mlx-engine started
   const ver = snap?.engine.version ?? null;
   const cores =
     h && h.perfCores != null && h.effCores != null

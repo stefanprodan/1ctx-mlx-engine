@@ -94,8 +94,3 @@ export function renderPlist(spec: PlistSpec): string {
 export function plistPath(label: string, home: string): string {
   return `${home.replace(/\/$/, "")}/Library/LaunchAgents/${label}.plist`;
 }
-
-export function agentBinary(execPath: string): string {
-  const match = /^(.*)\/Cellar\/mlx-spy\/[^/]+\/bin\/mlx-spy$/.exec(execPath);
-  return match ? `${match[1]}/opt/mlx-spy/bin/mlx-spy` : execPath;
-}

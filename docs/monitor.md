@@ -24,7 +24,7 @@ same series.
   there are none): every model the engine lists, the daily driver first and
   the rest by id so nothing moves on a load, with its state, size and
   context, and the buttons: load, unload, make default, plus the
-  daily-driver star (mlx-spy's own mark). A failed action is reported
+  daily-driver star (1ctx-mlx-engine's own mark). A failed action is reported
   under the table; a success shows in the list or the uptime. Unload, the daily-driver toggle and a load into an empty
   engine run at once; loading next to a resident model asks first and
   shows the estimated engine memory after the load (its footprint now

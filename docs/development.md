@@ -21,31 +21,34 @@ to embed `v1.2.3` without editing the package file.
 
 A pushed semantic-version tag such as `v1.2.3` runs the release workflow.
 It validates the tag, runs lint and tests, builds a native Darwin ARM64
-binary with the tag injected, verifies `mlx-spy --version`, then publishes
-an archive, SHA-256 checksum and build-provenance attestation. A version
-with a hyphen, such as `v1.2.3-rc.1`, becomes a prerelease.
+binary with the tag injected, verifies `1ctx-mlx-engine --version`, then
+publishes an archive, SHA-256 checksum and build-provenance attestation,
+and ends by installing the release with the install script. A version
+with a hyphen, such as `v1.2.3-rc.1`, becomes a prerelease, which the
+install script only picks with `VERSION` set.
 
 Useful flags while developing: `--listen 127.0.0.1:11299` to keep a second
 instance off the default port, `--db :memory:` to keep nothing, `--log-file
 <path>` to use the appending 8 MB rotating file sink (`off` keeps stderr),
 and `--once` to print one JSON sample and exit (exit code 2 when the engine
-did not answer). The service command generates and controls mlx-spy's user
-LaunchAgent:
+did not answer). The service command generates and controls
+1ctx-mlx-engine's user LaunchAgent:
 
 ```sh
-mlx-spy service install [flags] [--restart]
-mlx-spy service status
-mlx-spy service start|stop|restart
-mlx-spy service uninstall [--purge]
+1ctx-mlx-engine service install [flags] [--restart]
+1ctx-mlx-engine service status
+1ctx-mlx-engine service start|stop|restart
+1ctx-mlx-engine service uninstall [--purge]
 ```
 
-The generated agent writes normal logs to `~/.mlx-spy/mlx-spy.log` and uses
-`~/.mlx-spy/launchd.log` as its stdout and stderr crash catcher. Both rotate
-to one `.1` file at 8 MB; the latter rotates while the job is stopped during
-a reload.
+The generated agent writes normal logs to
+`~/.1ctx-mlx-engine/1ctx-mlx-engine.log` and uses
+`~/.1ctx-mlx-engine/launchd.log` as its stdout and stderr crash catcher.
+Both rotate to one `.1` file at 8 MB; the latter rotates while the job is
+stopped during a reload.
 
 The page is bundled by Bun from `src/client/index.html`: once at startup in
-the compiled binary, on demand when `MLX_SPY_DEV=1` is set, which
+the compiled binary, on demand when `ONECTX_MLX_DEV=1` is set, which
 `make dev` and `make preview` do; then a CSS edit hot-reloads and an edit
 to the client's TypeScript reloads the page. The client is Preact with
 signals (`src/client/main.tsx`, `store.ts`, `shell/`, `monitor/`,
@@ -64,18 +67,18 @@ requests. `PREVIEW_ENGINE=studio make preview` watches the engine named
 in `scripts/studio.env` instead; any other value is taken as its URL.
 
 The model downloader reads a Hugging Face token from
-`~/.mlx-spy/secrets/hf.key` when installed and from `.preview/secrets/hf.key`
-when run from source. It buys gated repositories and the Hub's higher rate
-limits. The file holds the bare token; the start log says `hf key: <path>` or
-`hf key: none`. It is read once at start, so a change needs a restart.
+`~/.1ctx-mlx-engine/secrets/hf.key` when installed and from
+`.preview/secrets/hf.key` when run from source. It buys gated repositories
+and the Hub's higher rate limits. The file holds the bare token; the start
+log says `hf key: <path>` or `hf key: none`. It is read once at start, so a
+change needs a restart.
 
-Downloads land in `--model-dir`, `~/.mlx-spy/models` by default, for the
-preview too (`.preview/models/` when it watches a remote engine); point
-it at the engine's own model
-directory for a downloaded model to be served. The downloader is tested
-against a fake Hub in `test/server/models/download.test.ts`; a real download of a small
-repository such as `Jundot/gemma-4-E2B-it-oQ4e-mtp` (3.9 GB) is the
-end-to-end check.
+Downloads land in `--model-dir`, `~/.1ctx-mlx-engine/models` by default, for
+the preview too (`.preview/models/` when it watches a remote engine); point
+it at the engine's own model directory for a downloaded model to be served.
+The downloader is tested against a fake Hub in
+`test/server/models/download.test.ts`; a real download of a small repository
+such as `Jundot/gemma-4-E2B-it-oQ4e-mtp` (3.9 GB) is the end-to-end check.
 
 ## Layout
 

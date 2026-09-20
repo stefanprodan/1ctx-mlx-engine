@@ -1,8 +1,8 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The management routes under /api/engine and mlx-spy's own restart, all
-// under rule 5: local only, behind the manager's lock.
+// The management routes under /api/engine and 1ctx-mlx-engine's own restart,
+// all under rule 5: local only, behind the manager's lock.
 
 import type { EngineConfig, ServiceBody } from "../../shared/engine.ts";
 
@@ -124,15 +124,18 @@ export const ENGINE_PATHS = new Set([
   ].map((name) => `/api/engine/${name}`),
 ]);
 
-export async function spyRestartRoute(
+export async function selfRestartRoute(
   req: Request,
   deps: HandleDeps,
 ): Promise<Response> {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
   await body(req, true);
-  const restart = deps.spyRestart;
+  const restart = deps.selfRestart;
   if (!restart?.isLaunchd()) {
-    return json({ error: "mlx-spy restart requires the launchd service" }, 409);
+    return json(
+      { error: "1ctx-mlx-engine restart requires the launchd service" },
+      409,
+    );
   }
   const holder = deps.manager?.running() ?? deps.actions.running();
   if (holder) return json({ error: `${holder} is still running` }, 409);

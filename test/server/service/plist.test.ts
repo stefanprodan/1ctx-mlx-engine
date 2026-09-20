@@ -3,15 +3,18 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  agentBinary,
   type PlistSpec,
   plistPath,
   renderPlist,
 } from "../../../src/server/service/plist.ts";
 
-const spy: PlistSpec = {
-  label: "com.example.spy&watch",
-  programArguments: ["/opt/mlx-spy", "--engine", "http://host/?a=1&b=<2>"],
+const self: PlistSpec = {
+  label: "com.example.self&watch",
+  programArguments: [
+    "/opt/1ctx-mlx-engine",
+    "--engine",
+    "http://host/?a=1&b=<2>",
+  ],
   runAtLoad: true,
   keepAlive: true,
   standardOutPath: "/tmp/out.log",
@@ -32,9 +35,9 @@ const engine: PlistSpec = {
 };
 
 describe("renderPlist", () => {
-  test("renders and XML-escapes the mlx-spy agent", () => {
-    const xml = renderPlist(spy);
-    expect(xml).toContain("<string>com.example.spy&amp;watch</string>");
+  test("renders and XML-escapes the 1ctx-mlx-engine agent", () => {
+    const xml = renderPlist(self);
+    expect(xml).toContain("<string>com.example.self&amp;watch</string>");
     expect(xml).toContain("http://host/?a=1&amp;b=&lt;2&gt;");
     expect(xml).toContain("<key>RunAtLoad</key>\n  <true/>");
     expect(xml).toContain("<key>KeepAlive</key>\n  <true/>");
@@ -53,23 +56,8 @@ describe("renderPlist", () => {
 
 describe("plist paths", () => {
   test("builds a user LaunchAgents path", () => {
-    expect(plistPath("com.example.spy", "/Users/test/")).toBe(
-      "/Users/test/Library/LaunchAgents/com.example.spy.plist",
-    );
-  });
-
-  test("maps any Homebrew Cellar prefix to opt", () => {
-    expect(agentBinary("/opt/homebrew/Cellar/mlx-spy/1.2.3/bin/mlx-spy")).toBe(
-      "/opt/homebrew/opt/mlx-spy/bin/mlx-spy",
-    );
-    expect(agentBinary("/custom/brew/Cellar/mlx-spy/2/bin/mlx-spy")).toBe(
-      "/custom/brew/opt/mlx-spy/bin/mlx-spy",
-    );
-    expect(agentBinary("/Users/test/.mlx-spy/bin/mlx-spy")).toBe(
-      "/Users/test/.mlx-spy/bin/mlx-spy",
-    );
-    expect(agentBinary("/opt/homebrew/bin/mlx-spy")).toBe(
-      "/opt/homebrew/bin/mlx-spy",
+    expect(plistPath("com.example.self", "/Users/test/")).toBe(
+      "/Users/test/Library/LaunchAgents/com.example.self.plist",
     );
   });
 });

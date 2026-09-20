@@ -1,17 +1,20 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// mlx-spy's own section: what is running, what it costs and the update
+// 1ctx-mlx-engine's own section: what is running, what it costs and the update
 // line. Its job is always on the host serving this page, so it is gated
 // by the manager's lock and never by where mlx-serve is.
 
-import type { SpyState } from "../../shared/engine.ts";
+import { DEV_VERSION, type SelfState } from "../../shared/engine.ts";
 import { DASH, duration, num } from "../format.ts";
 import { Copy } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
-import { locked, restartSpy } from "./state.ts";
+import { locked, restartSelf } from "./state.ts";
 
-export const BREW_UPGRADE = "brew upgrade stefanprodan/tap/mlx-spy";
+// The install script again: the path of the binary never changes, so it
+// is the upgrade too.
+export const UPGRADE =
+  "curl -fsSL https://raw.githubusercontent.com/stefanprodan/1ctx-mlx-engine/main/scripts/install.sh | bash";
 
 const mem = (bytes: number) =>
   bytes >= 2 ** 30
@@ -36,18 +39,24 @@ export function Resources({
 
 async function onRestart() {
   const { ok } = await confirm(
-    ["Restart mlx-spy? The page reconnects when it is back."],
+    ["Restart 1ctx-mlx-engine? The page reconnects when it is back."],
     "Restart",
   );
-  if (ok) void restartSpy();
+  if (ok) void restartSelf();
 }
 
-export function SpyHead({ spy, now }: { spy: SpyState | null; now: number }) {
+export function SelfHead({
+  self,
+  now,
+}: {
+  self: SelfState | null;
+  now: number;
+}) {
   return (
     <div class="shead">
-      <h2>mlx-spy</h2>
-      {spy ? (
-        <span class="pill live">up {duration(now - spy.startedAt)}</span>
+      <h2>1ctx-mlx-engine</h2>
+      {self ? (
+        <span class="pill live">up {duration(now - self.startedAt)}</span>
       ) : (
         <span class="pill">connecting</span>
       )}
@@ -56,7 +65,7 @@ export function SpyHead({ spy, now }: { spy: SpyState | null; now: number }) {
         <button
           type="button"
           class="btn"
-          disabled={!spy || locked.value}
+          disabled={!self || locked.value}
           onClick={() => void onRestart()}
         >
           Restart
@@ -66,23 +75,23 @@ export function SpyHead({ spy, now }: { spy: SpyState | null; now: number }) {
   );
 }
 
-export function Spy({ spy }: { spy: SpyState | null }) {
-  const offered = spy?.offered ?? null;
+export function Self({ self }: { self: SelfState | null }) {
+  const offered = self?.offered ?? null;
   return (
     <section class="card">
       <div class="facts">
         <dl>
           <dt>Version</dt>
-          <dd class={spy ? undefined : "none"}>
-            {spy?.version ?? DASH}
-            {spy && <small>{spy.brew ? "from the tap" : "dev build"}</small>}
+          <dd class={self ? undefined : "none"}>
+            {self?.version ?? DASH}
+            {self?.version === DEV_VERSION && <small>dev build</small>}
           </dd>
         </dl>
         <dl>
           <dt>Resources</dt>
           <Resources
-            bytes={spy?.rssBytes ?? null}
-            cpuPct={spy?.cpuPct ?? null}
+            bytes={self?.rssBytes ?? null}
+            cpuPct={self?.cpuPct ?? null}
           />
         </dl>
       </div>
@@ -91,13 +100,13 @@ export function Spy({ spy }: { spy: SpyState | null }) {
           <span class="what">Update available</span>
           <span class="ver">{offered.tag}</span>
           <span class="grow" />
-          <code class="cmd">{BREW_UPGRADE}</code>
+          <code class="cmd">{UPGRADE}</code>
           <button
             type="button"
             class="ibtn"
             title="Copy"
-            aria-label="Copy the brew command"
-            onClick={() => void navigator.clipboard?.writeText(BREW_UPGRADE)}
+            aria-label="Copy the install command"
+            onClick={() => void navigator.clipboard?.writeText(UPGRADE)}
           >
             <Copy />
           </button>

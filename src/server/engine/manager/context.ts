@@ -28,7 +28,7 @@ import { plistPath } from "../../service/plist.ts";
 import type { EngineStore } from "../store.ts";
 
 export const ENGINE_REPO = "ddalcu/mlx-serve";
-export const SPY_REPO = "stefanprodan/mlx-spy";
+export const SELF_REPO = "stefanprodan/1ctx-mlx-engine";
 export const MANAGED_LABEL = "com.stefanprodan.mlx-serve";
 export const EXPECTED_TOP = "mlx-serve-macos-arm64";
 export const VERIFY_TIMEOUT_MS = 60_000;
@@ -70,7 +70,6 @@ export type EngineManagerDeps = {
   token?: string | null;
   home?: string;
   root?: string;
-  execPath?: string;
   now?: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
   fetch?: typeof globalThis.fetch;
@@ -160,7 +159,7 @@ export function createManagerContext(
   return {
     deps,
     home,
-    root: deps.root ?? join(home, ".mlx-spy", "engine"),
+    root: deps.root ?? join(home, ".1ctx-mlx-engine", "engine"),
     now,
     sleep:
       deps.sleep ??

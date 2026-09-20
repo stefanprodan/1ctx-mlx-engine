@@ -112,7 +112,7 @@ dist
 # TernJS port file
 .tern-port
 
-# mlx-spy
+# 1ctx-mlx-engine
 bin/
 .*.bun-build
 .idea/

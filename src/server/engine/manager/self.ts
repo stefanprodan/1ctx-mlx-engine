@@ -1,9 +1,9 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { SpyState } from "../../../shared/engine.ts";
+import { DEV_VERSION, type SelfState } from "../../../shared/engine.ts";
 import { offered } from "../release.ts";
-import { type CpuReading, type ManagerContext, SPY_REPO } from "./context.ts";
+import { type CpuReading, type ManagerContext, SELF_REPO } from "./context.ts";
 import { publicCheck } from "./poll.ts";
 
 export function cpuPercent(
@@ -20,7 +20,7 @@ export function cpuPercent(
   return (used / ((current.at - previous.at) * 1_000)) * 100;
 }
 
-export function spyState(context: ManagerContext): SpyState {
+export function selfState(context: ManagerContext): SelfState {
   const at = context.now();
   const usage = (context.deps.cpuUsage ?? process.cpuUsage)();
   const current: CpuReading = {
@@ -30,16 +30,10 @@ export function spyState(context: ManagerContext): SpyState {
   };
   const cpuPct = cpuPercent(context.cpuPrevious, current);
   context.cpuPrevious = current;
-  const path = context.deps.execPath ?? process.execPath ?? Bun.main;
-  const check = publicCheck(context.deps.store.releaseCheck(SPY_REPO));
-  const development = context.deps.version === "v0.0.0-dev";
+  const check = publicCheck(context.deps.store.releaseCheck(SELF_REPO));
+  const development = context.deps.version === DEV_VERSION;
   return {
     version: context.deps.version,
-    // The formula's own directories, not the prefix: from source the
-    // executable is bun, which brew installed too.
-    brew:
-      !development &&
-      (path.includes("/Cellar/mlx-spy/") || path.includes("/opt/mlx-spy/")),
     startedAt: context.startedAt,
     rssBytes:
       context.deps.probes.processMemory(process.pid)?.footprint ??

@@ -73,7 +73,7 @@ describe("parseRepoFiles", () => {
         { rfilename: "../c.bin", size: 3 },
         { rfilename: "d/../e.bin", size: 3 },
         { rfilename: "sub/f.bin", lfs: { size: 7, sha256: "a".repeat(64) } },
-        { rfilename: "g.bin.mlx-spy-part", size: 3 },
+        { rfilename: "g.bin.1ctx-part", size: 3 },
         { rfilename: "", size: 1 },
         { size: 1 },
       ],
@@ -98,7 +98,7 @@ describe("resolveUrl and headers", () => {
   });
 
   test("sends the bearer only with a token", () => {
-    expect(hubHeaders(null)).toEqual({ "user-agent": "mlx-spy" });
+    expect(hubHeaders(null)).toEqual({ "user-agent": "1ctx-mlx-engine" });
     expect(hubHeaders("hf_x").authorization).toBe("Bearer hf_x");
   });
 });

@@ -179,7 +179,7 @@ describe("launchd verbs", () => {
   });
 
   test("atomically replaces complete plist bytes", async () => {
-    const root = await mkdtemp(join(tmpdir(), "mlx-spy-launchd-"));
+    const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-launchd-"));
     const path = join(root, "spy.plist");
     try {
       await writeFile(path, "old");

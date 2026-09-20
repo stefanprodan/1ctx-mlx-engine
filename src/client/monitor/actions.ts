@@ -103,11 +103,11 @@ export function confirmText(
       ];
     case "historyClear":
       return [
-        "Delete the stored history? Every sample of the last 7 days is removed from mlx-spy's database and the graphs start over.",
+        "Delete the stored history? Every sample of the last 7 days is removed from 1ctx-mlx-engine's database and the graphs start over.",
       ];
     case "requestsClear":
       return [
-        "Delete the stored requests? The list and the last request shown in the bar are removed from mlx-spy's database.",
+        "Delete the stored requests? The list and the last request shown in the bar are removed from 1ctx-mlx-engine's database.",
       ];
     case "favorite":
       return []; // a toggle, no dialog

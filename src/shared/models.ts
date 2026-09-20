@@ -24,7 +24,7 @@ export type ModelInfo = {
   capabilities: string[]; // engine words: chat, tool_use, vision, ...
   // undefined when the engine does not expose which model is its default
   isDefault?: boolean;
-  // mlx-spy's own mark: the one model the user calls their daily driver
+  // 1ctx-mlx-engine's own mark: the one model the user calls their daily driver
   favorite?: boolean;
 };
 
