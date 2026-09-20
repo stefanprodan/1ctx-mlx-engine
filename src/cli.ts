@@ -4,7 +4,7 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import pkg from "../package.json";
-import { parseSize } from "./engine/mlxserve.ts";
+import { parseSize } from "./engine/config.ts";
 import { DEFAULT_PORT } from "./web.ts";
 
 const buildVersion = process.env.MLX_SPY_BUILD_VERSION;
@@ -36,7 +36,7 @@ export const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inferenc
   --once               print one JSON sample and exit
   -v, --version        show version
   -h, --help           show this help
-  Keys: ../secrets/hf.key next to the binary (.preview/secrets/ from
+  Keys: ~/.mlx-spy/secrets/hf.key when installed (.preview/secrets/ from
                        source); the Hub is anonymous when the file is
                        missing; read at start
 

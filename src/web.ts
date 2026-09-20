@@ -43,7 +43,7 @@ export type WebDeps = {
   pulls: PullRunner;
   version: string;
   local: boolean;
-  limits: CacheLimits | null;
+  currentLimits: () => CacheLimits | null;
   host: HostInfo | null;
   // where downloads land; null when the host cannot say (tests)
   modelDir: string | null;
@@ -67,9 +67,9 @@ export function snapshot(deps: HandleDeps) {
       // the build the engine stated about itself, null until it has
       version: deps.sampler.currentVersion(),
       capabilities: [...deps.engine.capabilities()],
-      // the launch flags and the plist, else what the engine stated about
-      // its own process (the only source for a remote engine)
-      limits: deps.limits ?? deps.sampler.currentLimits(),
+      // The provider applies current launch configuration and CLI overrides,
+      // then falls back to facts reported by the running engine.
+      limits: deps.currentLimits(),
     },
     host: deps.host
       ? { ...deps.host, disk: diskSpace(deps.host.diskPath) }

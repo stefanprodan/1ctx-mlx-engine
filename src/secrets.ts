@@ -1,21 +1,26 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The key files next to the binary: ../secrets/ from an installed
-// mlx-spy, .preview/secrets/ when running from source. Only the Hugging
-// Face token lives there; a missing file means anonymous downloads.
+// The key files in the user's mlx-spy state directory, or .preview/secrets/
+// when running from source. Only the Hugging Face token lives there; a
+// missing file means anonymous downloads.
 
 import { readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 
-export function secretsDirFor(main: string, execPath: string): string {
+export function secretsDirFor(
+  main: string,
+  _execPath: string,
+  home: string,
+): string {
   return main.endsWith(".ts")
     ? resolve(dirname(main), "../.preview/secrets")
-    : resolve(dirname(execPath), "../secrets");
+    : resolve(home, ".mlx-spy/secrets");
 }
 
 export function secretsDir(): string {
-  return secretsDirFor(Bun.main, process.execPath);
+  return secretsDirFor(Bun.main, process.execPath, homedir());
 }
 
 function keyError(path: string, message: string): never {

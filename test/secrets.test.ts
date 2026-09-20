@@ -36,12 +36,16 @@ describe("key files", () => {
     }
   });
 
-  test("resolves source and binary secret directories", () => {
-    expect(secretsDirFor("/r/src/main.ts", "/opt/bun")).toBe(
+  test("resolves source and Homebrew secret directories", () => {
+    expect(secretsDirFor("/r/src/main.ts", "/opt/bun", "/Users/x")).toBe(
       "/r/.preview/secrets",
     );
     expect(
-      secretsDirFor("/$bunfs/root/mlx-spy", "/u/.mlx-spy/bin/mlx-spy"),
-    ).toBe("/u/.mlx-spy/secrets");
+      secretsDirFor(
+        "/$bunfs/root/mlx-spy",
+        "/opt/homebrew/Cellar/mlx-spy/1.2.3/bin/mlx-spy",
+        "/Users/x",
+      ),
+    ).toBe("/Users/x/.mlx-spy/secrets");
   });
 });

@@ -341,7 +341,7 @@ describe("Actions", () => {
       actions: s.actions,
       version: "vtest",
       local: true,
-      limits: null,
+      currentLimits: () => s.sampler.currentLimits(),
       host: null,
     };
     const post = (name: string, body?: unknown) =>

@@ -78,7 +78,7 @@ function setup() {
     actions,
     version: "vtest",
     local: true,
-    limits: null,
+    currentLimits: () => sampler.currentLimits(),
     host: null,
   } as unknown as WebDeps;
   return { engine, history, deps };
@@ -156,6 +156,19 @@ function fakePulls() {
     onEvent: () => () => {},
   };
 }
+
+describe("snapshot", () => {
+  test("reads current engine limits each time", () => {
+    const s = setup();
+    let limits: CacheLimits | null = { hotBytes: 1, diskBytes: 2 };
+    s.deps.sampler.currentLimits = () => limits;
+    expect(snapshot(s.deps).engine.limits).toEqual(limits);
+
+    limits = { hotBytes: 3, diskBytes: 4 };
+    expect(snapshot(s.deps).engine.limits).toEqual(limits);
+    s.history.close();
+  });
+});
 
 describe("pulls API", () => {
   test("lists, starts, reads, cancels and forgets downloads", async () => {

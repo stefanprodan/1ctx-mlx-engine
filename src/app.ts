@@ -5,6 +5,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Actions } from "./actions.ts";
 import { type Options, VERSION } from "./cli.ts";
+import { cacheLimits } from "./engine/config.ts";
 import { MlxServe } from "./engine/mlxserve.ts";
 import { History } from "./history.ts";
 import { createHostProbes } from "./host/index.ts";
@@ -28,15 +29,6 @@ export async function runApp(options: Options): Promise<number | undefined> {
   const engine = new MlxServe(options.engineUrl);
   const probes = await createHostProbes();
   const local = isLocalUrl(options.engineUrl);
-  // Per-model budgets come from launch flags when local. Explicit flags win.
-  const plistLimits = local ? await engine.cacheLimits() : null;
-  const limits =
-    options.hotMax !== null || options.diskMax !== null || plistLimits
-      ? {
-          hotBytes: options.hotMax ?? plistLimits?.hotBytes ?? 0,
-          diskBytes: options.diskMax ?? plistLimits?.diskBytes ?? 0,
-        }
-      : null;
 
   if (options.once) {
     const sample = await takeSample(engine, ONCE_WINDOW_MS, probes);
@@ -68,6 +60,16 @@ export async function runApp(options: Options): Promise<number | undefined> {
   }
   const history = new History(options.dbPath, options.retentionDays);
   const sampler = new Sampler(engine, history, { log, probes, local });
+  const currentLimits = () => {
+    const label = local ? engine.serviceLabel() : null;
+    const plistLimits = label ? cacheLimits(label) : null;
+    return options.hotMax !== null || options.diskMax !== null || plistLimits
+      ? {
+          hotBytes: options.hotMax ?? plistLimits?.hotBytes ?? 0,
+          diskBytes: options.diskMax ?? plistLimits?.diskBytes ?? 0,
+        }
+      : sampler.currentLimits();
+  };
   const actions = new Actions({ engine, sampler, history, local, log });
   const pulls = new PullRunner({
     store: new PullStore(history.db),
@@ -86,7 +88,7 @@ export async function runApp(options: Options): Promise<number | undefined> {
       pulls,
       version: VERSION,
       local,
-      limits,
+      currentLimits,
       host: await hostInfo(),
       modelDir: options.modelDir,
     },

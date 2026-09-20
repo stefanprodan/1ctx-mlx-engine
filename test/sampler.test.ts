@@ -561,7 +561,7 @@ describe("web", () => {
       actions,
       version: "vtest",
       local: false,
-      limits: null,
+      currentLimits: () => sampler.currentLimits(),
       host: null,
       now: c.now,
     };
