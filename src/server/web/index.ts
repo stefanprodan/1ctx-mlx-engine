@@ -17,7 +17,10 @@ import type { HostInfo } from "../../shared/host.ts";
 import type { CacheLimits } from "../../shared/models.ts";
 import type { Snapshot, WsMessage } from "../../shared/socket.ts";
 import { ActionError, type Actions } from "../actions.ts";
-import { type EngineManager, EngineManagerError } from "../engine/install.ts";
+import {
+  type EngineManager,
+  EngineManagerError,
+} from "../engine/manager/index.ts";
 import type { Engine } from "../engine/types.ts";
 import { diskSpace } from "../host/info.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";

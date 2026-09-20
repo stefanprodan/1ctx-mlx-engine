@@ -17,7 +17,7 @@ import {
   EngineManager,
   EngineManagerError,
   MANAGED_LABEL,
-} from "../../../src/server/engine/install.ts";
+} from "../../../src/server/engine/manager/index.ts";
 import { EngineStore } from "../../../src/server/engine/store.ts";
 import { ExclusiveLock } from "../../../src/server/lib/lock.ts";
 import type { Log } from "../../../src/server/lib/log.ts";

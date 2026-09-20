@@ -8,7 +8,7 @@ import type { EnginePageState } from "../shared/engine.ts";
 import { Actions } from "./actions.ts";
 import { BUILD, type Options, VERSION } from "./cli.ts";
 import { cacheLimits, configToArgs, limitsFromArgs } from "./engine/config.ts";
-import { EngineManager } from "./engine/install.ts";
+import { EngineManager } from "./engine/manager/index.ts";
 import { MlxServe } from "./engine/mlxserve.ts";
 import { EngineStore } from "./engine/store.ts";
 import { createHostProbes } from "./host/index.ts";

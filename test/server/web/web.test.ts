@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULTS } from "../../../src/server/engine/config.ts";
-import { EngineManagerError } from "../../../src/server/engine/install.ts";
+import { EngineManagerError } from "../../../src/server/engine/manager/index.ts";
 import type {
   Engine,
   EngineMetrics,
