@@ -55,9 +55,6 @@ export class DownloadStore {
     private readonly now: () => number = Date.now,
   ) {
     this.db.run("PRAGMA foreign_keys = ON");
-    // the tables had another name before the first release
-    this.db.run("DROP TABLE IF EXISTS pull_files");
-    this.db.run("DROP TABLE IF EXISTS pulls");
     this.db.run(`CREATE TABLE IF NOT EXISTS downloads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       repo TEXT NOT NULL,
