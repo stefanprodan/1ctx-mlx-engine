@@ -43,7 +43,10 @@ main() {
     if [ -z "$version" ]; then version=$(latest); fi
     base=https://github.com/$REPO/releases/download/$version
   fi
-  [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$ ]] ||
+  # the release workflow's own semver check, so nothing it would refuse
+  # reaches a download
+  local n='(0|[1-9][0-9]*)' id='[0-9A-Za-z.-]+'
+  [[ "$version" =~ ^v$n\.$n\.$n(-$id)?(\+$id)?$ ]] ||
     fail "$version is not a release tag."
 
   tmp=$(mktemp -d)
