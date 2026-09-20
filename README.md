@@ -48,7 +48,8 @@ curl -fsSL https://raw.githubusercontent.com/stefanprodan/1ctx-mlx-engine/main/s
 The script downloads the latest release, verifies its checksum, puts the
 binary in `~/.1ctx-mlx-engine/bin` and starts it as a LaunchAgent, then
 prints the URL of the page. Running it again is the upgrade. It never
-uses `sudo` and touches no shell file.
+uses `sudo` and touches no shell file. Models are downloaded to `~/models`
+unless `--model-dir` says otherwise.
 
 Arguments go to `service install`, and `VERSION` picks a release:
 
@@ -65,7 +66,7 @@ For the command on your `PATH`:
 
 To uninstall, run
 `~/.1ctx-mlx-engine/bin/1ctx-mlx-engine service uninstall --purge`, then
-remove `~/.1ctx-mlx-engine`.
+remove `~/.1ctx-mlx-engine`. The models are not in it and stay.
 
 ## Docs
 

@@ -21,5 +21,4 @@ scp -q bin/1ctx-mlx-engine "$HOST:~/.1ctx-mlx-engine/bin/1ctx-mlx-engine.new"
 ssh_ 'mv -f ~/.1ctx-mlx-engine/bin/1ctx-mlx-engine.new ~/.1ctx-mlx-engine/bin/1ctx-mlx-engine &&
   ~/.1ctx-mlx-engine/bin/1ctx-mlx-engine service install --restart \
   --engine http://127.0.0.1:11234 \
-  --listen 0.0.0.0:11235 \
-  --model-dir /Users/stefanprodan/models'
+  --listen 0.0.0.0:11235'

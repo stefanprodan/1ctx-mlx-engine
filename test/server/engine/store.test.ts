@@ -7,7 +7,7 @@ import { EngineStore } from "../../../src/server/engine/store.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import type { InstallRecord } from "../../../src/shared/engine.ts";
 
-const PINNED = "/Users/x/.1ctx-mlx-engine/models";
+const PINNED = "/Users/x/models";
 
 function install(tag: string, installedAt: number): InstallRecord {
   return {

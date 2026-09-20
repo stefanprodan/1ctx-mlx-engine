@@ -2,7 +2,7 @@
 # The local preview: 1ctx-mlx-engine from source on 127.0.0.1:11236, detached,
 # with its pid, db and log under .preview/ (`clean` stops it and removes
 # them). It watches this machine's engine on 127.0.0.1:11234 and the real
-# model directory, ~/.1ctx-mlx-engine/models, so development needs no other
+# model directory, ~/models, so development needs no other
 # host: the Engine page installs mlx-serve here, as a real LaunchAgent with a
 # real build under ~/.1ctx-mlx-engine/engine, and a small checkpoint serves
 # requests. PREVIEW_ENGINE=studio watches the Studio named in
@@ -34,7 +34,7 @@ stop() {
 
 start() {
   local engine=${PREVIEW_ENGINE:-http://127.0.0.1:11234}
-  local models=${PREVIEW_MODEL_DIR:-$HOME/.1ctx-mlx-engine/models}
+  local models=${PREVIEW_MODEL_DIR:-$HOME/models}
   if [ "$engine" = studio ]; then
     [ -f scripts/studio.env ] || { echo "scripts/studio.env missing; copy studio.env.example" >&2; exit 2; }
     . scripts/studio.env

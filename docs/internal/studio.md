@@ -67,7 +67,7 @@ hand-written plist had since 2026-09-07):
 
 ```
 ~/.mlx-spy/engine/versions/v26.9.5-pre-release.1/mlx-serve --serve --metrics
-  --host 0.0.0.0 --port 11234 --model-dir /Users/stefanprodan/models
+  --host 0.0.0.0 --port 11234 --model-dir ~/models
   --prefix-cache-mem 16GB --prefix-cache-disk 50GB
   --max-resident-models 2 --idle-evict-secs 3600
   --temp 1 --top-p 0.95 --kv-quant off --mtp
@@ -192,7 +192,7 @@ ssh -o BatchMode=yes $STUDIO_SSH 'cp ~/.mlx-spy/backup/com.ddalcu.mlx-serve.plis
 | Binary | `~/.mlx-spy/bin/mlx-spy` |
 | Version | a dev build (`v0.0.0-dev`) of `main`, deployed with `make deploy-studio`; the page marks it `dev build`, and `build` in `/api/snapshot` says when it was compiled. It moves to the tap build when `v0.1.0` exists |
 | launchd agent | label `com.stefanprodan.mlx-spy`, generated plist `~/Library/LaunchAgents/com.stefanprodan.mlx-spy.plist`; `RunAtLoad` and `KeepAlive` (5 s throttle), so it comes back on a crash and at login |
-| Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235 --model-dir /Users/stefanprodan/models`, like the engine bound on every interface; the default db; downloads land in the engine's own model directory (set 2026-09-09) |
+| Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235 --model-dir ~/models`, like the engine bound on every interface; the default db; downloads land in the engine's own model directory (set 2026-09-09) |
 | URL | `http://$STUDIO_HOST:11235` from the tailnet; `http://127.0.0.1:11235` on the box |
 | Database | `~/.mlx-spy/mlx-spy.db` (WAL mode, so `-shm` and `-wal` files sit next to it) |
 | Log | `~/.mlx-spy/mlx-spy.log`, opened and rotated by mlx-spy at 8 MB to one `.1`; launchd stdout/stderr goes to the crash catcher `~/.mlx-spy/launchd.log`, rotated during a reload |
@@ -223,7 +223,7 @@ run one SSH command:
 ~/.mlx-spy/bin/mlx-spy service install --restart \
   --engine http://127.0.0.1:11234 \
   --listen 0.0.0.0:11235 \
-  --model-dir /Users/stefanprodan/models
+  --model-dir ~/models
 ```
 
 The binary renders and stages its own plist, waits for the old process to
