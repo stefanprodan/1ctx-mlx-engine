@@ -10,12 +10,15 @@
 // idle engine, which is the bug that motivated 1ctx-mlx-engine, so props() is
 // asked only while a model is resident and then only once per engine process.
 // load/unload are explicit user actions, never called from the sampler.
+// chat() is the benchmark's: /v1/chat/completions, only from a button, only
+// under the shared lock, and the one call here that makes the engine work.
 
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { EngineConfig } from "../../shared/engine.ts";
 import type { Capability, ModelInfo } from "../../shared/models.ts";
 import type {
+  ChatTimings,
   Engine,
   EngineMetrics,
   EngineProps,
@@ -89,10 +92,33 @@ export function parseModels(body: any): ModelInfo[] {
       bytesOnDisk: num(m.bytes_on_disk),
       contextLength:
         typeof m.context_length === "number" ? m.context_length : null,
+      quantization:
+        typeof m.meta?.quantization === "string" ? m.meta.quantization : null,
       capabilities: Array.isArray(m.capabilities)
         ? m.capabilities.filter((c: unknown) => typeof c === "string")
         : [],
     }));
+}
+
+// Pure: a /v1/chat/completions answer → what the engine measured. The
+// llama.cpp-style `timings` object is on the chat path only (not on
+// /v1/completions); an answer without it cannot be benchmarked. Exported
+// for tests.
+export function parseTimings(body: any): ChatTimings {
+  const t = body?.timings;
+  if (typeof t?.prompt_n !== "number" || typeof t?.predicted_n !== "number") {
+    throw new Error("/v1/chat/completions: no timings");
+  }
+  const finish = body?.choices?.[0]?.finish_reason;
+  return {
+    promptN: num(t.prompt_n),
+    cachedN: num(t.cached_n),
+    promptMs: num(t.prompt_ms),
+    predictedN: num(t.predicted_n),
+    predictedMs: num(t.predicted_ms),
+    tokenizeMs: num(t.tokenize_ms),
+    finishReason: typeof finish === "string" ? finish : null,
+  };
 }
 
 // Pure: the /props body → the facts worth keeping. The engine reports much
@@ -205,6 +231,24 @@ export class MlxServe implements Engine {
     await this.post("/v1/models/rescan", {});
   }
 
+  // No timeout of its own: a cold prefill of a long prompt on a large
+  // model takes minutes. The caller's signal is the way out, and the engine
+  // cancels the slot when the connection drops.
+  async chat(body: unknown, signal: AbortSignal): Promise<ChatTimings> {
+    const path = "/v1/chat/completions";
+    const res = await fetch(this.url + path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`${path}: HTTP ${res.status} ${text}`.trim());
+    }
+    return parseTimings(await res.json());
+  }
+
   capabilities(): Set<Capability> {
     return new Set([
       "load",
@@ -213,6 +257,7 @@ export class MlxServe implements Engine {
       "restart",
       "diskClear",
       "rescan",
+      "benchmark",
     ]);
   }
 

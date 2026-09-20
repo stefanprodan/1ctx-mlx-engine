@@ -192,6 +192,7 @@ describe("tiles", () => {
       bytesResident: GB,
       bytesOnDisk: GB,
       contextLength: null,
+      quantization: null,
       capabilities: [],
     });
     const s = sample({

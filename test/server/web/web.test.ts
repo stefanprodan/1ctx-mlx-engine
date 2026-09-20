@@ -23,6 +23,7 @@ const model: ModelInfo = {
   bytesResident: 1,
   bytesOnDisk: 1,
   contextLength: 1000,
+  quantization: null,
   capabilities: ["chat"],
 };
 

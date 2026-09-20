@@ -17,6 +17,7 @@ const model = (over: Partial<ModelInfo> = {}): ModelInfo => ({
   bytesResident: 1,
   bytesOnDisk: 2,
   contextLength: 4096,
+  quantization: null,
   capabilities: ["chat"],
   ...over,
 });
