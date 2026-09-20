@@ -1,0 +1,130 @@
+@layer tokens, base, pages;
+
+@layer pages {
+  /* the run card: one line of controls, or the run's progress */
+  .bench-run {
+    padding: 16px;
+  }
+  .bench-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .bench-line select {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    color: var(--val);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    padding: 6px 9px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .bench-line select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  .bench-model {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--val);
+  }
+  .bench-phase {
+    font-size: 13px;
+    color: var(--dim);
+  }
+  /* the note keeps the card's height in both states */
+  .bench-note {
+    margin: 12px 0 0;
+    min-height: 18px;
+    font-size: 12.5px;
+    color: var(--faint);
+  }
+  .bench-note .warn {
+    color: var(--amber);
+  }
+
+  /* the runs: the requests table's cells, plus a tick and the deltas */
+  #benchmarks td.pick,
+  #benchmarks th.pick {
+    width: 28px;
+    padding-right: 0;
+  }
+  #benchmarks td.pick input {
+    accent-color: var(--accent);
+  }
+  #benchmarks td.model .note {
+    color: var(--amber);
+  }
+  #benchmarks td.fig .delta {
+    display: block;
+    font-size: 11px;
+    color: var(--faint);
+  }
+  #benchmarks td.fig .delta.better {
+    color: var(--green);
+  }
+  #benchmarks td.fig .delta.worse {
+    color: var(--amber);
+  }
+  #benchmarks tbody tr:not(.detail) {
+    cursor: pointer;
+  }
+  .turns-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 8px 0;
+  }
+  .turns-head .k {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--cap);
+  }
+  .turns {
+    margin-top: 4px;
+  }
+  .turns th {
+    padding-top: 6px;
+  }
+  .turns td.warn {
+    color: var(--amber);
+  }
+  .bench-foot {
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+  @media (max-width: 860px) {
+    #benchmarks .build,
+    #benchmarks .preset,
+    #benchmarks .peak,
+    .turns .wide {
+      display: none;
+    }
+  }
+  @media (max-width: 600px) {
+    #benchmarks .coldLatencyMs,
+    #benchmarks .warmPrefillTps,
+    #benchmarks .cachePct {
+      display: none;
+    }
+    .bench-run {
+      padding: 12px;
+    }
+    .bench-line select {
+      flex: 1 0 100%;
+    }
+  }
+
+  /* last: the most specific selectors on these cells */
+  #benchmarks tr.open td {
+    border-bottom: 0;
+  }
+  #benchmarks tbody tr:not(.detail):hover td {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}

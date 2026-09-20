@@ -104,8 +104,9 @@ Deploy when asked, then say what is now running there.
    `diskClear` run only from an explicit user action through the actions
    layer, are logged, and are disabled when the engine URL is not local.
    The benchmark (`src/server/benchmark/`) is the one other caller of the
-   engine: `POST /v1/chat/completions`, only from the button on the
-   Benchmark page, for the length of a run, under the lock the actions
+   engine: `POST /v1/chat/completions`, and `POST /tokenize` to size its
+   prompts (on the default model, which it has just loaded, so nothing
+   cold-loads), only from the button on the Benchmark page, for the length of a run, under the lock the actions
    hold, local and managed only, logged. It is the only call here that
    makes the engine work, and nothing else may use it.
    There are two other network callers, and the engine takes no part in
@@ -197,7 +198,7 @@ src/server/
                      engine's timings
   benchmark/store.ts benchmarks and benchmark_turns over the same sqlite file
   benchmark/runner.ts
-                     one run as one locked operation: the fit, then per
+                     one run as one locked operation: the tokenizer fit, then per
                      repetition restart, clear, load, warmup, turns; cancel,
                      progress on /ws
   models/hub.ts      the Hugging Face Hub: parseRepoId, parseRepoFiles (pure,
@@ -254,7 +255,7 @@ src/client/
                      the store
   store.ts           the WebSocket client and its signals (connection,
                      snapshot, sample, models, event, busy, downloads,
-                     engineMode); listen() for the code that renders by
+                     benchmark, engineMode); listen() for the code that renders by
                      hand; landsOnEngine, the bare-host landing rule
   api.ts             api<T>(): one JSON call to this server
   format.ts          gb, size, num, count, diskSize, duration, orderModels
@@ -274,6 +275,11 @@ src/client/
                      series.ts, request.ts, download.ts (the row copy);
                      actions.ts (runAction, confirmText, engine facts)
   requests/          Requests.tsx, Row.tsx, requests.css
+  benchmark/         Benchmark.tsx (the page), Run.tsx (the card: what to
+                     run, or how far it is), Runs.tsx (the table, the
+                     deltas, the opened row), Turns.tsx, benchmark.css;
+                     state.ts (the signals and the calls); the pure, tested
+                     report.ts (the cells, the deltas, the text report)
   engine/            Engine.tsx (the page), Self.tsx, Service.tsx (the
                      mlx-serve head), Build.tsx (facts and the one row that
                      is a release, an operation or a failure), Progress.tsx,
@@ -286,7 +292,7 @@ test/                bun test suites: server/, client/ (pure modules and
                      render-to-string checks) and shared/ mirror src/;
                      fixtures/ holds recorded engine bodies; structure.ts
                      and structure.test.ts are the layout rules
-docs/                user docs: monitor, api (keep in step with
+docs/                user docs: monitor, benchmark, api (keep in step with
                      src/server/web/), development; internal/studio.md is
                      the Studio guide
 scripts/             preview.sh, install.sh (the one install path: download,

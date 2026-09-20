@@ -104,6 +104,10 @@ export interface Engine {
   // the signal cancels the generation in the engine. Engines advertise
   // "benchmark" only when their answer carries timings.
   chat?(body: unknown, signal: AbortSignal): Promise<ChatTimings>;
+  // How many tokens the default model's tokenizer makes of a text; the
+  // benchmark sizes its prompts with it. Same terms as chat(), and it needs
+  // a default model resident, which a run has just loaded.
+  tokenize?(content: string, signal: AbortSignal): Promise<number>;
   capabilities(): Set<Capability>;
   // disk tier locations, sized by the host probes
   cacheDirs(): string[];

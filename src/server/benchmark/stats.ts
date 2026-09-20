@@ -38,7 +38,10 @@ const HOLD_FROM_TURN = 3;
 // and last decode rates. The overall rate is over every generated token.
 const MIN_DECODE_TOKENS = 64;
 
-const DRIFT_LIMIT = 0.02;
+// The pieces are sized with the tokenizer, but the template's own tokens
+// and its rendering of the tool schemas are only known once it has run:
+// a few hundred tokens on a 15k prompt.
+const DRIFT_LIMIT = 0.05;
 
 export type Expectations = {
   // the first request's token target, null when the fit did not run

@@ -87,6 +87,10 @@ function fakeEngine() {
       cached = promptN;
       return timings;
     },
+    tokenize: async (content: string) => {
+      calls.push("tokenize");
+      return Math.round(content.length / 2.6);
+    },
     capabilities: () => new Set(["benchmark" as const]),
     cacheDirs: () => [],
     logFile: () => null,
@@ -170,10 +174,11 @@ test("a run prepares every repetition on its own, in order", async () => {
     "chat 6 256",
     "chat 8 256",
   ];
-  // the fit first: a load and the first request with one token to generate
+  // the fit first: a load, then the tokenizer on the system prompt, the
+  // tool schemas and the three results; no chat request, nothing cached
   expect(t.state.calls).toEqual([
     `load ${ORNITH} true`,
-    "chat 2 1",
+    ...new Array(5).fill("tokenize"),
     ...rep,
     ...rep,
   ]);
@@ -233,10 +238,10 @@ test("a start is refused with the status the route answers", async () => {
 
 test("cancel aborts the request in flight and keeps what was measured", async () => {
   const t = setup();
-  // the fit, the warmup, two turns, then the third hangs
-  t.state.hangAt = 5;
+  // the warmup, two turns, then the third hangs
+  t.state.hangAt = 4;
   const started = t.runner.start(body);
-  while (t.state.chats < 5) await Bun.sleep(1);
+  while (t.state.chats < 4) await Bun.sleep(1);
   t.runner.cancel(started.id);
   await t.runner.idle();
   const { benchmark, turns } = t.runner.detail(started.id);
@@ -250,7 +255,7 @@ test("cancel aborts the request in flight and keeps what was measured", async ()
 
 test("a failed turn fails the run and says where", async () => {
   const t = setup();
-  t.state.failAt = 4;
+  t.state.failAt = 3;
   const started = t.runner.start(body);
   await t.runner.idle();
   const { benchmark } = t.runner.detail(started.id);

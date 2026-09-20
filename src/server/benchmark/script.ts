@@ -17,11 +17,11 @@ import type { BenchmarkPreset } from "../../shared/benchmark.ts";
 // hashes do not compare
 const GENERATOR = 1;
 
-// the generated text is YAML and JSON heavy; the fit corrects the guess
+// the generated text is YAML and JSON heavy; the fit replaces the guess
 const CHARS_PER_TOKEN = 2.6;
 
 // what the model may generate and the template's own tokens, kept free
-const WINDOW_MARGIN = 1024;
+const WINDOW_MARGIN = 2048;
 
 type PresetShape = { first: number; results: number[] };
 
@@ -55,12 +55,21 @@ export type Session = {
   steps: Step[];
 };
 
+// What the fit measured with the model's own tokenizer: characters per
+// token of each generated piece (a JSON inventory tokenizes worse than a
+// YAML list, and each tokenizer differs), and the size of the tool schemas.
+export type Ratios = {
+  system: number;
+  results: number[];
+  toolTokens: number;
+};
+
 export type SessionOptions = {
   preset: BenchmarkPreset;
   // unique per repetition; empty for the hash
   tag: string;
-  // observed over expected tokens of the first request, from the fit
-  scale: number;
+  // from the fit; null sizes every piece by the guess
+  ratios: Ratios | null;
   // the model's context window, null when the engine did not say
   window: number | null;
   maxTokens: number;
@@ -112,23 +121,44 @@ export function targetsOf(
   };
 }
 
-// What to multiply the character budgets by so the first request lands on
-// its target. Bounded: a wild answer means the probe failed, not the guess.
-export function fitScale(target: number, observed: number): number {
-  if (!(observed > 0) || !(target > 0)) return 1;
-  return Math.min(Math.max(target / observed, 0.25), 4);
+// The texts the fit tokenizes, in the order ratiosOf() reads the counts:
+// the system prompt, the tool schemas, then every tool result.
+export function piecesOf(session: Session): string[] {
+  return [
+    session.system,
+    JSON.stringify(session.tools),
+    ...session.steps.map((s) => s.result),
+  ];
+}
+
+// Bounded: a wild ratio means the tokenizer answered nonsense, not that
+// the text is unusual.
+export function ratiosOf(session: Session, tokens: number[]): Ratios {
+  const pieces = piecesOf(session);
+  const ratio = (i: number) => {
+    const n = tokens[i] ?? 0;
+    const r = n > 0 ? pieces[i]!.length / n : CHARS_PER_TOKEN;
+    return Math.min(Math.max(r, 1), 8);
+  };
+  return {
+    system: ratio(0),
+    results: session.steps.map((_, i) => ratio(i + 2)),
+    toolTokens: tokens[1] ?? 0,
+  };
 }
 
 export function buildSession(opts: SessionOptions): Session {
   const targets = targetsOf(opts.preset, opts.window, opts.maxTokens);
-  const chars = (tokens: number) =>
-    Math.floor(tokens * CHARS_PER_TOKEN * opts.scale);
+  const r = opts.ratios;
   const rand = mulberry32(0x1c7b);
   const tools = TOOLS.map(toolSchema);
-  const toolChars = JSON.stringify(tools).length;
+  const toolTokens =
+    r?.toolTokens ?? JSON.stringify(tools).length / CHARS_PER_TOKEN;
   const head = opts.tag ? `[bench ${opts.tag}] ` : "";
-  const system =
-    head + systemPrompt(rand, Math.max(chars(targets.first) - toolChars, 400));
+  const systemChars = Math.floor(
+    Math.max(targets.first - toolTokens, 150) * (r?.system ?? CHARS_PER_TOKEN),
+  );
+  const system = head + systemPrompt(rand, systemChars);
   const steps = targets.results.map((tokens, i) => {
     const tool = TOOLS[(i * 5 + 2) % TOOLS.length]!;
     return {
@@ -137,7 +167,10 @@ export function buildSession(opts: SessionOptions): Session {
         name: tool.name,
         arguments: JSON.stringify(tool.args(rand)),
       },
-      result: RESULTS[i % RESULTS.length]!(rand, chars(tokens)),
+      result: RESULTS[i % RESULTS.length]!(
+        rand,
+        Math.floor(tokens * (r?.results[i] ?? CHARS_PER_TOKEN)),
+      ),
     };
   });
   return { system, user: USER, tools, steps };
@@ -190,7 +223,7 @@ export function scriptHash(preset: BenchmarkPreset): string {
   const session = buildSession({
     preset,
     tag: "",
-    scale: 1,
+    ratios: null,
     window: null,
     maxTokens: 0,
   });

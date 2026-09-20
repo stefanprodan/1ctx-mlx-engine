@@ -28,7 +28,8 @@ import type { ExclusiveLock } from "../lib/lock.ts";
 import type { Log } from "../lib/log.ts";
 import {
   buildSession,
-  fitScale,
+  piecesOf,
+  ratiosOf,
   requestFor,
   scriptHash,
   targetsOf,
@@ -158,7 +159,7 @@ export class BenchmarkRunner {
     if (!isBenchmarkPreset(preset)) {
       throw new BenchmarkError(400, "Unknown preset");
     }
-    if (!this.deps.engine.chat) {
+    if (!this.deps.engine.chat || !this.deps.engine.tokenize) {
       throw new BenchmarkError(403, `${this.deps.engine.id} cannot benchmark`);
     }
     const refusal = this.deps.refusal();
@@ -197,6 +198,8 @@ export class BenchmarkRunner {
     this.settled = this.deps.lock
       .run(LOCK_LABEL, () => this.run(known.contextLength))
       .catch((err) => this.deps.log(`benchmark: ${describe(err)}`));
+    // every tab shows the run and turns its buttons off before the fit ends
+    this.publish(this.progress);
     return benchmark;
   }
 
@@ -214,20 +217,25 @@ export class BenchmarkRunner {
     const target = targetsOf(preset, window, this.maxTokens).first;
     this.deps.log(`benchmark ${model} (${preset}): started`);
     try {
-      // The fit: only a real chat request renders the template and the
-      // tools, so the first request is sent once with one token to generate
-      // and the character budgets are scaled to what it counted. What it
-      // cached goes with the first preparation.
+      // The fit: the generated pieces tokenize differently (a JSON
+      // inventory worse than a YAML list) and every tokenizer differs, so
+      // each piece of a draft session is counted by the model's own
+      // tokenizer and sized to its target. No prefill, nothing cached. The
+      // tokenizer is the default model's, hence the load.
       await this.deps.engine.load(model, true);
-      const probe = buildSession({
+      const draft = buildSession({
         preset,
-        tag: this.tag(),
-        scale: 1,
+        tag: "",
+        ratios: null,
         window,
         maxTokens: this.maxTokens,
       });
-      const counted = await this.chat(requestFor(probe, 1, model, 1), signal);
-      const scale = fitScale(target, counted.promptN);
+      const counts: number[] = [];
+      for (const piece of piecesOf(draft)) {
+        if (signal.aborted) throw new Cancelled();
+        counts.push(await this.deps.engine.tokenize!(piece, signal));
+      }
+      const ratios = ratiosOf(draft, counts);
 
       for (let rep = 1; rep <= this.repetitions; rep++) {
         this.step(progress, "prepare", rep, 0);
@@ -253,7 +261,7 @@ export class BenchmarkRunner {
         const session = buildSession({
           preset,
           tag: this.tag(),
-          scale,
+          ratios,
           window,
           maxTokens: this.maxTokens,
         });

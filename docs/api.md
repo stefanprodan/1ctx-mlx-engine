@@ -116,9 +116,9 @@ output back, which the cache already holds, so its cache hit rate is a
 little higher than the one reported here.
 
 A run is one operation under the lock the actions and the engine manager
-share: every other action answers 409 until it ends. It first sends the
-opening request once with one token to generate, to size the prompts in
-tokens. Then, three times over: restart the engine, delete the SSD cache
+share: every other action answers 409 until it ends. It first loads the model and sizes every piece of the session with the
+model's own tokenizer, so the prompts land on their token targets whatever
+the tokenizer. Then, three times over: restart the engine, delete the SSD cache
 tier, load the model as the default, one discarded request, and the turns.
 The model stays loaded at the end.
 

@@ -4,7 +4,8 @@
 import { expect, test } from "bun:test";
 import {
   buildSession,
-  fitScale,
+  piecesOf,
+  ratiosOf,
   requestFor,
   scriptHash,
   targetsOf,
@@ -14,7 +15,7 @@ import {
 const base = {
   preset: "agent",
   tag: "a",
-  scale: 1,
+  ratios: null,
   window: null,
   maxTokens: 256,
 } as const;
@@ -30,7 +31,7 @@ test("the session is the same for every run but for the tag", () => {
   expect(buildSession(base)).toEqual(a);
 });
 
-test("the sizes follow the preset and the scale", () => {
+test("without a fit every piece is sized by the guess", () => {
   const session = buildSession(base);
   expect(session.steps).toHaveLength(turnsOf("agent") - 1);
   const first = session.system.length + JSON.stringify(session.tools).length;
@@ -38,8 +39,33 @@ test("the sizes follow the preset and the scale", () => {
   expect(first).toBeLessThan(15_000 * 2.6 * 1.02);
   // 8k tokens, the largest result
   expect(session.steps[5]!.result.length).toBe(Math.floor(8_000 * 2.6));
-  const half = buildSession({ ...base, scale: 0.5 });
-  expect(half.steps[5]!.result.length).toBe(Math.floor(8_000 * 2.6 * 0.5));
+});
+
+test("the fit sizes each piece by its own ratio", () => {
+  const draft = buildSession({ ...base, tag: "" });
+  const pieces = piecesOf(draft);
+  expect(pieces).toHaveLength(2 + draft.steps.length);
+  // a tokenizer that makes a token of 3 chars of prose, 2 of everything else
+  const counts = pieces.map((text, i) =>
+    Math.round(text.length / (i === 0 ? 3 : 2)),
+  );
+  const ratios = ratiosOf(draft, counts);
+  expect(ratios.system).toBeCloseTo(3, 2);
+  expect(ratios.results[0]).toBeCloseTo(2, 2);
+  expect(ratios.toolTokens).toBe(counts[1]!);
+  const fitted = buildSession({ ...base, tag: "", ratios });
+  const tokens = piecesOf(fitted).map((text, i) =>
+    Math.round(text.length / (i === 0 ? 3 : 2)),
+  );
+  // the first request lands on its target, and so does every result
+  expect(tokens[0]! + tokens[1]!).toBeGreaterThan(15_000 * 0.99);
+  expect(tokens[0]! + tokens[1]!).toBeLessThan(15_000 * 1.01);
+  expect(tokens[2 + 5]).toBe(8_000);
+  // nonsense from the tokenizer is bounded, and nothing falls back to the guess
+  const wild = ratiosOf(draft, [1, 0, 1e9]);
+  expect(wild.system).toBe(8);
+  expect(wild.results[0]).toBe(1);
+  expect(wild.results[1]).toBe(2.6);
 });
 
 test("a small window shrinks every target together", () => {
@@ -47,17 +73,10 @@ test("a small window shrinks every target together", () => {
   expect(whole.first).toBe(15_000);
   const small = targetsOf("agent", 40_960, 256);
   const total = small.first + small.results.reduce((a, b) => a + b, 0);
-  expect(total).toBeLessThanOrEqual(40_960 - 256 - 1024);
-  expect(total).toBeGreaterThan(39_000);
+  expect(total).toBeLessThanOrEqual(40_960 - 256 - 2048);
+  expect(total).toBeGreaterThan(38_000);
   expect(small.results[5]! / small.first).toBeCloseTo(8 / 15, 2);
   expect(targetsOf("agent", null, 256)).toEqual(whole);
-});
-
-test("the fit is bounded", () => {
-  expect(fitScale(15_000, 13_000)).toBeCloseTo(1.1538, 3);
-  expect(fitScale(15_000, 0)).toBe(1);
-  expect(fitScale(15_000, 100)).toBe(4);
-  expect(fitScale(15_000, 1_000_000)).toBe(0.25);
 });
 
 test("a turn carries the calls and results before it, and only those", () => {

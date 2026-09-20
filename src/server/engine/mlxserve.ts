@@ -10,8 +10,9 @@
 // idle engine, which is the bug that motivated 1ctx-mlx-engine, so props() is
 // asked only while a model is resident and then only once per engine process.
 // load/unload are explicit user actions, never called from the sampler.
-// chat() is the benchmark's: /v1/chat/completions, only from a button, only
-// under the shared lock, and the one call here that makes the engine work.
+// chat() and tokenize() are the benchmark's: /v1/chat/completions and
+// /tokenize, only from a button, only under the shared lock; chat() is the
+// one call here that makes the engine work.
 
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -247,6 +248,22 @@ export class MlxServe implements Engine {
       throw new Error(`${path}: HTTP ${res.status} ${text}`.trim());
     }
     return parseTimings(await res.json());
+  }
+
+  // Raw text, no chat template. It runs on the default model, so the
+  // caller loads its model as the default first (the engine would otherwise
+  // cold-load one, as /props does).
+  async tokenize(content: string, signal: AbortSignal): Promise<number> {
+    const res = await fetch(`${this.url}/tokenize`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content }),
+      signal,
+    });
+    if (!res.ok) throw new Error(`/tokenize: HTTP ${res.status}`);
+    const body = (await res.json()) as { tokens?: unknown };
+    if (!Array.isArray(body.tokens)) throw new Error("/tokenize: no tokens");
+    return body.tokens.length;
   }
 
   capabilities(): Set<Capability> {
