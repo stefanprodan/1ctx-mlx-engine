@@ -14,6 +14,29 @@ one page for the engine's install and configuration, the request in
 flight, the throughput, the caches and the memory, with a week of history
 behind them. A single binary, no dependencies.
 
+## Features
+
+**Monitor**
+
+- Live throughput, time to first token and cache efficiency, with charts
+  across 1h, 6h, 24h and 7d.
+- The memory split: inference engine footprint, weights, the RAM prefix cache
+  and the SSD tier against their budgets.
+- The request in flight as a live bar: prefill, cached, decode.
+- A models table to load, unload, set default and favorite; restart the
+  engine and clear its SSD cache.
+- A runtime panel: engine pid, RSS, CPU and GPU next to the host's chip,
+  memory and disk.
+
+**Requests**
+
+- The last 50 requests with tokens, cached share, rates, time to first
+  token and duration.
+
+**Engine**
+
+- Install, upgrade, roll back and configure mlx-serve as a LaunchAgent.
+
 ## Install
 
 On macOS 26 or later, on Apple Silicon:
@@ -43,29 +66,6 @@ For the command on your `PATH`:
 To uninstall, run
 `~/.1ctx-mlx-engine/bin/1ctx-mlx-engine service uninstall --purge`, then
 remove `~/.1ctx-mlx-engine`.
-
-## Features
-
-**Monitor**
-
-- Live throughput, time to first token and cache efficiency, with charts
-  across 1h, 6h, 24h and 7d.
-- The memory split: inference engine footprint, weights, the RAM prefix cache
-  and the SSD tier against their budgets.
-- The request in flight as a live bar: prefill, cached, decode.
-- A models table to load, unload, set default and favorite; restart the
-  engine and clear its SSD cache.
-- A runtime panel: engine pid, RSS, CPU and GPU next to the host's chip,
-  memory and disk.
-
-**Requests**
-
-- The last 50 requests with tokens, cached share, rates, time to first
-  token and duration.
-
-**Engine**
-
-- Install, upgrade, roll back and configure mlx-serve as a LaunchAgent.
 
 ## Docs
 
