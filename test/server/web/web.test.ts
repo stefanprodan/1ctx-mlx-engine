@@ -257,7 +257,7 @@ describe("downloads API", () => {
 // test/engine/install.test.ts.
 function fakeManager(options: { remote?: boolean; busy?: string } = {}) {
   const calls: string[] = [];
-  const state = { engine: { mode: "managed" }, spy: { version: "vtest" } };
+  const state = { engine: { mode: "managed" }, self: { version: "vtest" } };
   const guard = () => {
     if (options.remote) {
       throw new EngineManagerError(403, "mlx-serve is not on this host");
@@ -281,7 +281,7 @@ function fakeManager(options: { remote?: boolean; busy?: string } = {}) {
       guard();
       if (config.port !== 11234) {
         throw new EngineManagerError(422, "configuration refused", [
-          { field: "port", message: "mlx-spy is watching port 11234." },
+          { field: "port", message: "1ctx-mlx-engine is watching port 11234." },
         ]);
       }
       calls.push("applyConfig");
@@ -304,7 +304,7 @@ describe("engine management routes", () => {
     const next = {
       ...deps,
       manager: fake.manager,
-      spyRestart: {
+      selfRestart: {
         isLaunchd: () => true,
         exit: (code: number) => exits.push(code),
         delayMs: 0,
@@ -375,7 +375,7 @@ describe("engine management routes", () => {
       await status("/api/engine/rollback", "POST", undefined, "http://evil"),
     ).toBe(403);
     expect(
-      await status("/api/spy/restart", "POST", undefined, "http://evil"),
+      await status("/api/self/restart", "POST", undefined, "http://evil"),
     ).toBe(403);
     expect(calls).toEqual([]);
     history.close();
@@ -390,34 +390,38 @@ describe("engine management routes", () => {
     expect(result.status).toBe(422);
     expect(await result.json()).toEqual({
       error: "configuration refused",
-      issues: [{ field: "port", message: "mlx-spy is watching port 11234." }],
+      issues: [
+        { field: "port", message: "1ctx-mlx-engine is watching port 11234." },
+      ],
     });
     history.close();
   });
 
-  test("a remote engine: writes are 403, the read and mlx-spy's restart work", async () => {
+  test("a remote engine: writes are 403, the read and 1ctx-mlx-engine's restart work", async () => {
     const { deps, exits, history } = withManager({ remote: true });
     expect((await response(deps, "/api/engine")).status).toBe(200);
     expect((await response(deps, "/api/engine/rollback", "POST")).status).toBe(
       403,
     );
     expect((await response(deps, "/api/engine", "DELETE")).status).toBe(403);
-    expect((await response(deps, "/api/spy/restart", "POST")).status).toBe(200);
+    expect((await response(deps, "/api/self/restart", "POST")).status).toBe(
+      200,
+    );
     await Bun.sleep(5);
     expect(exits).toEqual([0]);
     history.close();
   });
 
-  test("mlx-spy's restart is refused mid-operation and outside launchd", async () => {
+  test("1ctx-mlx-engine's restart is refused mid-operation and outside launchd", async () => {
     const busy = withManager({ busy: "upgrade" });
-    const held = await response(busy.deps, "/api/spy/restart", "POST");
+    const held = await response(busy.deps, "/api/self/restart", "POST");
     expect(held.status).toBe(409);
     expect(await held.json()).toEqual({ error: "upgrade is still running" });
     busy.history.close();
     const plain = withManager();
-    (plain.deps.spyRestart as { isLaunchd: () => boolean }).isLaunchd = () =>
+    (plain.deps.selfRestart as { isLaunchd: () => boolean }).isLaunchd = () =>
       false;
-    const refused = await response(plain.deps, "/api/spy/restart", "POST");
+    const refused = await response(plain.deps, "/api/self/restart", "POST");
     expect(refused.status).toBe(409);
     await Bun.sleep(5);
     expect(busy.exits).toEqual([]);

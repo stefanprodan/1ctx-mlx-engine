@@ -19,8 +19,8 @@ import {
   progressPct,
   servicePill,
 } from "../../src/client/engine/release.ts";
+import { Self, SelfHead } from "../../src/client/engine/Self.tsx";
 import { ServiceHead } from "../../src/client/engine/Service.tsx";
-import { Spy, SpyHead } from "../../src/client/engine/Spy.tsx";
 import {
   changed,
   edit,
@@ -41,7 +41,7 @@ import { abbreviateHome, expandHome } from "../../src/shared/paths.ts";
 import { sample, startedAt } from "./helpers.ts";
 
 const HOME = "/Users/me";
-const PINNED = `${HOME}/.mlx-spy/models`;
+const PINNED = `${HOME}/.1ctx-mlx-engine/models`;
 
 const config = (over: Partial<EngineConfig> = {}): EngineConfig => ({
   host: "127.0.0.1",
@@ -112,7 +112,7 @@ const engineState = (over: Partial<EngineState> = {}): EngineState => ({
 
 const pageState = (over: Partial<EngineState> = {}): EnginePageState => ({
   engine: engineState(over),
-  spy: {
+  self: {
     version: "v0.1.0",
     brew: true,
     startedAt: startedAt - 3_600_000,
@@ -139,7 +139,7 @@ beforeEach(resetEngineState);
 
 describe("the form model", () => {
   test("paths are shown with ~ and stored absolute", () => {
-    expect(abbreviateHome(PINNED, HOME)).toBe("~/.mlx-spy/models");
+    expect(abbreviateHome(PINNED, HOME)).toBe("~/.1ctx-mlx-engine/models");
     expect(abbreviateHome("/Volumes/x", HOME)).toBe("/Volumes/x");
     expect(abbreviateHome(`${HOME}er/x`, HOME)).toBe(`${HOME}er/x`);
     expect(expandHome("~/models", HOME)).toBe(`${HOME}/models`);
@@ -187,7 +187,7 @@ describe("the form model", () => {
       ...applied,
       prefixCacheMem: "24GB",
       mtp: true,
-      modelDirs: ["~/.mlx-spy/models", "/b", ""],
+      modelDirs: ["~/.1ctx-mlx-engine/models", "/b", ""],
     };
     expect([...changedFields(edited, applied)].sort()).toEqual([
       "modelDirs",
@@ -294,7 +294,7 @@ describe("the sections", () => {
     // Apply and Revert wait for a change; the pinned directory has no
     // remove button
     expect(disabledCount(cfg)).toBe(2);
-    expect(cfg).toContain('value="~/.mlx-spy/models"');
+    expect(cfg).toContain('value="~/.1ctx-mlx-engine/models"');
     expect(cfg).not.toContain("Remove model directory 1");
     expect(cfg).toContain('placeholder="auto"');
   });
@@ -320,14 +320,14 @@ describe("the sections", () => {
       {
         field: "port",
         message:
-          "mlx-spy is watching port 11234. Change where it looks with mlx-spy service install --engine.",
+          "1ctx-mlx-engine is watching port 11234. Change where it looks with 1ctx-mlx-engine service install --engine.",
       },
     ];
     const cfg = render(<Config engine={engineState()} />);
     expect(cfg).toContain('aria-invalid="true"');
     expect(cfg).toContain('aria-describedby="cfg-bad-port"');
     expect(cfg).toContain(
-      '<small class="bad" id="cfg-bad-port">mlx-spy is watching port 11234',
+      '<small class="bad" id="cfg-bad-port">1ctx-mlx-engine is watching port 11234',
     );
   });
 
@@ -363,7 +363,7 @@ describe("the sections", () => {
 
   test("unmanaged: the sampler's facts, and Install refused in words", () => {
     const refusal =
-      "Port 11234 is in use by an mlx-serve that mlx-spy did not install. Stop it first.";
+      "Port 11234 is in use by an mlx-serve that 1ctx-mlx-engine did not install. Stop it first.";
     const over = {
       mode: "unmanaged" as const,
       refusal,
@@ -389,7 +389,7 @@ describe("the sections", () => {
     expect(cfg).toMatch(/<button[^>]* disabled[^>]*>Install<\/button>/);
   });
 
-  test("an operation locks every mutating control, mlx-spy's too", () => {
+  test("an operation locks every mutating control, 1ctx-mlx-engine's too", () => {
     const over = { operation: op() };
     setPageState(pageState(over));
     const e = engineState(over);
@@ -403,9 +403,9 @@ describe("the sections", () => {
     expect(build).toMatch(/<button type="button" class="btn danger">Cancel/);
     const head = render(<ServiceHead engine={e} s={s} />);
     expect(disabledCount(head)).toBe(3);
-    expect(render(<SpyHead spy={pageState().spy} now={startedAt} />)).toMatch(
-      /<button[^>]* disabled[^>]*>Restart<\/button>/,
-    );
+    expect(
+      render(<SelfHead self={pageState().self} now={startedAt} />),
+    ).toMatch(/<button[^>]* disabled[^>]*>Restart<\/button>/);
     const cfgHead = render(<ConfigHead engine={e} />);
     expect(cfgHead).toContain("read-only");
     expect(cfgHead).toContain("locked while mlx-serve is being upgraded");
@@ -472,7 +472,7 @@ describe("the sections", () => {
     expect(build).toContain(">Try again</button>");
   });
 
-  test("remote: no config card, a dash for CPU, mlx-spy stays live", () => {
+  test("remote: no config card, a dash for CPU, 1ctx-mlx-engine stays live", () => {
     const over = {
       mode: "remote" as const,
       remoteHost: "studio.example.ts.net",
@@ -499,26 +499,26 @@ describe("the sections", () => {
       "<button",
     );
     const cfg = render(<Config engine={e} />);
-    expect(cfg).toContain("not mlx-spy's to read or write");
+    expect(cfg).toContain("not 1ctx-mlx-engine's to read or write");
     expect(cfg).not.toContain("<input");
     expect(
-      render(<SpyHead spy={pageState().spy} now={startedAt} />),
+      render(<SelfHead self={pageState().self} now={startedAt} />),
     ).not.toMatch(/ disabled/);
   });
 
-  test("mlx-spy: a dev build says so, the brew command is text", () => {
-    const spy = {
-      ...pageState().spy,
+  test("1ctx-mlx-engine: a dev build says so, the brew command is text", () => {
+    const self = {
+      ...pageState().self,
       brew: false,
       offered: release({ tag: "v0.2.0", version: "0.2.0" }),
     };
-    const html = render(<Spy spy={spy} />);
+    const html = render(<Self self={self} />);
     expect(html).toContain("<small>dev build</small>");
     expect(html).toContain(
       "84 MB <small>MEM</small> / 0.6% <small>CPU</small>",
     );
     expect(html).toContain(
-      '<code class="cmd">brew upgrade stefanprodan/tap/mlx-spy</code>',
+      '<code class="cmd">brew upgrade stefanprodan/tap/1ctx-mlx-engine</code>',
     );
     expect(html).toContain('aria-label="Copy the brew command"');
   });

@@ -18,7 +18,7 @@ export function Header({ page }: { page: Page }) {
     <>
       <div class="wordmark">
         <Mark />
-        MLX Spy
+        1ctx-mlx-engine
       </div>
       <nav class="menu">
         {PAGES.map((p) => (

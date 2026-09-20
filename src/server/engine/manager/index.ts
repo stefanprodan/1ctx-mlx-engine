@@ -35,7 +35,7 @@ import {
   publicCheckRepos,
   schedulePoll,
 } from "./poll.ts";
-import { spyState } from "./spy.ts";
+import { selfState } from "./self.ts";
 import { release, stage } from "./stage.ts";
 import {
   activate,
@@ -73,7 +73,7 @@ export class EngineManager {
     const mode = this.mode();
     const refusal =
       mode === "unmanaged"
-        ? `Port ${defaults.port} is in use by an mlx-serve that mlx-spy did not install. Stop it first.`
+        ? `Port ${defaults.port} is in use by an mlx-serve that 1ctx-mlx-engine did not install. Stop it first.`
         : null;
     return {
       mode,
@@ -104,7 +104,7 @@ export class EngineManager {
   }
 
   pageState(): EnginePageState {
-    return { engine: this.state(), spy: spyState(this.context) };
+    return { engine: this.state(), self: selfState(this.context) };
   }
 
   startPolling() {
@@ -139,7 +139,7 @@ export class EngineManager {
       if (await context.portProbe(config.host, config.port)) {
         throw new EngineManagerError(
           409,
-          `Port ${config.port} is in use by an mlx-serve that mlx-spy did not install. Stop it first.`,
+          `Port ${config.port} is in use by an mlx-serve that 1ctx-mlx-engine did not install. Stop it first.`,
         );
       }
       const record = await stage(context, details);
@@ -458,7 +458,7 @@ export {
   ENGINE_REPO,
   EngineManagerError,
   MANAGED_LABEL,
-  SPY_REPO,
+  SELF_REPO,
 } from "./context.ts";
-export { cpuPercent } from "./spy.ts";
+export { cpuPercent } from "./self.ts";
 export { defaultPortProbe } from "./swap.ts";

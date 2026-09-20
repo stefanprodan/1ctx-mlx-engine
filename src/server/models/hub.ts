@@ -1,13 +1,13 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The Hugging Face Hub as mlx-spy reads it: one model API call for the file
-// list at a commit, then one resolve URL per file. The parsers are pure and
-// tested on a recorded body; fetchRepo is the only I/O here.
+// The Hugging Face Hub as 1ctx-mlx-engine reads it: one model API call for
+// the file list at a commit, then one resolve URL per file. The parsers are
+// pure and tested on a recorded body; fetchRepo is the only I/O here.
 
 const HUB = "https://huggingface.co";
 // the downloader's in-flight suffix; a repo file with that name is refused
-export const PART_SUFFIX = ".mlx-spy-part";
+export const PART_SUFFIX = ".part";
 const TIMEOUT_MS = 20_000;
 
 // A repo id is <owner>/<name>: the Hub's own rule is letters, digits, dot,
@@ -112,7 +112,7 @@ export function resolveUrl(
 
 export function hubHeaders(token: string | null): Record<string, string> {
   const headers: Record<string, string> = {
-    "user-agent": "mlx-spy",
+    "user-agent": "1ctx-mlx-engine",
   };
   if (token) headers.authorization = `Bearer ${token}`;
   return headers;

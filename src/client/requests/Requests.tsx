@@ -46,7 +46,7 @@ export function Requests() {
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
-    document.title = "mlx-spy · requests";
+    document.title = "1ctx-mlx-engine · requests";
     // connect() runs after render, but an exceptionally fast first message
     // can still beat an effect scheduled after paint.
     if (snapshot.value) fetchRequests();

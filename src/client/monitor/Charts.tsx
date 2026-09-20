@@ -14,7 +14,7 @@ import "uplot/dist/uPlot.min.css";
 import { whole } from "./range.ts";
 import { chipValue } from "./series.ts";
 
-const SYNC_KEY = "mlx-spy";
+const SYNC_KEY = "1ctx-mlx-engine";
 const secs = (t: number[]) => t.map((v) => v / 1000);
 const css = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();

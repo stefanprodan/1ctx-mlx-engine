@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "mlx-spy",
+      "name": "1ctx-mlx-engine",
       "devDependencies": {
         "@biomejs/biome": "2.5.9",
         "@preact/signals": "2.11.2",

@@ -1,8 +1,8 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The port mlx-spy listens on and the tailnet address it prints, shared by
-// the CLI, the service installer and the server.
+// The port 1ctx-mlx-engine listens on and the tailnet address it prints,
+// shared by the CLI, the service installer and the server.
 
 import { networkInterfaces } from "node:os";
 

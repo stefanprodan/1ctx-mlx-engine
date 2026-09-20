@@ -5,12 +5,11 @@
 //
 // The sampler uses only endpoints that mlx-serve's dispatch answers before
 // its model-load step: /health, /metrics.json, /v1/models and, after a
-// download, /v1/models/rescan (verified in the engine's src/server.zig).
-// GET /props goes through the load path and cold-loads the default model on
-// an idle engine, which is the bug that motivated mlx-spy, so props() is
-// asked only while a model is resident and then only once per engine
-// process. load/unload are explicit user actions, never called from the
-// sampler.
+// download, /v1/models/rescan (verified in the engine's src/server.zig). GET
+// /props goes through the load path and cold-loads the default model on an
+// idle engine, which is the bug that motivated 1ctx-mlx-engine, so props() is
+// asked only while a model is resident and then only once per engine process.
+// load/unload are explicit user actions, never called from the sampler.
 
 import { homedir } from "node:os";
 import { join } from "node:path";

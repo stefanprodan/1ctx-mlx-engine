@@ -37,7 +37,7 @@ export async function reconcile(
   const target = journal.tag ? versionDir(context, journal.tag) : null;
   const active = installs.active;
   // The verification can take a minute. It holds the lock and shows as
-  // the swap it is finishing, so the page is locked and mlx-spy serves
+  // the swap it is finishing, so the page is locked and 1ctx-mlx-engine serves
   // meanwhile: a monitor that stays dark because the engine is in
   // trouble is the wrong way round.
   context.operation = {

@@ -15,7 +15,7 @@ import { diskSpace } from "../host/info.ts";
 import { DownloadError } from "../models/error.ts";
 import type { HandleDeps, WebDeps } from "./deps.ts";
 import { downloadsRoute } from "./downloads.ts";
-import { engineRoute, spyRestartRoute } from "./engine.ts";
+import { engineRoute, selfRestartRoute } from "./engine.ts";
 import { body, HttpError, json, sameOrigin } from "./http.ts";
 
 const SAMPLES_TOPIC = "samples";
@@ -90,8 +90,8 @@ export async function handle(
     ) {
       return await engineRoute(req, deps);
     }
-    if (url.pathname === "/api/spy/restart") {
-      return await spyRestartRoute(req, deps);
+    if (url.pathname === "/api/self/restart") {
+      return await selfRestartRoute(req, deps);
     }
     if (
       url.pathname === "/api/downloads" ||
@@ -147,10 +147,10 @@ export function serve(
   const server = Bun.serve({
     hostname: listen.hostname,
     port: listen.port,
-    // MLX_SPY_DEV=1 (make preview) turns on Bun's dev server: the page's
+    // ONECTX_MLX_DEV=1 (make preview) turns on Bun's dev server: the page's
     // CSS and TypeScript are bundled on demand and hot-reloaded in the
     // browser; off, the bundle is built once at startup
-    development: process.env.MLX_SPY_DEV === "1",
+    development: process.env.ONECTX_MLX_DEV === "1",
     routes: {
       "/": page,
       "/requests": page,

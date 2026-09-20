@@ -97,7 +97,7 @@ describe("null probes", () => {
 
 describe("cacheDirSizes", () => {
   test("one entry per child dir, allocated bytes, links skipped", async () => {
-    const root = mkdtempSync(join(tmpdir(), "mlx-spy-disk-"));
+    const root = mkdtempSync(join(tmpdir(), "1ctx-mlx-engine-disk-"));
     try {
       mkdirSync(join(root, "fp-a", "deep"), { recursive: true });
       mkdirSync(join(root, "fp-b"));
@@ -120,7 +120,7 @@ describe("cacheDirSizes", () => {
   });
 
   test("missing roots give an empty list", async () => {
-    expect(await cacheDirSizes(["/nonexistent/mlx-spy"])).toEqual([]);
+    expect(await cacheDirSizes(["/nonexistent/1ctx-mlx-engine"])).toEqual([]);
   });
 });
 

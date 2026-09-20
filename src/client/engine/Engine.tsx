@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The Engine page: mlx-spy first (short, never gated on where mlx-serve
+// The Engine page: 1ctx-mlx-engine first (short, never gated on where mlx-serve
 // is), then mlx-serve, then its configuration. The manager pushes its
 // state on /ws when it changes; the resources line is the one thing that
 // moves without an operation, so the page asks again every few seconds.
@@ -11,9 +11,9 @@ import { Confirm } from "../shell/Confirm.tsx";
 import { listen, sample, snapshot } from "../store.ts";
 import { Build } from "./Build.tsx";
 import { Config, ConfigHead } from "./Config.tsx";
+import { Self, SelfHead } from "./Self.tsx";
 import { ServiceHead } from "./Service.tsx";
-import { Spy, SpyHead } from "./Spy.tsx";
-import { engine, pageError, pushPageState, refresh, spy } from "./state.ts";
+import { engine, pageError, pushPageState, refresh, self } from "./state.ts";
 import "./engine.css";
 
 const REFRESH_MS = 5000;
@@ -23,7 +23,7 @@ export function Engine() {
     void refresh();
     const stop = listen((msg) => {
       if (msg.type === "engine") pushPageState(msg.data);
-      // mlx-spy came back (its own Restart, or a deploy): ask again
+      // 1ctx-mlx-engine came back (its own Restart, or a deploy): ask again
       else if (msg.type === "snapshot") void refresh();
     });
     const timer = setInterval(() => void refresh(), REFRESH_MS);
@@ -54,8 +54,8 @@ export function Engine() {
           </span>
         </div>
       )}
-      <SpyHead spy={spy.value} now={s?.t ?? Date.now()} />
-      <Spy spy={spy.value} />
+      <SelfHead self={self.value} now={s?.t ?? Date.now()} />
+      <Self self={self.value} />
       <ServiceHead engine={e} s={s} />
       <Build
         engine={e}

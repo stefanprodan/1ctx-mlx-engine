@@ -286,7 +286,7 @@ beforeEach(async () => {
   hub.files.set("config.json", new TextEncoder().encode('{"a":1}'));
   hub.files.set("model.safetensors", bytesOf(50_000, 7));
   hub.files.set("sub/extra.safetensors", bytesOf(3_000, 9));
-  dir = await mkdtemp(join(tmpdir(), "mlx-spy-download-"));
+  dir = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-download-"));
   history = new History(":memory:");
   engine = new RescanEngine();
   refreshed = 0;
@@ -387,7 +387,7 @@ describe("Downloader", () => {
       hub.files.get("sub/extra.safetensors")!,
     );
     expect(await readdir(join(dir, "org", "model"))).not.toContain(
-      "model.safetensors.mlx-spy-part",
+      "model.safetensors.part",
     );
     expect(engine.rescans).toBe(1);
     expect(refreshed).toBe(1);
@@ -453,8 +453,7 @@ describe("Downloader", () => {
     expect(done.error).toBe("got 50 of 50000 bytes");
     // the part stays for a later retry
     expect(
-      (await stat(join(dir, "org", "model", "model.safetensors.mlx-spy-part")))
-        .size,
+      (await stat(join(dir, "org", "model", "model.safetensors.part"))).size,
     ).toBe(50);
   });
 
@@ -465,7 +464,7 @@ describe("Downloader", () => {
     expect(done.status).toBe("failed");
     expect(done.error).toBe("model.safetensors: sha256 mismatch");
     await expect(
-      stat(join(dir, "org", "model", "model.safetensors.mlx-spy-part")),
+      stat(join(dir, "org", "model", "model.safetensors.part")),
     ).rejects.toThrow();
     expect(engine.rescans).toBe(0);
   });
@@ -685,7 +684,7 @@ describe("Downloader", () => {
 
   test("a zero-byte file and a file named like a part", async () => {
     hub.files.set("empty.txt", new Uint8Array(0));
-    hub.files.set("model.safetensors.mlx-spy-part", bytesOf(10));
+    hub.files.set("model.safetensors.part", bytesOf(10));
     const { r } = runner();
     const download = await r.start(REPO);
     expect(download.filesTotal).toBe(4);

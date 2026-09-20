@@ -45,10 +45,10 @@ describe("actions", () => {
     ]);
     expect(confirmText("unload", "org/m", ctx)).toEqual([]);
     expect(confirmText("historyClear", null, ctx)).toEqual([
-      "Delete the stored history? Every sample of the last 7 days is removed from mlx-spy's database and the graphs start over.",
+      "Delete the stored history? Every sample of the last 7 days is removed from 1ctx-mlx-engine's database and the graphs start over.",
     ]);
     expect(confirmText("requestsClear", null, ctx)).toEqual([
-      "Delete the stored requests? The list and the last request shown in the bar are removed from mlx-spy's database.",
+      "Delete the stored requests? The list and the last request shown in the bar are removed from 1ctx-mlx-engine's database.",
     ]);
   });
 

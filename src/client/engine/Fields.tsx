@@ -136,7 +136,7 @@ export function Dirs({ pinned, off }: { pinned: string; off: boolean }) {
     <>
       <span class="dirs">
         {f.modelDirs.map((dir, i) => {
-          // mlx-spy's own directory stays: a config without it makes
+          // 1ctx-mlx-engine's own directory stays: a config without it makes
           // every finished download invisible to the engine. The absent
           // button is the signal; it carries no badge.
           const own = i === f.modelDirs.indexOf(pinned);

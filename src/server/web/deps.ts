@@ -20,7 +20,7 @@ export type WebDeps = {
   actions: Actions;
   downloads: Downloader;
   manager?: EngineManager;
-  spyRestart?: {
+  selfRestart?: {
     isLaunchd: () => boolean;
     exit: (code: number) => void;
     delayMs?: number;

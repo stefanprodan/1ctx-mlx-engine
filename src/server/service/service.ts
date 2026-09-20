@@ -18,7 +18,7 @@ import {
 } from "./launchd.ts";
 import { agentBinary, type PlistSpec, plistPath } from "./plist.ts";
 
-export const SERVICE_LABEL = "com.stefanprodan.mlx-spy";
+export const SERVICE_LABEL = "com.stefanprodan.1ctx-mlx-engine";
 const SERVICE_PORT = 11235;
 const HEALTH_ATTEMPTS = 60;
 
@@ -126,13 +126,13 @@ function installOptions(argv: string[], home: string): Options {
   }
   const options = { ...result.options };
   if (!hasFlag(argv, "--db")) {
-    options.dbPath = join(home, ".mlx-spy", "mlx-spy.db");
+    options.dbPath = join(home, ".1ctx-mlx-engine", "engine.db");
   }
   if (!hasFlag(argv, "--model-dir")) {
-    options.modelDir = join(home, ".mlx-spy", "models");
+    options.modelDir = join(home, ".1ctx-mlx-engine", "models");
   }
   if (!hasFlag(argv, "--log-file")) {
-    options.logFile = join(home, ".mlx-spy", "mlx-spy.log");
+    options.logFile = join(home, ".1ctx-mlx-engine", "1ctx-mlx-engine.log");
   }
   return options;
 }
@@ -142,11 +142,11 @@ function serviceSpec(
   home: string,
   execPath: string,
 ): PlistSpec {
-  const crashLog = join(home, ".mlx-spy", "launchd.log");
+  const crashLog = join(home, ".1ctx-mlx-engine", "launchd.log");
   return {
     label: SERVICE_LABEL,
     programArguments: [agentBinary(execPath), ...optionsToArgs(options)],
-    workingDirectory: join(home, ".mlx-spy"),
+    workingDirectory: join(home, ".1ctx-mlx-engine"),
     environmentVariables: {
       HOME: home,
       PATH: "/opt/homebrew/bin:/usr/bin:/bin",
@@ -175,7 +175,7 @@ async function waitForService(
     if (version !== null) return version;
     await resolved.sleep(1_000);
   }
-  throw new ServiceError(`mlx-spy did not answer at ${url}`);
+  throw new ServiceError(`1ctx-mlx-engine did not answer at ${url}`);
 }
 
 function decode(bytes: Uint8Array): string {
@@ -206,14 +206,14 @@ async function install(argv: string[], deps: ServiceDeps): Promise<void> {
     throw new ServiceError("service is running; use install --restart");
   }
 
-  await resolved.files.mkdir(join(resolved.home, ".mlx-spy"));
+  await resolved.files.mkdir(join(resolved.home, ".1ctx-mlx-engine"));
   await resolved.launchd.reload(
     serviceSpec(options, resolved.home, resolved.execPath),
     path,
   );
   const url = serviceUrl(options, resolved.defaultHostname());
   const runningVersion = await waitForService(url, resolved);
-  resolved.write(`mlx-spy ${runningVersion} up at ${url}`);
+  resolved.write(`1ctx-mlx-engine ${runningVersion} up at ${url}`);
 }
 
 async function start(deps: ServiceDeps): Promise<void> {
@@ -229,7 +229,7 @@ async function start(deps: ServiceDeps): Promise<void> {
   await resolved.launchd.bootstrap(path);
   const url = serviceUrl(options, resolved.defaultHostname());
   const version = await waitForService(url, resolved);
-  resolved.write(`mlx-spy ${version} up at ${url}`);
+  resolved.write(`1ctx-mlx-engine ${version} up at ${url}`);
 }
 
 async function stop(deps: ServiceDeps): Promise<void> {
@@ -248,7 +248,7 @@ async function restart(deps: ServiceDeps): Promise<void> {
   await resolved.launchd.bootstrap(path);
   const url = serviceUrl(options, resolved.defaultHostname());
   const version = await waitForService(url, resolved);
-  resolved.write(`mlx-spy ${version} up at ${url}`);
+  resolved.write(`1ctx-mlx-engine ${version} up at ${url}`);
 }
 
 async function status(deps: ServiceDeps): Promise<void> {
@@ -283,13 +283,14 @@ async function uninstall(purge: boolean, deps: ServiceDeps): Promise<void> {
 
   if (purge) {
     const dbPath =
-      options?.dbPath ?? join(resolved.home, ".mlx-spy", "mlx-spy.db");
+      options?.dbPath ?? join(resolved.home, ".1ctx-mlx-engine", "engine.db");
     const logPath =
-      options?.logFile ?? join(resolved.home, ".mlx-spy", "mlx-spy.log");
+      options?.logFile ??
+      join(resolved.home, ".1ctx-mlx-engine", "1ctx-mlx-engine.log");
     for (const candidate of [dbPath, `${dbPath}-shm`, `${dbPath}-wal`]) {
       if (candidate !== ":memory:") await resolved.files.remove(candidate);
     }
-    const crashLog = join(resolved.home, ".mlx-spy", "launchd.log");
+    const crashLog = join(resolved.home, ".1ctx-mlx-engine", "launchd.log");
     for (const candidate of [
       logPath,
       `${logPath}.1`,
@@ -323,6 +324,6 @@ export async function runService(
     }
   }
   throw new ServiceError(
-    "usage: mlx-spy service install|status|start|stop|restart|uninstall",
+    "usage: 1ctx-mlx-engine service install|status|start|stop|restart|uninstall",
   );
 }

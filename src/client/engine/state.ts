@@ -22,7 +22,7 @@ import {
 
 export const pageState = signal<EnginePageState | null>(null);
 export const engine = computed(() => pageState.value?.engine ?? null);
-export const spy = computed(() => pageState.value?.spy ?? null);
+export const self = computed(() => pageState.value?.self ?? null);
 
 export const form = signal<Form | null>(null);
 // what the form is compared against: the applied config, or DEFAULTS
@@ -44,7 +44,7 @@ export const changed = computed(() =>
 );
 
 // The manager's lock, or this tab's own call in flight: every mutating
-// control goes off, mlx-spy's Restart included.
+// control goes off, 1ctx-mlx-engine's Restart included.
 export const locked = computed(
   () => (engine.value?.operation ?? null) !== null || pending.value,
 );
@@ -117,7 +117,7 @@ async function call(path: string, method: string, body?: unknown) {
   if (!res.ok) {
     throw new Refused(data.error ?? `HTTP ${res.status}`, data.issues ?? []);
   }
-  if (data.engine && data.spy && sent === pushes) {
+  if (data.engine && data.self && sent === pushes) {
     setPageState(data as EnginePageState);
   }
 }
@@ -198,8 +198,8 @@ export const check = () =>
   run("Check", () => call("/api/engine/check", "POST"));
 export const setPreReleases = (preReleases: boolean) =>
   run("Settings", () => call("/api/engine/settings", "PUT", { preReleases }));
-export const restartSpy = () =>
-  run("Restart", () => call("/api/spy/restart", "POST"));
+export const restartSelf = () =>
+  run("Restart", () => call("/api/self/restart", "POST"));
 
 // for tests
 export function resetEngineState() {

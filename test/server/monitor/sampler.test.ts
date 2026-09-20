@@ -274,9 +274,9 @@ describe("Sampler", () => {
     history.close();
   });
 
-  test("a restart of mlx-spy still detects an engine restart", async () => {
+  test("a restart of 1ctx-mlx-engine still detects an engine restart", async () => {
     const history = new History(":memory:");
-    // previous mlx-spy run saw these counters and was on epoch 2
+    // previous 1ctx-mlx-engine run saw these counters and was on epoch 2
     history.saveSamplerState({
       epoch: 2,
       counters: parseMetrics(metricsFixture).counters,

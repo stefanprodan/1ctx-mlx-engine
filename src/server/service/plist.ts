@@ -96,6 +96,11 @@ export function plistPath(label: string, home: string): string {
 }
 
 export function agentBinary(execPath: string): string {
-  const match = /^(.*)\/Cellar\/mlx-spy\/[^/]+\/bin\/mlx-spy$/.exec(execPath);
-  return match ? `${match[1]}/opt/mlx-spy/bin/mlx-spy` : execPath;
+  const match =
+    /^(.*)\/Cellar\/1ctx-mlx-engine\/[^/]+\/bin\/1ctx-mlx-engine$/.exec(
+      execPath,
+    );
+  return match
+    ? `${match[1]}/opt/1ctx-mlx-engine/bin/1ctx-mlx-engine`
+    : execPath;
 }

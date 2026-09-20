@@ -62,7 +62,7 @@ export type InstallRecord = {
 };
 
 // Which of the page's states the mlx-serve section is in. "unmanaged" is
-// a local engine that answers on the port and that mlx-spy did not
+// a local engine that answers on the port and that 1ctx-mlx-engine did not
 // install; "absent" is a local port nothing answers on.
 export type EngineMode = "remote" | "unmanaged" | "absent" | "managed";
 
@@ -125,7 +125,7 @@ export type ReleaseCheck = {
 export type EngineState = {
   mode: EngineMode;
   // why management is refused: the remote host, or the port being held
-  // by an engine mlx-spy did not install; null when nothing is refused
+  // by an engine 1ctx-mlx-engine did not install; null when nothing is refused
   refusal: string | null;
   // the engine's host when it is remote, for the locality line
   remoteHost: string | null;
@@ -136,9 +136,9 @@ export type EngineState = {
   // first install
   config: EngineConfig;
   defaults: EngineConfig;
-  // mlx-spy's own --model-dir, which must stay in config.modelDirs
+  // 1ctx-mlx-engine's own --model-dir, which must stay in config.modelDirs
   pinnedModelDir: string;
-  // the port of mlx-spy's --engine URL, which config.port must match
+  // the port of 1ctx-mlx-engine's --engine URL, which config.port must match
   watchedPort: number;
   home: string;
   preReleases: boolean;
@@ -150,9 +150,9 @@ export type EngineState = {
   failure: Failure | null;
 };
 
-// mlx-spy's own section. brew is true when the binary runs from a
+// 1ctx-mlx-engine's own section. brew is true when the binary runs from a
 // Homebrew prefix; a dev build says so by being false.
-export type SpyState = {
+export type SelfState = {
   version: string;
   brew: boolean;
   startedAt: number;
@@ -162,7 +162,7 @@ export type SpyState = {
   offered: Release | null;
 };
 
-export type EnginePageState = { engine: EngineState; spy: SpyState };
+export type EnginePageState = { engine: EngineState; self: SelfState };
 
 export type InstallBody = { tag: string; config: EngineConfig };
 export type UpgradeBody = { tag: string };

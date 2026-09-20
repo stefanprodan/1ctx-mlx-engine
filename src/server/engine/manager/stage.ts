@@ -174,7 +174,7 @@ export async function downloadAttempt(
     await truncate(active.part, 0);
     have = 0;
   }
-  const headers = new Headers({ "user-agent": "mlx-spy" });
+  const headers = new Headers({ "user-agent": "1ctx-mlx-engine" });
   if (context.deps.token)
     headers.set("authorization", `Bearer ${context.deps.token}`);
   if (have > 0) headers.set("range", `bytes=${have}-`);

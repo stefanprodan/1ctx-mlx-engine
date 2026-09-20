@@ -1,10 +1,10 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Model downloads in mlx-spy's SQLite database: one row per download and
-// one per file of it. The rows are the resume state: a runner that starts again
-// reads which files are done, sizes the .part of the one that was running,
-// and continues. Bytes done are written from the runner about once a
+// Model downloads in 1ctx-mlx-engine's SQLite database: one row per download
+// and one per file of it. The rows are the resume state: a runner that starts
+// again reads which files are done, sizes the .part of the one that was
+// running, and continues. Bytes done are written from the runner about once a
 // second, so a crash loses at most that.
 
 import type { Database } from "bun:sqlite";

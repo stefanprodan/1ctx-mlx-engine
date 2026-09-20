@@ -7,9 +7,9 @@ import {
   type CachedReleaseCheck,
   ENGINE_ASSET,
   fetchReleases,
-  SPY_ASSET,
+  SELF_ASSET,
 } from "../release.ts";
-import { ENGINE_REPO, type ManagerContext, SPY_REPO } from "./context.ts";
+import { ENGINE_REPO, type ManagerContext, SELF_REPO } from "./context.ts";
 import { refreshService } from "./swap.ts";
 
 export const CHECK_AFTER_MS = 5_000;
@@ -66,7 +66,7 @@ export async function checkRepo(
 export async function publicCheckRepos(context: ManagerContext) {
   await Promise.all([
     checkRepo(context, ENGINE_REPO, ENGINE_ASSET),
-    checkRepo(context, SPY_REPO, SPY_ASSET),
+    checkRepo(context, SELF_REPO, SELF_ASSET),
   ]);
   if (context.deps.store.managed()) await refreshService(context);
   return context.publish();

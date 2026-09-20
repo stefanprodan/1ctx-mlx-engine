@@ -13,7 +13,7 @@ import { Lock } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
 import { Progress } from "./Progress.tsx";
 import { idleLine, isStopped, releaseNote } from "./release.ts";
-import { Resources } from "./Spy.tsx";
+import { Resources } from "./Self.tsx";
 import {
   check,
   dismiss,
@@ -166,7 +166,7 @@ export function Build({
   engine: EngineState | null;
   s: Sample | null;
   // the --engine URL and the build the sampler learned from /props: all
-  // there is to say about an engine mlx-spy did not install
+  // there is to say about an engine 1ctx-mlx-engine did not install
   url: string | null;
   sampledVersion: string | null;
 }) {

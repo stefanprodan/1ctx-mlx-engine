@@ -7,7 +7,7 @@ import { EngineStore } from "../../../src/server/engine/store.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import type { InstallRecord } from "../../../src/shared/engine.ts";
 
-const PINNED = "/Users/x/.mlx-spy/models";
+const PINNED = "/Users/x/.1ctx-mlx-engine/models";
 
 function install(tag: string, installedAt: number): InstallRecord {
   return {
@@ -88,11 +88,11 @@ describe("EngineStore", () => {
       checkedAt: 100,
       error: null,
     };
-    const spy = { releases: [], checkedAt: 200, error: "offline" };
+    const self = { releases: [], checkedAt: 200, error: "offline" };
     store.setReleaseCheck("ddalcu/mlx-serve", engine);
-    store.setReleaseCheck("stefanprodan/mlx-spy", spy);
+    store.setReleaseCheck("stefanprodan/1ctx-mlx-engine", self);
     expect(store.releaseCheck("ddalcu/mlx-serve")).toEqual(engine);
-    expect(store.releaseCheck("stefanprodan/mlx-spy")).toEqual(spy);
+    expect(store.releaseCheck("stefanprodan/1ctx-mlx-engine")).toEqual(self);
     expect(store.releaseCheck("other/repo")).toBeNull();
     store.setReleaseCheck("ddalcu/mlx-serve", null);
     expect(store.releaseCheck("ddalcu/mlx-serve")).toBeNull();

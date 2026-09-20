@@ -46,10 +46,10 @@ export const EMPTY_REQUESTS: RequestState = {
 };
 
 // The engine's gauges are republished every 2 s while its counters move at
-// once, so after a completion the running count can read stale for a read
-// or two. A request that disappears from the count without a completion
-// inside this window is that lag; later, it is a client that went away,
-// which the engine counts nowhere (no counter, no histogram) and mlx-spy
+// once, so after a completion the running count can read stale for a read or
+// two. A request that disappears from the count without a completion inside
+// this window is that lag; later, it is a client that went away, which the
+// engine counts nowhere (no counter, no histogram) and 1ctx-mlx-engine
 // records as cancelled with what it saw of it.
 const GAUGE_LAG_MS = 3000;
 

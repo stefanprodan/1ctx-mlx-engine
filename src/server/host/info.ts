@@ -1,11 +1,11 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Static facts about the host mlx-spy runs on, for the Runtime section: OS
-// version, chip, core counts, memory and the home volume. Read once at
-// startup; only the disk space is re-read per snapshot. Spawns nothing: the
-// OS version is a plist read, the chip and cores come from sysctl, the GPU
-// core count from the IORegistry, the disk from statfs.
+// Static facts about the host 1ctx-mlx-engine runs on, for the Runtime
+// section: OS version, chip, core counts, memory and the home volume. Read
+// once at startup; only the disk space is re-read per snapshot. Spawns
+// nothing: the OS version is a plist read, the chip and cores come from
+// sysctl, the GPU core count from the IORegistry, the disk from statfs.
 
 import { readFileSync, statfsSync } from "node:fs";
 import { cpus, homedir, hostname, release, totalmem } from "node:os";

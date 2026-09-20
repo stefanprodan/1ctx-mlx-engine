@@ -212,8 +212,8 @@ describe("computeRates live tracking", () => {
     return out;
   }
 
-  // The engine republishes the live gauges every 2 s; mlx-spy reads every
-  // second, so the gauge is frozen on every other tick.
+  // The engine republishes the live gauges every 2 s; 1ctx-mlx-engine reads
+  // every second, so the gauge is frozen on every other tick.
   test("a frozen gauge carries the rate while the request runs", () => {
     const out = run([
       at(1000, 100),

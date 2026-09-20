@@ -13,7 +13,7 @@ import {
   parseReleases,
   parseTag,
   parseVersionOutput,
-  SPY_ASSET,
+  SELF_ASSET,
 } from "../../../src/server/engine/release.ts";
 import releasesFixture from "../../fixtures/releases.json";
 
@@ -51,10 +51,10 @@ describe("engine releases", () => {
     ).toEqual([]);
   });
 
-  test("uses an exact asset name and tolerates no spy asset", () => {
-    const spy = parseReleases(releasesFixture, SPY_ASSET);
-    expect(spy).toHaveLength(5);
-    expect(spy[0]).toMatchObject({ assetBytes: 0, asset: null });
+  test("uses an exact asset name and tolerates a release without its asset", () => {
+    const self = parseReleases(releasesFixture, SELF_ASSET);
+    expect(self).toHaveLength(5);
+    expect(self[0]).toMatchObject({ assetBytes: 0, asset: null });
   });
 
   test("orders prereleases with semver precedence", () => {
@@ -121,8 +121,8 @@ mlx 0.32.2
         auth: "Bearer gh_test",
       },
     ]);
-    await fetchReleases("stefanprodan/mlx-spy", {
-      assetName: SPY_ASSET,
+    await fetchReleases("stefanprodan/1ctx-mlx-engine", {
+      assetName: SELF_ASSET,
       fetch: fakeFetch,
     });
     expect(calls[1].auth).toBeNull();
