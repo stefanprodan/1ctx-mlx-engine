@@ -51,9 +51,6 @@ class WebEngine implements Engine {
   serviceLabel() {
     return null;
   }
-  async cacheLimits(): Promise<CacheLimits | null> {
-    return null;
-  }
 }
 
 function setup() {

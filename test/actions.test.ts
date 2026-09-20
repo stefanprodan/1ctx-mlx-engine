@@ -88,9 +88,6 @@ class ControlEngine implements Engine {
   serviceLabel() {
     return this.label;
   }
-  async cacheLimits() {
-    return null;
-  }
 }
 
 async function setup(local = true) {

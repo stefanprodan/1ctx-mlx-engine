@@ -9,18 +9,14 @@ import { readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 
-export function secretsDirFor(
-  main: string,
-  _execPath: string,
-  home: string,
-): string {
+export function secretsDirFor(main: string, home: string): string {
   return main.endsWith(".ts")
     ? resolve(dirname(main), "../.preview/secrets")
     : resolve(home, ".mlx-spy/secrets");
 }
 
 export function secretsDir(): string {
-  return secretsDirFor(Bun.main, process.execPath, homedir());
+  return secretsDirFor(Bun.main, homedir());
 }
 
 function keyError(path: string, message: string): never {

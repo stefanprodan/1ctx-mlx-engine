@@ -256,9 +256,6 @@ class RescanEngine implements Engine {
   serviceLabel() {
     return null;
   }
-  async cacheLimits() {
-    return null;
-  }
 }
 
 // One Hub for the file. A Hub per test on a fresh random port let a later

@@ -73,9 +73,6 @@ class FakeEngine implements Engine {
   serviceLabel() {
     return null;
   }
-  async cacheLimits() {
-    return null;
-  }
 }
 
 function clock(start = 1_000_000) {

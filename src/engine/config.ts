@@ -56,9 +56,7 @@ export function limitsFromArgs(args: string[]): CacheLimits {
 }
 
 // The budgets are launch flags on the local engine's LaunchAgent.
-export function cacheLimits(
-  serviceLabel = "com.ddalcu.mlx-serve",
-): CacheLimits | null {
+export function cacheLimits(serviceLabel: string): CacheLimits | null {
   const plist = join(
     homedir(),
     "Library",
