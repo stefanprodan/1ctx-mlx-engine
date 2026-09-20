@@ -76,7 +76,15 @@ const idle = (): RequestBarModel => ({
 export function requestBar(
   memory: RequestMemory,
   sample: Sample | null,
+  // no engine on this host: idle would be a claim about one
+  absent = false,
 ): { memory: RequestMemory; bar: RequestBarModel } {
+  if (absent) {
+    return {
+      memory,
+      bar: { ...idle(), state: "no engine", totalText: "Not installed" },
+    };
+  }
   if (!sample) return { memory, bar: idle() };
   const current = sample.request;
   const last = sample.lastRequest;

@@ -121,6 +121,14 @@
     color: var(--faint);
     font-size: 13px;
   }
+  /* the way out of an empty state, e.g. to the Engine page */
+  .blank a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .blank a:hover {
+    text-decoration: underline;
+  }
   @media (max-width: 860px) {
     #requests .wide .rate,
     #requests .ttft {

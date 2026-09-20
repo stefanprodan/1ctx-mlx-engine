@@ -10,6 +10,7 @@
 import { computed, signal } from "@preact/signals";
 import type { ActionEvent, ActionName } from "../shared/actions.ts";
 import type { Download } from "../shared/downloads.ts";
+import type { EngineMode } from "../shared/engine.ts";
 import type { Sample } from "../shared/sample.ts";
 import type { Snapshot, WsMessage } from "../shared/socket.ts";
 
@@ -45,6 +46,12 @@ export function setBusy(action: ActionName | null) {
   busy.value = action;
 }
 export const version = computed(() => snapshot.value?.version ?? null);
+// What the manager makes of the engine: the snapshot's word, then every
+// engine push (an install in another tab). Absent is a bare host: there
+// the pages say not installed and point at the Engine page, where an
+// engine that is merely down says offline.
+export const engineMode = signal<EngineMode | null>(null);
+export const absent = computed(() => engineMode.value === "absent");
 // The downloads, newest first: the snapshot's list, then every download
 // message replaces its row (or adds one on top).
 export const downloads = signal<Download[]>([]);
@@ -71,6 +78,31 @@ function checkBuild(snap: Snapshot) {
   else if (replaced(loadedBuild, snap.build)) location.reload();
 }
 
+// A bare host has one thing to do, and it is on the Engine page: a visit
+// that lands on the Monitor from outside (the URL the installer printed, a
+// bookmark) goes there. A click on Monitor in the nav stays.
+export const landsOnEngine = (
+  pathname: string,
+  referrer: string,
+  origin: string,
+  mode: EngineMode | null,
+) => mode === "absent" && pathname === "/" && !referrer.startsWith(origin);
+let landed = false;
+function land(snap: Snapshot) {
+  if (landed) return;
+  landed = true;
+  if (
+    landsOnEngine(
+      location.pathname,
+      document.referrer,
+      location.origin,
+      snap.engine.mode,
+    )
+  ) {
+    location.replace("/engine");
+  }
+}
+
 export const modelsKeyOf = (list: Sample["models"]) =>
   list
     .map((m) => `${m.id}:${m.state}:${m.bytesResident}:${m.favorite ? 1 : 0}`)
@@ -78,6 +110,7 @@ export const modelsKeyOf = (list: Sample["models"]) =>
 let modelsKey = "";
 function setSnapshot(snap: Snapshot) {
   snapshot.value = snap;
+  engineMode.value = snap.engine.mode;
   // a snapshot taken before this tab's own action registered must not
   // release the buttons early
   if (snap.running || !localAction) busy.value = snap.running;
@@ -120,6 +153,7 @@ export function connect() {
     const msg = JSON.parse(ev.data) as WsMessage;
     if (msg.type === "snapshot") {
       checkBuild(msg.data);
+      land(msg.data);
       setSnapshot(msg.data);
       if (msg.data.sample) sample.value = msg.data.sample;
     } else if (msg.type === "sample") {
@@ -132,6 +166,8 @@ export function connect() {
       void refreshSnapshot();
     } else if (msg.type === "download") {
       applyDownload(msg.data);
+    } else if (msg.type === "engine") {
+      engineMode.value = msg.data.engine.mode;
     }
     emit(msg);
   };

@@ -330,7 +330,7 @@ describe("the sections", () => {
     );
   });
 
-  test("absent: dashes, no service buttons, Install on the foot", () => {
+  test("absent: dashes, no service buttons, Install by the release", () => {
     const over = {
       mode: "absent" as const,
       active: null,
@@ -348,6 +348,10 @@ describe("the sections", () => {
       />,
     );
     expect(build).toContain("Latest release");
+    expect(build).toMatch(
+      /<button[^>]*aria-describedby="install-why"[^>]*>Install<\/button>/,
+    );
+    expect(build).not.toMatch(/ disabled[^>]*>Install</);
     expect(build).not.toContain(">Upgrade</button>");
     expect(build).not.toContain("Rollback");
     const head = render(<ServiceHead engine={e} s={null} />);
@@ -355,8 +359,10 @@ describe("the sections", () => {
     expect(head).not.toContain("<button");
     expect(render(<ConfigHead engine={e} />)).not.toContain("pill");
     const cfg = render(<Config engine={e} />);
-    expect(cfg).toContain("Install will use these settings.");
-    expect(cfg).toContain(">Install</button>");
+    // the foot says what Install does; the button is up by the release
+    expect(cfg).toContain('id="install-why"');
+    expect(cfg).toContain("Install uses these settings.");
+    expect(cfg).not.toContain(">Install</button>");
     expect(cfg).not.toContain(">Apply</button>");
   });
 
@@ -383,9 +389,8 @@ describe("the sections", () => {
     expect(build).toContain("26.9.1");
     expect(build).not.toContain("MLX 0.32.2");
     expect(render(<ServiceHead engine={e} s={s} />)).toContain("unmanaged");
-    const cfg = render(<Config engine={e} />);
-    expect(cfg).toContain(refusal);
-    expect(cfg).toMatch(/<button[^>]* disabled[^>]*>Install<\/button>/);
+    expect(build).toMatch(/<button[^>]* disabled[^>]*>Install<\/button>/);
+    expect(render(<Config engine={e} />)).toContain(refusal);
   });
 
   test("an operation locks every mutating control, 1ctx-mlx-engine's too", () => {

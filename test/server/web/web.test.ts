@@ -173,6 +173,27 @@ describe("snapshot", () => {
 });
 
 describe("downloads API", () => {
+  test("the snapshot says what the manager makes of the engine", () => {
+    const s = setup();
+    // without a manager there is nothing to say
+    expect(snapshot(s.deps).engine.mode).toBeNull();
+    const bare = {
+      ...s.deps,
+      manager: { state: () => ({ mode: "absent", active: null }) },
+    } as unknown as WebDeps;
+    expect(snapshot(bare).engine.mode).toBe("absent");
+    const managed = {
+      ...s.deps,
+      manager: {
+        state: () => ({ mode: "managed", active: { version: "26.9.4" } }),
+      },
+    } as unknown as WebDeps;
+    expect(snapshot(managed).engine).toMatchObject({
+      mode: "managed",
+      version: "26.9.4",
+    });
+  });
+
   test("lists, starts, reads, cancels and forgets downloads", async () => {
     const s = setup();
     const runner = fakeDownloads();

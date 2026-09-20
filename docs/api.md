@@ -27,6 +27,10 @@ source). The page remembers the one it loaded with and reloads itself when
 a snapshot carries another: the server was replaced under an open tab, and
 `version` cannot say so, since every development build reports the same.
 
+`engine.mode` is what the engine manager makes of the engine: `managed`,
+`unmanaged`, `absent` (nothing installed and nothing answering, which the
+pages show as not installed) or `remote`; null when there is no manager.
+
 `engine.version` is the engine's build, which it states only while a model
 is resident; the answer is kept in 1ctx-mlx-engine's database, so after a
 restart with nothing loaded it is the last known build rather than nothing.

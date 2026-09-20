@@ -17,6 +17,7 @@ import { Resources } from "./Self.tsx";
 import {
   check,
   dismiss,
+  footError,
   install,
   locked,
   rollback,
@@ -109,6 +110,16 @@ function Failed({ engine }: { engine: EngineState }) {
   );
 }
 
+// A refused form answers in its foot, a screen below this button.
+async function onInstall(tag: string) {
+  await install(tag);
+  if (footError.value) {
+    document
+      .getElementById("install-why")
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+
 function ReleaseRow({ engine }: { engine: EngineState }) {
   const managed = engine.mode === "managed";
   const r = engine.offered;
@@ -141,8 +152,8 @@ function ReleaseRow({ engine }: { engine: EngineState }) {
       <span class="meta">{releaseNote(r)}</span>
       <span class="grow" />
       <PreReleases engine={engine} />
-      {managed && (
-        <span class="btns">
+      <span class="btns">
+        {managed ? (
           <button
             type="button"
             class="btn primary"
@@ -151,8 +162,20 @@ function ReleaseRow({ engine }: { engine: EngineState }) {
           >
             Upgrade
           </button>
-        </span>
-      )}
+        ) : (
+          // beside the release it installs, where Upgrade will be; the
+          // form below is what it uses and its foot says why it cannot
+          <button
+            type="button"
+            class="btn primary"
+            aria-describedby="install-why"
+            disabled={locked.value || engine.refusal !== null}
+            onClick={() => void onInstall(r.tag)}
+          >
+            Install
+          </button>
+        )}
+      </span>
     </div>
   );
 }

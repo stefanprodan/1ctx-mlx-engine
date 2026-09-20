@@ -574,6 +574,7 @@ describe("web", () => {
       id: "mlxserve",
       url: "http://fake:11234",
       local: false,
+      mode: null,
       // the engine stated both once the first tick saw a resident model
       version: "26.9.1",
       capabilities: [],

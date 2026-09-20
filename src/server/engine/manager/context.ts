@@ -61,6 +61,8 @@ export type EngineManagerDeps = {
   lock: ExclusiveLock;
   engineUrl: string;
   pinnedModelDir: string;
+  // the host this program's page is bound to; the engine's default follows
+  listenHost?: string;
   local: boolean;
   engineUp: () => boolean;
   health: () => Promise<boolean>;

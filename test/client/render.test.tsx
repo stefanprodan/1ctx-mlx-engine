@@ -14,6 +14,7 @@ import {
   busy,
   connection,
   downloads,
+  engineMode,
   event,
   sample,
   snapshot,
@@ -186,6 +187,24 @@ describe("request components", () => {
       />,
     );
     expect(empty).toContain('<p class="blank">Engine unreachable.</p>');
+    // a bare host: what is wrong and where to fix it, not an outage
+    engineMode.value = "absent";
+    const bare = render(
+      <Models
+        snap={
+          {
+            ...snap,
+            models: [],
+            sample: { engineUp: false },
+          } as unknown as Snapshot
+        }
+      />,
+    );
+    engineMode.value = null;
+    expect(bare).toContain(
+      '<p class="blank">mlx-serve is not installed. <a href="/engine">Install</a></p>',
+    );
+    expect(bare).not.toContain("unreachable");
   });
 });
 
@@ -304,6 +323,7 @@ describe("runtime facts", () => {
         id: "mlxserve",
         url: "http://127.0.0.1:11234",
         local: true,
+        mode: null,
         version,
         capabilities: [],
         limits: null,

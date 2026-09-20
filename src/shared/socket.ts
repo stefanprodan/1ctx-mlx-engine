@@ -6,7 +6,7 @@
 
 import type { ActionEvent, ActionName } from "./actions.ts";
 import type { Download } from "./downloads.ts";
-import type { EnginePageState } from "./engine.ts";
+import type { EngineMode, EnginePageState } from "./engine.ts";
 import type { DiskDir, DiskSpace, HostInfo } from "./host.ts";
 import type { CacheLimits, Capability, EngineId, ModelInfo } from "./models.ts";
 import type { Sample } from "./sample.ts";
@@ -19,6 +19,9 @@ export type Snapshot = {
     id: EngineId;
     url: string;
     local: boolean;
+    // what the manager makes of the engine; null without a manager. "absent"
+    // is how the other pages know to say not installed instead of offline
+    mode: EngineMode | null;
     version: string | null;
     capabilities: Capability[];
     limits: CacheLimits | null;

@@ -2,7 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { modelsKeyOf, pageOf, replaced } from "../../src/client/store.ts";
+import {
+  landsOnEngine,
+  modelsKeyOf,
+  pageOf,
+  replaced,
+} from "../../src/client/store.ts";
 import type { ModelInfo } from "../../src/shared/models.ts";
 
 const model = (over: Partial<ModelInfo> = {}): ModelInfo => ({
@@ -22,6 +27,22 @@ describe("store", () => {
     expect(pageOf("/requests")).toBe("requests");
     expect(pageOf("/engine")).toBe("engine");
     expect(pageOf("/requests/")).toBe("monitor");
+  });
+
+  test("only a landing on a bare host goes to the Engine page", () => {
+    const origin = "http://host:11235";
+    expect(landsOnEngine("/", "", origin, "absent")).toBeTrue();
+    expect(
+      landsOnEngine("/", "https://github.com/", origin, "absent"),
+    ).toBeTrue();
+    // a click on Monitor in the nav stays on the Monitor
+    expect(
+      landsOnEngine("/", `${origin}/engine`, origin, "absent"),
+    ).toBeFalse();
+    expect(landsOnEngine("/requests", "", origin, "absent")).toBeFalse();
+    expect(landsOnEngine("/", "", origin, "managed")).toBeFalse();
+    expect(landsOnEngine("/", "", origin, "unmanaged")).toBeFalse();
+    expect(landsOnEngine("/", "", origin, null)).toBeFalse();
   });
 
   test("a page reloads only when a compiled server was replaced", () => {

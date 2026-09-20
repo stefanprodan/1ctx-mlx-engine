@@ -18,7 +18,7 @@ CPU. The pill in the head is the service state:
 
 | Pill | Meaning |
 |---|---|
-| `not installed` | nothing answers on the port; Install is on the Configuration foot |
+| `not installed` | nothing answers on the port; Install is beside the latest release |
 | `unmanaged` | an mlx-serve that 1ctx-mlx-engine did not install answers on the port. It is shown, never touched; stop it before installing |
 | `up 3d 04h` | the managed job is serving |
 | `stopped` | the job is unloaded until Start or the next login |
@@ -36,8 +36,9 @@ offered.
 **Configuration** is the engine's launch flags. A blank field leaves the
 engine's own default, and the placeholder names it. Changed fields are
 outlined; Apply rewrites the LaunchAgent and restarts mlx-serve. A refused
-field says why beneath itself. Before anything is installed the foot holds
-Install, which uses what the form holds.
+field says why beneath itself. Before anything is installed, Install sits
+beside the latest release and uses what the form holds; the foot says so,
+and a refused form scrolls it into view.
 
 ## What an install does
 
@@ -72,7 +73,7 @@ the next time it starts, and logs which.
 
 | Row | Fields | Flags |
 |---|---|---|
-| Listener | host (`127.0.0.1` or `0.0.0.0`), port | `--host`, `--port` |
+| Listener | host (`127.0.0.1` or `0.0.0.0`), port. The default host is `0.0.0.0` when 1ctx-mlx-engine itself listens beyond loopback, so the machines that see the page reach the engine too | `--host`, `--port` |
 | Model dirs | one to eight directories, created if missing; 1ctx-mlx-engine's own download directory stays in the list | `--model-dir` |
 | Prefix cache | memory and disk per resident model, entries | `--prefix-cache-mem`, `--prefix-cache-disk`, `--prefix-cache-entries` |
 | Residency | models, memory, context, idle evict | `--max-resident-models`, `--max-resident-mem`, `--ctx-size`, `--idle-evict-secs` |

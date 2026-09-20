@@ -14,7 +14,7 @@ import type { Sample } from "../../shared/sample.ts";
 import { DownloadIcon } from "../icons.tsx";
 import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";
-import { connection, listen, sample, snapshot } from "../store.ts";
+import { absent, connection, listen, sample, snapshot } from "../store.ts";
 import { engineLocal, limits } from "./actions.ts";
 import { Charts } from "./Charts.tsx";
 import { DownloadDialog, openDownload } from "./Download.tsx";
@@ -71,6 +71,7 @@ function onSample(s: Sample) {
 
 function ActivityPill({ s }: { s: Sample | null }) {
   // engine-wide: the phase only; the request bar carries the details
+  if (absent.value) return <span class="pill err">not installed</span>;
   if (!s) return <span class="pill">idle</span>;
   if (!s.engineUp) return <span class="pill err">unreachable</span>;
   if (s.requestsRunning > 0 || s.requestsPrefilling > 0) {

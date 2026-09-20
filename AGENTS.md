@@ -236,8 +236,9 @@ src/client/
   main.tsx           entry: renders the shell and the page's root, opens
                      the store
   store.ts           the WebSocket client and its signals (connection,
-                     snapshot, sample, models, event, busy, downloads);
-                     listen() for the code that renders by hand
+                     snapshot, sample, models, event, busy, downloads,
+                     engineMode); listen() for the code that renders by
+                     hand; landsOnEngine, the bare-host landing rule
   api.ts             api<T>(): one JSON call to this server
   format.ts          gb, size, num, count, diskSize, duration, orderModels
                      (pure, tested)

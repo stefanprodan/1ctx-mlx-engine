@@ -58,6 +58,15 @@ describe("managed engine configuration", () => {
     expect(DEFAULTS(PINNED, "http://[::1]:11234").host).toBe("127.0.0.1");
   });
 
+  test("the default bind follows the page's own listener", () => {
+    const local = "http://127.0.0.1:11234";
+    expect(DEFAULTS(PINNED, local, "127.0.0.1").host).toBe("127.0.0.1");
+    expect(DEFAULTS(PINNED, local, "localhost").host).toBe("127.0.0.1");
+    // a page served to other machines wants an engine they can reach
+    expect(DEFAULTS(PINNED, local, "0.0.0.0").host).toBe("0.0.0.0");
+    expect(DEFAULTS(PINNED, local, "100.64.0.7").host).toBe("0.0.0.0");
+  });
+
   test("renders every typed field before split extra arguments", () => {
     const args = configToArgs(
       config({

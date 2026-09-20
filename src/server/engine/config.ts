@@ -31,13 +31,18 @@ function loopback(host: string): boolean {
   return value === "localhost" || value === "127.0.0.1" || value === "::1";
 }
 
+// The bind follows the page's own: a program that listens beyond loopback
+// serves other machines, and an engine on 127.0.0.1 would answer none of
+// them.
 export function DEFAULTS(
   pinnedModelDir: string,
   engineUrl: string,
+  listenHost = "127.0.0.1",
 ): EngineConfig {
   const url = new URL(engineUrl);
   return {
-    host: loopback(url.hostname) ? "127.0.0.1" : "0.0.0.0",
+    host:
+      loopback(url.hostname) && loopback(listenHost) ? "127.0.0.1" : "0.0.0.0",
     port: url.port === "" ? 11234 : Number(url.port),
     modelDirs: [pinnedModelDir],
     prefixCacheMem: null,
