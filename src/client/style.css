@@ -701,7 +701,7 @@ td.state.cancelled {
   color: var(--amber);
 }
 /* a download row: the bar under the id shows the share that arrived */
-tr.pull td.name .bar {
+tr.download td.name .bar {
   display: block;
   height: 3px;
   margin: 6px 0 -3px 22px;
@@ -709,10 +709,10 @@ tr.pull td.name .bar {
   background: #1a1e25;
   overflow: hidden;
 }
-tr.pull td.name .bar[hidden] {
+tr.download td.name .bar[hidden] {
   display: none;
 }
-tr.pull td.name .bar .fill {
+tr.download td.name .bar .fill {
   display: block;
   height: 100%;
   background: var(--accent);
@@ -1084,11 +1084,11 @@ tr.detail td {
 }
 
 /* the download dialog: one field, the target directory, the refusal */
-#pull .field {
+#download .field {
   display: block;
   margin: 0 0 14px;
 }
-#pull .field .lbl {
+#download .field .lbl {
   display: block;
   font-size: 11px;
   letter-spacing: 0.04em;
@@ -1096,7 +1096,7 @@ tr.detail td {
   color: var(--faint);
   margin-bottom: 6px;
 }
-#pull input {
+#download input {
   width: 100%;
   box-sizing: border-box;
   font-family: var(--mono);
@@ -1108,27 +1108,27 @@ tr.detail td {
   color: var(--fg);
   padding: 7px 10px;
 }
-#pull input:focus-visible {
+#download input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-#pull .note {
+#download .note {
   font-size: 12.5px;
   font-weight: 400;
   color: var(--dim);
   margin: 0 0 18px;
 }
-#pull .note code {
+#download .note code {
   font-size: 12px;
   color: var(--dim);
 }
-#pull .err {
+#download .err {
   font-size: 12.5px;
   font-weight: 400;
   color: #ff95a8;
   margin: -8px 0 18px;
 }
-#pull .err[hidden] {
+#download .err[hidden] {
   display: none;
 }
 

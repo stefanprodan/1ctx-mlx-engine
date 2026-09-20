@@ -73,7 +73,7 @@ Downloads land in `--model-dir`, `~/.mlx-spy/models` by default, for the
 preview too (`.preview/models/` when it watches a remote engine); point
 it at the engine's own model
 directory for a downloaded model to be served. The downloader is tested
-against a fake Hub in `test/pull.test.ts`; a real pull of a small
+against a fake Hub in `test/server/models/download.test.ts`; a real download of a small
 repository such as `Jundot/gemma-4-E2B-it-oQ4e-mtp` (3.9 GB) is the
 end-to-end check.
 

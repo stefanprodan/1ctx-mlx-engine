@@ -33,7 +33,7 @@ export const Trash = () => (
 );
 
 // the Download button in the Models head
-export const Download = () => (
+export const DownloadIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
       fill="none"

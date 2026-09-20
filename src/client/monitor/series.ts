@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The raw 1h series and the live samples that extend it. Pure; tested in
-// test/ui/series.test.ts.
+// test/client/series.test.ts.
 
 import type { Series } from "../../shared/history.ts";
 import type { Sample } from "../../shared/sample.ts";

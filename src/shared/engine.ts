@@ -4,7 +4,7 @@
 // The contract between the engine manager and the Engine page: what
 // GET /api/engine answers, what {type: "engine"} carries on /ws, and the
 // bodies the management routes take. Types only, so the page can import
-// it without pulling the manager into the bundle.
+// it without dragging the manager into the bundle.
 
 export type KvQuant = "off" | "4" | "8" | "turbo2" | "turbo4";
 export type LogLevel = "debug" | "info" | "warn" | "error";

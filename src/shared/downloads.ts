@@ -3,14 +3,19 @@
 //
 // A model download as the routes and the socket report it.
 
-export type PullStatus = "queued" | "running" | "done" | "failed" | "cancelled";
+export type DownloadStatus =
+  | "queued"
+  | "running"
+  | "done"
+  | "failed"
+  | "cancelled";
 
-export type Pull = {
+export type Download = {
   id: number;
   repo: string;
   revision: string;
   dir: string;
-  status: PullStatus;
+  status: DownloadStatus;
   bytesTotal: number;
   bytesDone: number;
   filesTotal: number;

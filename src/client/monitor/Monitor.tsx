@@ -11,15 +11,15 @@ import { signal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import type { Range, Series } from "../../shared/history.ts";
 import type { Sample } from "../../shared/sample.ts";
-import { Download } from "../icons.tsx";
+import { DownloadIcon } from "../icons.tsx";
 import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";
 import { connection, listen, sample, snapshot } from "../store.ts";
 import { engineLocal, limits } from "./actions.ts";
 import { Charts } from "./Charts.tsx";
+import { DownloadDialog, openDownload } from "./Download.tsx";
 import { Event } from "./Event.tsx";
 import { Models } from "./Models.tsx";
-import { openPull, PullDialog } from "./Pull.tsx";
 import { RangePicker } from "./RangePicker.tsx";
 import { RequestBar } from "./RequestBar.tsx";
 import { Runtime, RuntimeHead } from "./Runtime.tsx";
@@ -154,9 +154,9 @@ export function Monitor() {
             type="button"
             class="btn"
             title="Download a model from the Hugging Face Hub"
-            onClick={openPull}
+            onClick={openDownload}
           >
-            <Download />
+            <DownloadIcon />
             Download
           </button>
         </span>
@@ -167,7 +167,7 @@ export function Monitor() {
       <RuntimeHead snap={snap} s={s} />
       <Runtime snap={snap} s={s} />
       <Confirm />
-      <PullDialog />
+      <DownloadDialog />
     </>
   );
 }

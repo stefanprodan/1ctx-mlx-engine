@@ -1,27 +1,27 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Model downloads in mlx-spy's SQLite database: one row per pull and one per
-// file of it. The rows are the resume state: a runner that starts again
+// Model downloads in mlx-spy's SQLite database: one row per download and
+// one per file of it. The rows are the resume state: a runner that starts again
 // reads which files are done, sizes the .part of the one that was running,
 // and continues. Bytes done are written from the runner about once a
 // second, so a crash loses at most that.
 
 import type { Database } from "bun:sqlite";
-import type { Pull, PullStatus } from "../../shared/downloads.ts";
+import type { Download, DownloadStatus } from "../../shared/downloads.ts";
 import type { HubFile } from "./hub.ts";
 
-export type PullFile = HubFile & {
-  pullId: number;
+export type DownloadFile = HubFile & {
+  downloadId: number;
   done: boolean;
 };
 
-type PullRow = {
+type DownloadRow = {
   id: number;
   repo: string;
   revision: string;
   dir: string;
-  status: PullStatus;
+  status: DownloadStatus;
   bytesTotal: number;
   bytesDone: number;
   filesTotal: number;
@@ -34,7 +34,7 @@ type PullRow = {
 };
 
 type FileRow = {
-  pullId: number;
+  downloadId: number;
   path: string;
   size: number;
   sha256: string | null;
@@ -47,15 +47,18 @@ const COLUMNS = `id, repo, revision, dir, status,
   file, error, created_at AS createdAt, updated_at AS updatedAt,
   finished_at AS finishedAt`;
 
-export const PULLS_LISTED = 20;
+export const DOWNLOADS_LISTED = 20;
 
-export class PullStore {
+export class DownloadStore {
   constructor(
     private readonly db: Database,
     private readonly now: () => number = Date.now,
   ) {
     this.db.run("PRAGMA foreign_keys = ON");
-    this.db.run(`CREATE TABLE IF NOT EXISTS pulls (
+    // the tables had another name before the first release
+    this.db.run("DROP TABLE IF EXISTS pull_files");
+    this.db.run("DROP TABLE IF EXISTS pulls");
+    this.db.run(`CREATE TABLE IF NOT EXISTS downloads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       repo TEXT NOT NULL,
       revision TEXT NOT NULL,
@@ -71,68 +74,73 @@ export class PullStore {
       updated_at INTEGER NOT NULL,
       finished_at INTEGER
     )`);
-    this.db.run(`CREATE TABLE IF NOT EXISTS pull_files (
-      pull_id INTEGER NOT NULL REFERENCES pulls(id) ON DELETE CASCADE,
+    this.db.run(`CREATE TABLE IF NOT EXISTS download_files (
+      download_id INTEGER NOT NULL REFERENCES downloads(id) ON DELETE CASCADE,
       path TEXT NOT NULL,
       size INTEGER NOT NULL,
       sha256 TEXT,
       done INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (pull_id, path)
+      PRIMARY KEY (download_id, path)
     )`);
   }
 
-  private toPull(row: PullRow): Pull {
+  private toDownload(row: DownloadRow): Download {
     return { ...row, speedBps: null };
   }
 
-  // Newest first, the last PULLS_LISTED.
-  list(): Pull[] {
+  // Newest first, the last DOWNLOADS_LISTED.
+  list(): Download[] {
     const rows = this.db
-      .query(`SELECT ${COLUMNS} FROM pulls ORDER BY id DESC LIMIT $n`)
-      .all({ n: PULLS_LISTED }) as PullRow[];
-    return rows.map((row) => this.toPull(row));
+      .query(`SELECT ${COLUMNS} FROM downloads ORDER BY id DESC LIMIT $n`)
+      .all({ n: DOWNLOADS_LISTED }) as DownloadRow[];
+    return rows.map((row) => this.toDownload(row));
   }
 
-  get(id: number): Pull | null {
+  get(id: number): Download | null {
     const row = this.db
-      .query(`SELECT ${COLUMNS} FROM pulls WHERE id = $id`)
-      .get({ id }) as PullRow | null;
-    return row ? this.toPull(row) : null;
+      .query(`SELECT ${COLUMNS} FROM downloads WHERE id = $id`)
+      .get({ id }) as DownloadRow | null;
+    return row ? this.toDownload(row) : null;
   }
 
-  // The pull for a repo that is not finished (there is one at most): a
+  // The download for a repo that is not finished (there is one at most): a
   // second request for the same repo resumes it instead of starting over.
-  findOpen(repo: string): Pull | null {
+  findOpen(repo: string): Download | null {
     const row = this.db
       .query(
-        `SELECT ${COLUMNS} FROM pulls WHERE repo = $repo AND status <> 'done'
+        `SELECT ${COLUMNS} FROM downloads WHERE repo = $repo AND status <> 'done'
          ORDER BY id DESC LIMIT 1`,
       )
-      .get({ repo }) as PullRow | null;
-    return row ? this.toPull(row) : null;
+      .get({ repo }) as DownloadRow | null;
+    return row ? this.toDownload(row) : null;
   }
 
-  // Pulls that were running or waiting when the process stopped.
-  unfinished(): Pull[] {
+  // Downloads that were running or waiting when the process stopped.
+  unfinished(): Download[] {
     const rows = this.db
       .query(
-        `SELECT ${COLUMNS} FROM pulls WHERE status IN ('queued', 'running')
+        `SELECT ${COLUMNS} FROM downloads WHERE status IN ('queued', 'running')
          ORDER BY id`,
       )
-      .all() as PullRow[];
-    return rows.map((row) => this.toPull(row));
+      .all() as DownloadRow[];
+    return rows.map((row) => this.toDownload(row));
   }
 
-  create(repo: string, revision: string, dir: string, files: HubFile[]): Pull {
+  create(
+    repo: string,
+    revision: string,
+    dir: string,
+    files: HubFile[],
+  ): Download {
     const t = this.now();
     const insert = this.db.query(
-      `INSERT INTO pulls (repo, revision, dir, status, bytes_total, files_total,
+      `INSERT INTO downloads (repo, revision, dir, status, bytes_total, files_total,
          created_at, updated_at)
        VALUES ($repo, $revision, $dir, 'queued', $bytes, $files, $t, $t)`,
     );
     const insertFile = this.db.query(
-      `INSERT INTO pull_files (pull_id, path, size, sha256) VALUES
-       ($pullId, $path, $size, $sha256)`,
+      `INSERT INTO download_files (download_id, path, size, sha256) VALUES
+       ($downloadId, $path, $size, $sha256)`,
     );
     const id = this.db.transaction(() => {
       const result = insert.run({
@@ -143,41 +151,41 @@ export class PullStore {
         files: files.length,
         t,
       });
-      const pullId = Number(result.lastInsertRowid);
+      const downloadId = Number(result.lastInsertRowid);
       for (const f of files) {
         insertFile.run({
-          pullId,
+          downloadId,
           path: f.path,
           size: f.size,
           sha256: f.sha256,
         });
       }
-      return pullId;
+      return downloadId;
     })();
     return this.get(id)!;
   }
 
-  files(pullId: number): PullFile[] {
+  files(downloadId: number): DownloadFile[] {
     const rows = this.db
       .query(
-        `SELECT pull_id AS pullId, path, size, sha256, done FROM pull_files
-         WHERE pull_id = $pullId ORDER BY rowid`,
+        `SELECT download_id AS downloadId, path, size, sha256, done FROM download_files
+         WHERE download_id = $downloadId ORDER BY rowid`,
       )
-      .all({ pullId }) as FileRow[];
+      .all({ downloadId }) as FileRow[];
     return rows.map((row) => ({ ...row, done: row.done === 1 }));
   }
 
   setStatus(
     id: number,
-    status: PullStatus,
+    status: DownloadStatus,
     error: string | null = null,
-  ): Pull | null {
+  ): Download | null {
     const t = this.now();
     const finished =
       status === "done" || status === "failed" || status === "cancelled";
     this.db
       .query(
-        `UPDATE pulls SET status = $status, error = $error, updated_at = $t,
+        `UPDATE downloads SET status = $status, error = $error, updated_at = $t,
            finished_at = CASE WHEN $finished THEN $t ELSE NULL END,
            file = CASE WHEN $finished THEN NULL ELSE file END
          WHERE id = $id`,
@@ -191,7 +199,7 @@ export class PullStore {
   progress(id: number, bytesDone: number, file: string | null) {
     this.db
       .query(
-        `UPDATE pulls SET bytes_done = $bytesDone, file = $file, updated_at = $t
+        `UPDATE downloads SET bytes_done = $bytesDone, file = $file, updated_at = $t
          WHERE id = $id`,
       )
       .run({ id, bytesDone, file, t: this.now() });
@@ -201,13 +209,13 @@ export class PullStore {
     this.db.transaction(() => {
       this.db
         .query(
-          "UPDATE pull_files SET done = 1 WHERE pull_id = $id AND path = $path",
+          "UPDATE download_files SET done = 1 WHERE download_id = $id AND path = $path",
         )
         .run({ id, path });
       this.db
         .query(
-          `UPDATE pulls SET files_done = (SELECT count(*) FROM pull_files
-             WHERE pull_id = $id AND done = 1), updated_at = $t
+          `UPDATE downloads SET files_done = (SELECT count(*) FROM download_files
+             WHERE download_id = $id AND done = 1), updated_at = $t
            WHERE id = $id`,
         )
         .run({ id, t: this.now() });
@@ -219,13 +227,13 @@ export class PullStore {
     this.db.transaction(() => {
       this.db
         .query(
-          "UPDATE pull_files SET done = 0 WHERE pull_id = $id AND path = $path",
+          "UPDATE download_files SET done = 0 WHERE download_id = $id AND path = $path",
         )
         .run({ id, path });
       this.db
         .query(
-          `UPDATE pulls SET files_done = (SELECT count(*) FROM pull_files
-             WHERE pull_id = $id AND done = 1), updated_at = $t
+          `UPDATE downloads SET files_done = (SELECT count(*) FROM download_files
+             WHERE download_id = $id AND done = 1), updated_at = $t
            WHERE id = $id`,
         )
         .run({ id, t: this.now() });
@@ -234,7 +242,7 @@ export class PullStore {
 
   remove(id: number): boolean {
     const result = this.db
-      .query("DELETE FROM pulls WHERE id = $id")
+      .query("DELETE FROM downloads WHERE id = $id")
       .run({ id });
     return result.changes > 0;
   }

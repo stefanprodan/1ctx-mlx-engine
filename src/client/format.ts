@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Number and time formatting shared by the pages. Pure; tested in
-// test/ui/format.test.ts.
+// test/client/format.test.ts.
 
 // Binary GB everywhere memory is shown, the unit About This Mac uses for
 // the machine (96 GB, not 103) and the engine's own --prefix-cache-* flags

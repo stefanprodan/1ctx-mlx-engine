@@ -1,9 +1,9 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import { event, pulls, snapshot } from "../store.ts";
+import { downloads, event, snapshot } from "../store.ts";
 import { ACTION_LABEL } from "./actions.ts";
-import { pullError } from "./Pull.tsx";
+import { downloadError } from "./Download.tsx";
 
 const fmtWhen = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
@@ -31,15 +31,15 @@ export function Event() {
     }`;
     failures.push({ t: outcome.t, text: `${what} failed: ${outcome.detail}` });
   }
-  // the newest failed pull still in the list, and a refused button
-  const failed = pulls.value.find((p) => p.status === "failed" && p.error);
+  // the newest failed download still in the list, and a refused button
+  const failed = downloads.value.find((p) => p.status === "failed" && p.error);
   if (failed) {
     failures.push({
       t: failed.finishedAt ?? failed.updatedAt,
       text: `download ${failed.repo} failed: ${failed.error}`,
     });
   }
-  const refused = pullError.value;
+  const refused = downloadError.value;
   if (refused) {
     failures.push({
       t: refused.t,

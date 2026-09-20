@@ -9,7 +9,7 @@
 
 import { computed, signal } from "@preact/signals";
 import type { ActionEvent, ActionName } from "../shared/actions.ts";
-import type { Pull } from "../shared/downloads.ts";
+import type { Download } from "../shared/downloads.ts";
 import type { Sample } from "../shared/sample.ts";
 import type { Snapshot, WsMessage } from "../shared/socket.ts";
 
@@ -45,14 +45,16 @@ export function setBusy(action: ActionName | null) {
   busy.value = action;
 }
 export const version = computed(() => snapshot.value?.version ?? null);
-// The downloads, newest first: the snapshot's list, then every pull
+// The downloads, newest first: the snapshot's list, then every download
 // message replaces its row (or adds one on top).
-export const pulls = signal<Pull[]>([]);
-export function applyPull(pull: Pull) {
-  const list = pulls.value;
-  const at = list.findIndex((p) => p.id === pull.id);
-  pulls.value =
-    at === -1 ? [pull, ...list] : list.map((p, i) => (i === at ? pull : p));
+export const downloads = signal<Download[]>([]);
+export function applyDownload(download: Download) {
+  const list = downloads.value;
+  const at = list.findIndex((p) => p.id === download.id);
+  downloads.value =
+    at === -1
+      ? [download, ...list]
+      : list.map((p, i) => (i === at ? download : p));
 }
 
 // The page is the bundle the tab loaded; the server behind the socket can
@@ -79,7 +81,7 @@ function setSnapshot(snap: Snapshot) {
   // a snapshot taken before this tab's own action registered must not
   // release the buttons early
   if (snap.running || !localAction) busy.value = snap.running;
-  pulls.value = snap.pulls;
+  downloads.value = snap.downloads;
   const key = modelsKeyOf(snap.models);
   if (key === modelsKey) return;
   modelsKey = key;
@@ -128,8 +130,8 @@ export function connect() {
       event.value = msg.data;
       // another tab may have run it; the residency changed either way
       void refreshSnapshot();
-    } else if (msg.type === "pull") {
-      applyPull(msg.data);
+    } else if (msg.type === "download") {
+      applyDownload(msg.data);
     }
     emit(msg);
   };

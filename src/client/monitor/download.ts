@@ -2,20 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The copy of a download row in the models table (pure, tested in
-// test/ui/pull.test.ts): which pulls the table shows, the dot, the bytes
-// and speed, the state word.
+// test/client/download.test.ts): which downloads the table shows, the dot,
+// the bytes and speed, the state word.
 
-import type { Pull } from "../../shared/downloads.ts";
+import type { Download } from "../../shared/downloads.ts";
 import { gb } from "../format.ts";
 
-// A finished pull whose model the engine lists is that model's row now;
-// every other pull stays until it is removed.
-export function visiblePulls(pulls: Pull[], models: { id: string }[]): Pull[] {
+// A finished download whose model the engine lists is that model's row now;
+// every other download stays until it is removed.
+export function visibleDownloads(
+  downloads: Download[],
+  models: { id: string }[],
+): Download[] {
   const listed = new Set(models.map((m) => m.id));
-  return pulls.filter((p) => p.status !== "done" || !listed.has(p.repo));
+  return downloads.filter((p) => p.status !== "done" || !listed.has(p.repo));
 }
 
-export function pullDot(p: Pull): string {
+export function downloadDot(p: Download): string {
   switch (p.status) {
     case "running":
       return "loading";
@@ -28,13 +31,13 @@ export function pullDot(p: Pull): string {
   }
 }
 
-export function pullState(p: Pull): string {
+export function downloadState(p: Download): string {
   return p.status === "running" ? "downloading" : p.status;
 }
 
 // "3.2 / 16.7 GB · 48 MB/s · 5 min left" while running, the size when
 // queued or done, what arrived when it stopped.
-export function pullMeta(p: Pull): string {
+export function downloadMeta(p: Download): string {
   const total = `${gb(p.bytesTotal)} GB`;
   if (p.status === "queued" || p.status === "done") return total;
   const parts = [`${gb(p.bytesDone)} / ${total}`];
@@ -55,7 +58,7 @@ export function eta(seconds: number): string {
 }
 
 // The share done, for the bar under the id.
-export function pullPct(p: Pull): number {
+export function downloadPct(p: Download): number {
   if (p.bytesTotal <= 0) return 0;
   return Math.min(100, (p.bytesDone / p.bytesTotal) * 100);
 }

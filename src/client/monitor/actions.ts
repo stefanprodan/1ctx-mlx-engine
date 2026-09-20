@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The control actions: the dialog copy (pure, tested in
-// test/ui/actions.test.ts) and runAction, which confirms, posts and lets
+// test/client/actions.test.ts) and runAction, which confirms, posts and lets
 // the /ws event show the outcome in every tab.
 
 import { computed } from "@preact/signals";

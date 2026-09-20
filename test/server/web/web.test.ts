@@ -5,7 +5,7 @@ import type {
   Engine,
   EngineMetrics,
 } from "../../../src/server/engine/types.ts";
-import { PullError } from "../../../src/server/models/pull.ts";
+import { DownloadError } from "../../../src/server/models/download.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import {
   handle,
@@ -119,10 +119,10 @@ async function response(
 }
 
 // A runner with the surface the routes use; the real one is tested in
-// test/pull.test.ts.
-function fakePulls() {
+// test/server/models/download.test.ts.
+function fakeDownloads() {
   const calls: string[] = [];
-  const pull = {
+  const download = {
     id: 3,
     repo: "org/new",
     revision: "abc",
@@ -141,22 +141,22 @@ function fakePulls() {
   };
   return {
     calls,
-    pull,
-    list: () => [pull],
-    get: (id: number) => (id === 3 ? pull : null),
+    download,
+    list: () => [download],
+    get: (id: number) => (id === 3 ? download : null),
     async start(repo: string) {
       calls.push(`start ${repo}`);
-      if (repo === "bad") throw new PullError(400, "repo must be x");
-      return pull;
+      if (repo === "bad") throw new DownloadError(400, "repo must be x");
+      return download;
     },
     async cancel(id: number) {
       calls.push(`cancel ${id}`);
-      if (id !== 3) throw new PullError(404, "Pull not found");
-      return { ...pull, status: "cancelled" };
+      if (id !== 3) throw new DownloadError(404, "Download not found");
+      return { ...download, status: "cancelled" };
     },
     async remove(id: number) {
       calls.push(`remove ${id}`);
-      if (id !== 3) throw new PullError(404, "Pull not found");
+      if (id !== 3) throw new DownloadError(404, "Download not found");
     },
     onEvent: () => () => {},
   };
@@ -175,61 +175,67 @@ describe("snapshot", () => {
   });
 });
 
-describe("pulls API", () => {
+describe("downloads API", () => {
   test("lists, starts, reads, cancels and forgets downloads", async () => {
     const s = setup();
-    const runner = fakePulls();
+    const runner = fakeDownloads();
     const deps = {
       ...s.deps,
-      pulls: runner,
+      downloads: runner,
       modelDir: "/m",
     } as unknown as WebDeps;
-    expect(snapshot(deps).pulls).toEqual([runner.pull]);
+    expect(snapshot(deps).downloads).toEqual([runner.download]);
     expect(snapshot(deps).modelDir).toBe("/m");
-    expect(snapshot(s.deps).pulls).toEqual([]);
+    expect(snapshot(s.deps).downloads).toEqual([]);
     expect(snapshot(s.deps).modelDir).toBeNull();
 
-    const list = await response(deps, "/api/pulls");
+    const list = await response(deps, "/api/downloads");
     expect(list.status).toBe(200);
-    expect(await list.json()).toEqual([runner.pull]);
+    expect(await list.json()).toEqual([runner.download]);
 
-    const started = await response(deps, "/api/pulls", "POST", {
+    const started = await response(deps, "/api/downloads", "POST", {
       repo: "org/new",
     });
     expect(started.status).toBe(202);
-    expect(await started.json()).toEqual(runner.pull);
-    const refused = await response(deps, "/api/pulls", "POST", {
+    expect(await started.json()).toEqual(runner.download);
+    const refused = await response(deps, "/api/downloads", "POST", {
       repo: "bad",
     });
     expect(refused.status).toBe(400);
     expect(await refused.json()).toEqual({ error: "repo must be x" });
     expect(
-      (await response(deps, "/api/pulls", "POST", { repo: 1 })).status,
+      (await response(deps, "/api/downloads", "POST", { repo: 1 })).status,
     ).toBe(400);
-    expect((await response(deps, "/api/pulls", "POST", {})).status).toBe(400);
+    expect((await response(deps, "/api/downloads", "POST", {})).status).toBe(
+      400,
+    );
 
-    expect((await response(deps, "/api/pulls/3")).status).toBe(200);
-    expect((await response(deps, "/api/pulls/4")).status).toBe(404);
+    expect((await response(deps, "/api/downloads/3")).status).toBe(200);
+    expect((await response(deps, "/api/downloads/4")).status).toBe(404);
 
-    const cancelled = await response(deps, "/api/pulls/3/cancel", "POST");
+    const cancelled = await response(deps, "/api/downloads/3/cancel", "POST");
     expect(cancelled.status).toBe(200);
     expect(((await cancelled.json()) as any).status).toBe("cancelled");
-    expect((await response(deps, "/api/pulls/4/cancel", "POST")).status).toBe(
-      404,
-    );
-    expect((await response(deps, "/api/pulls/3/cancel")).status).toBe(405);
+    expect(
+      (await response(deps, "/api/downloads/4/cancel", "POST")).status,
+    ).toBe(404);
+    expect((await response(deps, "/api/downloads/3/cancel")).status).toBe(405);
 
-    const removed = await response(deps, "/api/pulls/3", "DELETE");
+    const removed = await response(deps, "/api/downloads/3", "DELETE");
     expect(removed.status).toBe(200);
     expect(await removed.json()).toEqual({ ok: true });
-    expect((await response(deps, "/api/pulls/4", "DELETE")).status).toBe(404);
-    expect((await response(deps, "/api/pulls/x")).status).toBe(404);
-    expect((await response(deps, "/api/pulls/3", "PATCH")).status).toBe(405);
+    expect((await response(deps, "/api/downloads/4", "DELETE")).status).toBe(
+      404,
+    );
+    expect((await response(deps, "/api/downloads/x")).status).toBe(404);
+    expect((await response(deps, "/api/downloads/3", "PATCH")).status).toBe(
+      405,
+    );
     expect(
       (
         await response(
           deps,
-          "/api/pulls",
+          "/api/downloads",
           "POST",
           { repo: "a/b" },
           "http://evil",
@@ -237,7 +243,7 @@ describe("pulls API", () => {
       ).status,
     ).toBe(403);
     // without a runner the routes do not exist
-    expect((await response(s.deps, "/api/pulls")).status).toBe(404);
+    expect((await response(s.deps, "/api/downloads")).status).toBe(404);
     expect(runner.calls).toEqual([
       "start org/new",
       "start bad",

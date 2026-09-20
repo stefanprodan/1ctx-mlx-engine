@@ -1,14 +1,14 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The model downloader: pulls a Hugging Face repo into the model directory,
-// one pull at a time, from a queue that survives restarts through the
-// PullStore. Every file streams into <file>.part and resumes with a Range
+// The model downloader: downloads a Hugging Face repo into the model directory,
+// one download at a time, from a queue that survives restarts through the
+// DownloadStore. Every file streams into <file>.part and resumes with a Range
 // request after a cut, a retry or a restart; the hash is computed while
 // writing (the existing part first, on a resume) and checked against the
 // Hub's LFS sha256 before the rename. Progress reaches every tab on /ws.
 //
-// The engine is not involved in the download. After a pull the runner asks
+// The engine is not involved in the download. After a download the runner asks
 // it to rescan its model directory (mlx-serve answers /v1/models/rescan
 // before its model-load step, like /v1/models; verified in src/server.zig)
 // so the new checkpoint shows in the list without an engine restart.
@@ -23,7 +23,7 @@ import {
   truncate,
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import type { Pull } from "../../shared/downloads.ts";
+import type { Download } from "../../shared/downloads.ts";
 import type { Engine } from "../engine/types.ts";
 import { diskSpace } from "../host/info.ts";
 import {
@@ -43,7 +43,7 @@ import {
   parseRepoId,
   resolveUrl,
 } from "./hub.ts";
-import type { PullFile, PullStore } from "./pulls.ts";
+import type { DownloadFile, DownloadStore } from "./store.ts";
 
 const RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
@@ -54,7 +54,7 @@ const DISK_MARGIN = DOWNLOAD_DISK_MARGIN;
 const HASH_CHUNK = 4 * 1024 * 1024;
 const STALL_MS = DOWNLOAD_STALL_MS;
 
-export class PullError extends Error {
+export class DownloadError extends Error {
   constructor(
     readonly status: number,
     message: string,
@@ -66,8 +66,8 @@ export class PullError extends Error {
 // a failure worth another attempt at the same file (the .part is kept)
 class Retryable extends Error {}
 
-export type PullRunnerDeps = {
-  store: PullStore;
+export type DownloaderDeps = {
+  store: DownloadStore;
   modelDir: string;
   token: string | null;
   engine: Engine;
@@ -96,60 +96,60 @@ type Active = {
   writtenAt: number;
 };
 
-export class PullRunner {
+export class Downloader {
   private active: Active | null = null;
   private readonly queue: number[] = [];
   private stopping = false;
   // repos whose listing is being fetched: a second start of one is a 409
   private readonly starting = new Set<string>();
-  private readonly listeners = new Set<(pull: Pull) => void>();
+  private readonly listeners = new Set<(download: Download) => void>();
   private readonly now: () => number;
   private readonly retryDelayMs: number;
   private readonly stallMs: number;
   private readonly freeSpace: (path: string) => number | null;
 
-  constructor(private readonly deps: PullRunnerDeps) {
+  constructor(private readonly deps: DownloaderDeps) {
     this.now = deps.now ?? Date.now;
     this.retryDelayMs = deps.retryDelayMs ?? RETRY_DELAY_MS;
     this.stallMs = deps.stallMs ?? STALL_MS;
     this.freeSpace = deps.freeSpace ?? ((p) => diskSpace(p)?.free ?? null);
   }
 
-  onEvent(fn: (pull: Pull) => void): () => void {
+  onEvent(fn: (download: Download) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
 
-  // The pulls, newest first, the running one with its speed.
-  list(): Pull[] {
-    return this.deps.store.list().map((pull) => this.stamp(pull));
+  // The downloads, newest first, the running one with its speed.
+  list(): Download[] {
+    return this.deps.store.list().map((download) => this.stamp(download));
   }
 
-  get(id: number): Pull | null {
-    const pull = this.deps.store.get(id);
-    return pull ? this.stamp(pull) : null;
+  get(id: number): Download | null {
+    const download = this.deps.store.get(id);
+    return download ? this.stamp(download) : null;
   }
 
-  running(): Pull | null {
+  running(): Download | null {
     return this.active ? this.get(this.active.id) : null;
   }
 
-  // Pulls left queued or running by the previous process continue.
+  // Downloads left queued or running by the previous process continue.
   resume() {
-    for (const pull of this.deps.store.unfinished()) {
-      this.deps.store.setStatus(pull.id, "queued");
-      this.queue.push(pull.id);
-      this.deps.log(`pull ${pull.repo}: resuming`);
+    for (const download of this.deps.store.unfinished()) {
+      this.deps.store.setStatus(download.id, "queued");
+      this.queue.push(download.id);
+      this.deps.log(`download ${download.repo}: resuming`);
     }
     this.kick();
   }
 
-  // A repo id or Hub URL → the queued pull. The same repo again resumes
-  // its failed or cancelled pull; one still queued or running is a 409.
-  async start(input: string): Promise<Pull> {
+  // A repo id or Hub URL → the queued download. The same repo again resumes
+  // its failed or cancelled download; one still queued or running is a 409.
+  async start(input: string): Promise<Download> {
     const repo = parseRepoId(input);
     if (!repo) {
-      throw new PullError(400, "repo must be <owner>/<name> or a Hub URL");
+      throw new DownloadError(400, "repo must be <owner>/<name> or a Hub URL");
     }
     const open = this.deps.store.findOpen(repo);
     if (
@@ -157,14 +157,14 @@ export class PullRunner {
       open?.status === "queued" ||
       open?.status === "running"
     ) {
-      throw new PullError(409, `${repo} is already downloading`);
+      throw new DownloadError(409, `${repo} is already downloading`);
     }
     if (open) {
-      const pull = this.deps.store.setStatus(open.id, "queued")!;
-      this.queue.push(pull.id);
-      this.publish(pull);
+      const download = this.deps.store.setStatus(open.id, "queued")!;
+      this.queue.push(download.id);
+      this.publish(download);
       this.kick();
-      return pull;
+      return download;
     }
     let listing: Awaited<ReturnType<typeof fetchRepo>>;
     this.starting.add(repo);
@@ -176,32 +176,33 @@ export class PullRunner {
         this.deps.hub,
       );
     } catch (err) {
-      if (err instanceof HubError) throw new PullError(err.status, err.message);
-      throw new PullError(502, describe(err));
+      if (err instanceof HubError)
+        throw new DownloadError(err.status, err.message);
+      throw new DownloadError(502, describe(err));
     } finally {
       this.starting.delete(repo);
     }
     const dir = join(this.deps.modelDir, ...repo.split("/"));
-    const pull = this.deps.store.create(
+    const download = this.deps.store.create(
       repo,
       listing.revision,
       dir,
       listing.files,
     );
     this.deps.log(
-      `pull ${repo}: queued, ${listing.files.length} files, ${Math.round(pull.bytesTotal / 1024 ** 2)} MB`,
+      `download ${repo}: queued, ${listing.files.length} files, ${Math.round(download.bytesTotal / 1024 ** 2)} MB`,
     );
-    this.queue.push(pull.id);
-    this.publish(pull);
+    this.queue.push(download.id);
+    this.publish(download);
     this.kick();
-    return pull;
+    return download;
   }
 
-  // Stops the pull; its parts stay for a later resume. Answers once the
+  // Stops the download; its parts stay for a later resume. Answers once the
   // row says so, after the abort has unwound the download.
-  async cancel(id: number): Promise<Pull> {
-    const pull = this.deps.store.get(id);
-    if (!pull) throw new PullError(404, "Pull not found");
+  async cancel(id: number): Promise<Download> {
+    const download = this.deps.store.get(id);
+    if (!download) throw new DownloadError(404, "Download not found");
     const active = this.active;
     if (active?.id === id) {
       active.cancelled = true;
@@ -216,20 +217,20 @@ export class PullRunner {
       this.publish(cancelled);
       return cancelled;
     }
-    throw new PullError(409, `${pull.repo} is not downloading`);
+    throw new DownloadError(409, `${download.repo} is not downloading`);
   }
 
-  // Deletes the pull: a running one is stopped first, then its files go,
+  // Deletes the download: a running one is stopped first, then its files go,
   // finished or partial, and the record with them.
   async remove(id: number): Promise<void> {
-    const pull = this.deps.store.get(id);
-    if (!pull) throw new PullError(404, "Pull not found");
-    if (pull.status === "queued" || pull.status === "running") {
+    const download = this.deps.store.get(id);
+    if (!download) throw new DownloadError(404, "Download not found");
+    if (download.status === "queued" || download.status === "running") {
       await this.cancel(id);
     }
     const parents = new Set<string>();
     for (const file of this.deps.store.files(id)) {
-      const dest = destOf(pull.dir, file.path);
+      const dest = destOf(download.dir, file.path);
       if (!dest) continue;
       await rm(dest + PART_SUFFIX, { force: true });
       await rm(dest, { force: true });
@@ -239,12 +240,12 @@ export class PullRunner {
     for (const parent of [...parents].sort((a, b) => b.length - a.length)) {
       await pruneEmpty(parent, this.deps.modelDir);
     }
-    await pruneEmpty(pull.dir, this.deps.modelDir);
+    await pruneEmpty(download.dir, this.deps.modelDir);
     this.deps.store.remove(id);
-    this.deps.log(`pull ${pull.repo}: deleted`);
+    this.deps.log(`download ${download.repo}: deleted`);
   }
 
-  // The process is leaving: the running pull keeps its status so the next
+  // The process is leaving: the running download keeps its status so the next
   // process resumes it.
   shutdown() {
     this.stopping = true;
@@ -259,8 +260,8 @@ export class PullRunner {
   }
 
   private async run(id: number) {
-    const pull = this.deps.store.setStatus(id, "running");
-    if (!pull) return this.kick();
+    const download = this.deps.store.setStatus(id, "running");
+    if (!download) return this.kick();
     let settle = () => {};
     const settled = new Promise<void>((resolve) => {
       settle = resolve;
@@ -271,33 +272,33 @@ export class PullRunner {
       settled,
       settle,
       cancelled: false,
-      bytesDone: pull.bytesDone,
+      bytesDone: download.bytesDone,
       file: null,
       window: [],
       publishedAt: 0,
       writtenAt: 0,
     };
     this.active = active;
-    this.publish(pull);
+    this.publish(download);
     try {
-      await this.download(pull, active);
+      await this.transfer(download, active);
       this.deps.store.progress(id, active.bytesDone, null);
       const done = this.deps.store.setStatus(id, "done")!;
-      this.deps.log(`pull ${pull.repo}: done`);
+      this.deps.log(`download ${download.repo}: done`);
       this.active = null;
       this.publish(done);
-      await this.announce(pull.repo);
+      await this.announce(download.repo);
     } catch (err) {
       this.deps.store.progress(id, active.bytesDone, null);
       if (this.stopping && !active.cancelled) {
         // left "running": the next process resumes it
       } else if (active.controller.signal.aborted) {
         this.publish(this.deps.store.setStatus(id, "cancelled")!);
-        this.deps.log(`pull ${pull.repo}: cancelled`);
+        this.deps.log(`download ${download.repo}: cancelled`);
       } else {
         const message = describe(err);
         this.publish(this.deps.store.setStatus(id, "failed", message)!);
-        this.deps.log(`pull ${pull.repo}: failed: ${message}`);
+        this.deps.log(`download ${download.repo}: failed: ${message}`);
       }
     } finally {
       this.active = null;
@@ -306,63 +307,63 @@ export class PullRunner {
     }
   }
 
-  private async download(pull: Pull, active: Active) {
-    const files = this.deps.store.files(pull.id);
+  private async transfer(download: Download, active: Active) {
+    const files = this.deps.store.files(download.id);
     // what is left: finished files count, and so do files already whole on
-    // disk (a pull of a model that was there before)
+    // disk (a download of a model that was there before)
     let bytesDone = 0;
-    const todo: PullFile[] = [];
+    const todo: DownloadFile[] = [];
     const signal = active.controller.signal;
     for (const file of files) {
-      const dest = destOf(pull.dir, file.path);
+      const dest = destOf(download.dir, file.path);
       if (!dest) throw new Error(`refusing path ${file.path}`);
       const onDisk = (await sizeOf(dest)) === file.size;
       // a file the record calls done must still be there whole; a file
       // that is there but not on record (a model that was there before,
-      // an earlier removed pull) must also match the Hub's hash
+      // an earlier removed download) must also match the Hub's hash
       if (
         onDisk &&
         (file.done ||
           !file.sha256 ||
           (await hashOf(dest, signal)) === file.sha256)
       ) {
-        if (!file.done) this.deps.store.fileDone(pull.id, file.path);
+        if (!file.done) this.deps.store.fileDone(download.id, file.path);
         bytesDone += file.size;
         continue;
       }
-      if (file.done) this.deps.store.fileUndone(pull.id, file.path);
+      if (file.done) this.deps.store.fileUndone(download.id, file.path);
       todo.push(file);
     }
     active.bytesDone = bytesDone;
     // statfs needs the directory to exist
     await mkdir(this.deps.modelDir, { recursive: true });
     const free = this.freeSpace(this.deps.modelDir);
-    const left = pull.bytesTotal - bytesDone;
+    const left = download.bytesTotal - bytesDone;
     if (free !== null && free < left + DISK_MARGIN) {
       throw new Error(
         `not enough disk: ${Math.round(free / 1024 ** 3)} GB free, ${Math.ceil(left / 1024 ** 3)} GB to download`,
       );
     }
     for (const file of todo) {
-      const dest = destOf(pull.dir, file.path)!;
+      const dest = destOf(download.dir, file.path)!;
       await mkdir(dirname(dest), { recursive: true });
       active.file = file.path;
       const url = resolveUrl(
-        pull.repo,
-        pull.revision,
+        download.repo,
+        download.revision,
         file.path,
         this.deps.hub,
       );
       await this.fetchFile(url, file, dest, active);
-      this.deps.store.fileDone(pull.id, file.path);
+      this.deps.store.fileDone(download.id, file.path);
       active.file = null;
-      this.tick(pull.id, active, true);
+      this.tick(download.id, active, true);
     }
   }
 
   private async fetchFile(
     url: string,
-    file: PullFile,
+    file: DownloadFile,
     dest: string,
     active: Active,
   ) {
@@ -381,7 +382,7 @@ export class PullRunner {
         if (signal.aborted) throw err;
         if (!(err instanceof Retryable) || attempt >= RETRIES) throw err;
         this.deps.log(
-          `pull ${file.path}: ${describe(err)}; retry ${attempt} of ${RETRIES - 1}`,
+          `download ${file.path}: ${describe(err)}; retry ${attempt} of ${RETRIES - 1}`,
         );
         await sleep(this.retryDelayMs * attempt, signal);
       }
@@ -391,7 +392,7 @@ export class PullRunner {
   // One attempt at a file: resume the .part, verify, rename.
   private async stream(
     url: string,
-    file: PullFile,
+    file: DownloadFile,
     dest: string,
     active: Active,
     base: number,
@@ -525,15 +526,15 @@ export class PullRunner {
     }
     if (force || t - active.publishedAt >= PROGRESS_EVERY_MS) {
       active.publishedAt = t;
-      const pull = this.deps.store.get(id);
-      if (pull) this.publish(this.stamp(pull));
+      const download = this.deps.store.get(id);
+      if (download) this.publish(this.stamp(download));
     }
   }
 
-  private stamp(pull: Pull): Pull {
+  private stamp(download: Download): Download {
     const active = this.active;
-    if (!active || active.id !== pull.id || pull.status !== "running") {
-      return pull;
+    if (!active || active.id !== download.id || download.status !== "running") {
+      return download;
     }
     const first = active.window[0];
     const last = active.window.at(-1);
@@ -542,7 +543,7 @@ export class PullRunner {
         ? ((last.bytes - first.bytes) * 1000) / (last.t - first.t)
         : null;
     return {
-      ...pull,
+      ...download,
       bytesDone: active.bytesDone,
       file: active.file,
       speedBps: speed,
@@ -556,16 +557,16 @@ export class PullRunner {
       }
       await this.deps.refreshModels();
     } catch (err) {
-      this.deps.log(`pull ${repo}: engine rescan failed: ${describe(err)}`);
+      this.deps.log(`download ${repo}: engine rescan failed: ${describe(err)}`);
     }
   }
 
-  private publish(pull: Pull) {
+  private publish(download: Download) {
     for (const listener of this.listeners) {
       try {
-        listener(pull);
+        listener(download);
       } catch (err) {
-        this.deps.log(`pull listener failed: ${describe(err)}`);
+        this.deps.log(`download listener failed: ${describe(err)}`);
       }
     }
   }
@@ -573,7 +574,7 @@ export class PullRunner {
 
 // ---------- helpers ----------
 
-// The file's place under the pull's directory, or null when the stored
+// The file's place under the download's directory, or null when the stored
 // path would leave it.
 export function destOf(dir: string, path: string): string | null {
   const dest = resolve(dir, path);
@@ -616,7 +617,7 @@ async function hashFile(
 }
 
 // Removes the model directory and its owner directory when empty, up to
-// the model root, so a removed partial pull leaves nothing behind.
+// the model root, so a removed partial download leaves nothing behind.
 async function pruneEmpty(dir: string, root: string) {
   let current = resolve(dir);
   const top = resolve(root);
@@ -632,9 +633,10 @@ async function pruneEmpty(dir: string, root: string) {
 
 function statusError(status: number): Error {
   if (status === 401 || status === 403) {
-    return new PullError(403, "gated or private repo; add hf.key");
+    return new DownloadError(403, "gated or private repo; add hf.key");
   }
-  if (status === 404) return new PullError(404, "file not found on the Hub");
+  if (status === 404)
+    return new DownloadError(404, "file not found on the Hub");
   if (status === 416) return new Retryable("range refused");
   return new Retryable(`HTTP ${status}`);
 }

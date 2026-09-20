@@ -17,8 +17,8 @@ import { isLocalUrl } from "./host/local.ts";
 import { ExclusiveLock } from "./lib/lock.ts";
 import { createFileSink, createLog } from "./lib/log.ts";
 import { loadKey, secretsDir } from "./lib/secrets.ts";
-import { PullRunner } from "./models/pull.ts";
-import { PullStore } from "./models/pulls.ts";
+import { Downloader } from "./models/download.ts";
+import { DownloadStore } from "./models/store.ts";
 import { History } from "./monitor/history.ts";
 import { takeSample } from "./monitor/sample.ts";
 import { Sampler } from "./monitor/sampler.ts";
@@ -131,8 +131,8 @@ export async function runApp(
     log,
     lock,
   });
-  const pulls = new PullRunner({
-    store: new PullStore(history.db),
+  const downloads = new Downloader({
+    store: new DownloadStore(history.db),
     modelDir: options.modelDir,
     token: hubToken,
     engine,
@@ -160,7 +160,7 @@ export async function runApp(
       sampler,
       history,
       actions,
-      pulls,
+      downloads,
       manager,
       spyRestart: {
         // launchd names the job in the environment of what it starts. A
@@ -182,7 +182,7 @@ export async function runApp(
   );
   publishEngine = (state) => web.publishEngine(state);
   sampler.start();
-  pulls.resume();
+  downloads.resume();
   // after serve(): finishing an interrupted swap can take a minute, and
   // the page should be there to say so
   void manager.reconcile();
@@ -194,7 +194,7 @@ export async function runApp(
   const shutdown = () => {
     manager.shutdown();
     sampler.stop();
-    pulls.shutdown();
+    downloads.shutdown();
     web.stop();
     history.close();
     log.close?.();

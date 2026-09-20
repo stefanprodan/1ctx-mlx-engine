@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Totals and means over the loaded range of the history series. Pure;
-// tested in test/ui/range.test.ts.
+// tested in test/client/range.test.ts.
 
 import type { Series } from "../../shared/history.ts";
 import { DASH } from "../format.ts";

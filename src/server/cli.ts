@@ -52,9 +52,9 @@ export const HELP = `\x1b[1mmlx-spy\x1b[0m - monitor and control an LLM inferenc
 \x1b[1mAPI:\x1b[0m
   GET /                        the dashboard
   GET /requests                finished and in-flight engine requests
-  GET|POST /api/pulls          list downloads or start one (body {"repo"})
-  GET|DELETE /api/pulls/<id>   read or forget a download
-  POST /api/pulls/<id>/cancel  stop a download; its parts are kept
+  GET|POST /api/downloads          list downloads or start one (body {"repo"})
+  GET|DELETE /api/downloads/<id>   read or forget a download
+  POST /api/downloads/<id>/cancel  stop a download; its parts are kept
   GET /api/snapshot            latest sample and model list
   GET /api/history?range=1h    series for 1h, 6h, 24h or 7d
   WS  /ws                      snapshot on connect, then one sample per second

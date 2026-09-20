@@ -22,10 +22,13 @@ import type {
   EngineMetrics,
 } from "../../../src/server/engine/types.ts";
 import type { Log } from "../../../src/server/lib/log.ts";
-import { PullError, PullRunner } from "../../../src/server/models/pull.ts";
-import { PullStore } from "../../../src/server/models/pulls.ts";
+import {
+  DownloadError,
+  Downloader,
+} from "../../../src/server/models/download.ts";
+import { DownloadStore } from "../../../src/server/models/store.ts";
 import { History } from "../../../src/server/monitor/history.ts";
-import type { Pull } from "../../../src/shared/downloads.ts";
+import type { Download } from "../../../src/shared/downloads.ts";
 import type { Capability, ModelInfo } from "../../../src/shared/models.ts";
 
 const testLog = (write: (line: string) => void): Log =>
@@ -268,9 +271,9 @@ let history: History;
 let engine: RescanEngine;
 let refreshed = 0;
 let logs: string[];
-// every runner a test made, stopped after it so none keeps pulling into
+// every runner a test made, stopped after it so none keeps downloading into
 // the next test's Hub
-let runners: PullRunner[];
+let runners: Downloader[];
 
 beforeAll(() => {
   hub = new FakeHub();
@@ -285,7 +288,7 @@ beforeEach(async () => {
   hub.files.set("config.json", new TextEncoder().encode('{"a":1}'));
   hub.files.set("model.safetensors", bytesOf(50_000, 7));
   hub.files.set("sub/extra.safetensors", bytesOf(3_000, 9));
-  dir = await mkdtemp(join(tmpdir(), "mlx-spy-pull-"));
+  dir = await mkdtemp(join(tmpdir(), "mlx-spy-download-"));
   history = new History(":memory:");
   engine = new RescanEngine();
   refreshed = 0;
@@ -303,11 +306,11 @@ afterEach(async () => {
 });
 
 function runner(
-  overrides: Partial<ConstructorParameters<typeof PullRunner>[0]> = {},
+  overrides: Partial<ConstructorParameters<typeof Downloader>[0]> = {},
 ) {
-  const events: Pull[] = [];
-  const r = new PullRunner({
-    store: new PullStore(history.db),
+  const events: Download[] = [];
+  const r = new Downloader({
+    store: new DownloadStore(history.db),
     modelDir: dir,
     token: "hf_test",
     engine,
@@ -320,34 +323,34 @@ function runner(
     freeSpace: () => 10 * 1024 ** 3,
     ...overrides,
   });
-  r.onEvent((pull) => events.push(structuredClone(pull)));
+  r.onEvent((download) => events.push(structuredClone(download)));
   runners.push(r);
   return { r, events };
 }
 
-async function settled(r: PullRunner, id: number, timeoutMs = 5000) {
+async function settled(r: Downloader, id: number, timeoutMs = 5000) {
   const until = Date.now() + timeoutMs;
   while (Date.now() < until) {
-    const pull = r.get(id)!;
+    const download = r.get(id)!;
     if (
-      pull.status === "done" ||
-      pull.status === "failed" ||
-      pull.status === "cancelled"
+      download.status === "done" ||
+      download.status === "failed" ||
+      download.status === "cancelled"
     ) {
-      return pull;
+      return download;
     }
     await Bun.sleep(5);
   }
-  throw new Error("pull did not settle");
+  throw new Error("download did not settle");
 }
 
-async function status(r: PullRunner, id: number, want: Pull["status"]) {
+async function status(r: Downloader, id: number, want: Download["status"]) {
   const until = Date.now() + 5000;
   while (Date.now() < until) {
     if (r.get(id)?.status === want) return r.get(id)!;
     await Bun.sleep(5);
   }
-  throw new Error(`pull never became ${want}`);
+  throw new Error(`download never became ${want}`);
 }
 
 async function fileBytes(path: string): Promise<Uint8Array<ArrayBuffer>> {
@@ -360,17 +363,17 @@ async function fileBytes(path: string): Promise<Uint8Array<ArrayBuffer>> {
   );
 }
 
-describe("PullRunner", () => {
+describe("Downloader", () => {
   test("downloads every file, verifies it and tells the engine", async () => {
     const { r, events } = runner();
-    const pull = await r.start(`https://huggingface.co/${REPO}/tree/main`);
-    expect(pull.status).toBe("queued");
-    expect(pull.repo).toBe(REPO);
-    expect(pull.revision).toBe(REV);
-    expect(pull.filesTotal).toBe(3);
-    expect(pull.bytesTotal).toBe(7 + 50_000 + 3_000);
-    expect(pull.dir).toBe(join(dir, "org", "model"));
-    const done = await settled(r, pull.id);
+    const download = await r.start(`https://huggingface.co/${REPO}/tree/main`);
+    expect(download.status).toBe("queued");
+    expect(download.repo).toBe(REPO);
+    expect(download.revision).toBe(REV);
+    expect(download.filesTotal).toBe(3);
+    expect(download.bytesTotal).toBe(7 + 50_000 + 3_000);
+    expect(download.dir).toBe(join(dir, "org", "model"));
+    const done = await settled(r, download.id);
     expect(done.status).toBe("done");
     expect(done.bytesDone).toBe(done.bytesTotal);
     expect(done.filesDone).toBe(3);
@@ -396,15 +399,15 @@ describe("PullRunner", () => {
     expect(kinds[0]).toBe("queued");
     expect(kinds).toContain("running");
     expect(kinds.at(-1)).toBe("done");
-    expect(r.list()[0].id).toBe(pull.id);
+    expect(r.list()[0].id).toBe(download.id);
     expect(logs.some((l) => l.includes("done"))).toBe(true);
   });
 
   test("resumes a cut file with a range request", async () => {
     hub.faults.set("model.safetensors", { cutAfter: 20_000, times: 2 });
     const { r, events } = runner();
-    const pull = await r.start(REPO);
-    const done = await settled(r, pull.id);
+    const download = await r.start(REPO);
+    const done = await settled(r, download.id);
     expect(done.status).toBe("done");
     const weights = hub.requests.filter((q) => q.path === "model.safetensors");
     expect(weights.map((q) => q.range)).toEqual([
@@ -457,7 +460,7 @@ describe("PullRunner", () => {
     ).toBe(50);
   });
 
-  test("a wrong hash fails the pull and drops the part", async () => {
+  test("a wrong hash fails the download and drops the part", async () => {
     hub.faults.set("model.safetensors", { serve: bytesOf(50_000, 8) });
     const { r } = runner();
     const done = await settled(r, (await r.start(REPO)).id);
@@ -472,16 +475,19 @@ describe("PullRunner", () => {
   test("cancel keeps the part and a new start resumes it", async () => {
     hub.faults.set("model.safetensors", { holdAfter: 30_000 });
     const { r, events } = runner();
-    const pull = await r.start(REPO);
-    await status(r, pull.id, "running");
+    const download = await r.start(REPO);
+    await status(r, download.id, "running");
     // wait for the held bytes to land
     const until = Date.now() + 5000;
-    while (Date.now() < until && (r.get(pull.id)?.bytesDone ?? 0) < 30_007) {
+    while (
+      Date.now() < until &&
+      (r.get(download.id)?.bytesDone ?? 0) < 30_007
+    ) {
       await Bun.sleep(5);
     }
     expect(r.running()?.file).toBe("model.safetensors");
     // the answer waits for the abort to unwind: it carries the final state
-    const cancelling = r.cancel(pull.id);
+    const cancelling = r.cancel(download.id);
     await hub.release();
     const cancelled = await cancelling;
     expect(cancelled.status).toBe("cancelled");
@@ -489,8 +495,8 @@ describe("PullRunner", () => {
     expect(events.at(-1)?.status).toBe("cancelled");
     hub.faults.delete("model.safetensors");
     const again = await r.start(REPO);
-    expect(again.id).toBe(pull.id);
-    const done = await settled(r, pull.id);
+    expect(again.id).toBe(download.id);
+    const done = await settled(r, download.id);
     expect(done.status).toBe("done");
     const weights = hub.requests.filter((q) => q.path === "model.safetensors");
     expect(weights.map((q) => q.range)).toEqual([null, "bytes=30000-"]);
@@ -499,15 +505,15 @@ describe("PullRunner", () => {
     );
   });
 
-  test("a restart resumes the pull that was running", async () => {
+  test("a restart resumes the download that was running", async () => {
     hub.faults.set("model.safetensors", { holdAfter: 10_000 });
     const first = runner();
-    const pull = await first.r.start(REPO);
-    await status(first.r, pull.id, "running");
+    const download = await first.r.start(REPO);
+    await status(first.r, download.id, "running");
     const until = Date.now() + 5000;
     while (
       Date.now() < until &&
-      (first.r.get(pull.id)?.bytesDone ?? 0) < 10_007
+      (first.r.get(download.id)?.bytesDone ?? 0) < 10_007
     ) {
       await Bun.sleep(5);
     }
@@ -515,11 +521,13 @@ describe("PullRunner", () => {
     await hub.release();
     await Bun.sleep(20);
     // the database still says running: the next process picks it up
-    expect(new PullStore(history.db).get(pull.id)?.status).toBe("running");
+    expect(new DownloadStore(history.db).get(download.id)?.status).toBe(
+      "running",
+    );
     hub.faults.delete("model.safetensors");
     const second = runner();
     second.r.resume();
-    const done = await settled(second.r, pull.id);
+    const done = await settled(second.r, download.id);
     expect(done.status).toBe("done");
     expect(logs.some((l) => l.includes("resuming"))).toBe(true);
     const weights = hub.requests.filter((q) => q.path === "model.safetensors");
@@ -532,10 +540,10 @@ describe("PullRunner", () => {
   test("a second start of the same repo is refused while it runs", async () => {
     hub.faults.set("model.safetensors", { holdAfter: 10 });
     const { r } = runner();
-    const pull = await r.start(REPO);
+    const download = await r.start(REPO);
     await expect(r.start(REPO)).rejects.toMatchObject({ status: 409 });
     await hub.release();
-    await settled(r, pull.id);
+    await settled(r, download.id);
   });
 
   test("refuses bad ids, unknown repos and a full disk", async () => {
@@ -552,7 +560,7 @@ describe("PullRunner", () => {
     expect(done.error).toContain("not enough disk");
   });
 
-  test("remove deletes the files of any pull, a running one included", async () => {
+  test("remove deletes the files of any download, a running one included", async () => {
     hub.faults.set("model.safetensors", { cutAfter: 10, times: 99 });
     const { r } = runner();
     const failed = await settled(r, (await r.start(REPO)).id);
@@ -578,8 +586,8 @@ describe("PullRunner", () => {
     expect(r.list()).toEqual([]);
     await expect(stat(join(dir, "org"))).rejects.toThrow();
 
-    await expect(r.remove(999)).rejects.toBeInstanceOf(PullError);
-    await expect(r.cancel(999)).rejects.toBeInstanceOf(PullError);
+    await expect(r.remove(999)).rejects.toBeInstanceOf(DownloadError);
+    await expect(r.cancel(999)).rejects.toBeInstanceOf(DownloadError);
   });
 
   test("files already whole on disk are not fetched again", async () => {
@@ -587,7 +595,7 @@ describe("PullRunner", () => {
     const done = await settled(r, (await r.start(REPO)).id);
     expect(done.status).toBe("done");
     hub.requests = [];
-    // a finished pull is not resumed: a new one verifies what is there
+    // a finished download is not resumed: a new one verifies what is there
     const again = await settled(r, (await r.start(REPO)).id);
     expect(again.id).not.toBe(done.id);
     expect(again.status).toBe("done");
@@ -620,9 +628,9 @@ describe("PullRunner", () => {
   test("a done file that vanished before a resume goes again", async () => {
     hub.faults.set("model.safetensors", { holdAfter: 10_000 });
     const { r } = runner();
-    const pull = await r.start(REPO);
+    const download = await r.start(REPO);
     await hub.holding();
-    const cancelling = r.cancel(pull.id);
+    const cancelling = r.cancel(download.id);
     await hub.release();
     await cancelling;
     await rm(join(dir, "org", "model", "config.json"));
@@ -644,8 +652,8 @@ describe("PullRunner", () => {
     const first = r.start(REPO);
     await Bun.sleep(10);
     await expect(r.start(REPO)).rejects.toMatchObject({ status: 409 });
-    const pull = await first;
-    expect((await settled(r, pull.id)).status).toBe("done");
+    const download = await first;
+    expect((await settled(r, download.id)).status).toBe("done");
     expect(r.list().length).toBe(1);
   });
 
@@ -681,9 +689,9 @@ describe("PullRunner", () => {
     hub.files.set("empty.txt", new Uint8Array(0));
     hub.files.set("model.safetensors.mlx-spy-part", bytesOf(10));
     const { r } = runner();
-    const pull = await r.start(REPO);
-    expect(pull.filesTotal).toBe(4);
-    const done = await settled(r, pull.id);
+    const download = await r.start(REPO);
+    expect(download.filesTotal).toBe(4);
+    const done = await settled(r, download.id);
     expect(done.status).toBe("done");
     expect((await stat(join(dir, "org", "model", "empty.txt"))).size).toBe(0);
     expect(hub.requests.map((q) => q.path)).not.toContain("empty.txt");
@@ -692,9 +700,9 @@ describe("PullRunner", () => {
   test("shutdown after a cancel keeps the cancel", async () => {
     hub.faults.set("model.safetensors", { holdAfter: 10_000 });
     const { r } = runner();
-    const pull = await r.start(REPO);
+    const download = await r.start(REPO);
     await hub.holding();
-    const cancelling = r.cancel(pull.id);
+    const cancelling = r.cancel(download.id);
     r.shutdown();
     await hub.release();
     expect((await cancelling).status).toBe("cancelled");

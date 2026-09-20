@@ -2,17 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Model downloads: the dialog that asks for a Hub repo, the rows the models
-// table shows while a pull is queued, running, stopped or waiting to be
-// listed, and the calls behind their buttons. The server owns the pull;
-// the rows follow the /ws pull messages through the store.
+// table shows while a download is queued, running, stopped or waiting to be
+// listed, and the calls behind their buttons. The server owns the download;
+// the rows follow the /ws download messages through the store.
 
 import { signal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import type { Pull } from "../../shared/downloads.ts";
+import type { Download } from "../../shared/downloads.ts";
 import { Trash } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
-import { applyPull, pulls, snapshot } from "../store.ts";
-import { pullDot, pullMeta, pullPct, pullState } from "./pull.ts";
+import { applyDownload, downloads, snapshot } from "../store.ts";
+import {
+  downloadDot,
+  downloadMeta,
+  downloadPct,
+  downloadState,
+} from "./download.ts";
 
 const ICON = {
   play: "M5 3l9 5-9 5z",
@@ -22,15 +27,15 @@ const ICON = {
 const open = signal(false);
 const sending = signal(false);
 const error = signal("");
-// the last pull that failed to start or to be controlled from this tab,
+// the last download that failed to start or to be controlled from this tab,
 // for the line under the table
-export const pullError = signal<{
+export const downloadError = signal<{
   t: number;
   repo: string;
   text: string;
 } | null>(null);
 
-export function openPull() {
+export function openDownload() {
   error.value = "";
   open.value = true;
 }
@@ -41,7 +46,10 @@ async function call(path: string, method: string, body?: unknown) {
     headers: { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const data = (await res.json()) as Pull | { ok: true } | { error: string };
+  const data = (await res.json()) as
+    | Download
+    | { ok: true }
+    | { error: string };
   if (!res.ok) {
     throw new Error((data as { error: string }).error ?? `HTTP ${res.status}`);
   }
@@ -52,7 +60,7 @@ async function start(repo: string): Promise<boolean> {
   sending.value = true;
   error.value = "";
   try {
-    applyPull((await call("/api/pulls", "POST", { repo })) as Pull);
+    applyDownload((await call("/api/downloads", "POST", { repo })) as Download);
     return true;
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
@@ -62,12 +70,16 @@ async function start(repo: string): Promise<boolean> {
   }
 }
 
-async function control(p: Pull, what: "cancel" | "retry" | "remove") {
+async function control(p: Download, what: "cancel" | "retry" | "remove") {
   try {
     if (what === "cancel") {
-      applyPull((await call(`/api/pulls/${p.id}/cancel`, "POST", {})) as Pull);
+      applyDownload(
+        (await call(`/api/downloads/${p.id}/cancel`, "POST", {})) as Download,
+      );
     } else if (what === "retry") {
-      applyPull((await call("/api/pulls", "POST", { repo: p.repo })) as Pull);
+      applyDownload(
+        (await call("/api/downloads", "POST", { repo: p.repo })) as Download,
+      );
     } else {
       // the files go too, whatever the state: a delete is a delete
       const a = await confirm(
@@ -75,11 +87,11 @@ async function control(p: Pull, what: "cancel" | "retry" | "remove") {
         "Delete",
       );
       if (!a.ok) return;
-      await call(`/api/pulls/${p.id}`, "DELETE");
-      pulls.value = pulls.value.filter((x) => x.id !== p.id);
+      await call(`/api/downloads/${p.id}`, "DELETE");
+      downloads.value = downloads.value.filter((x) => x.id !== p.id);
     }
   } catch (err) {
-    pullError.value = {
+    downloadError.value = {
       t: Date.now(),
       repo: p.repo,
       text: err instanceof Error ? err.message : String(err),
@@ -87,7 +99,7 @@ async function control(p: Pull, what: "cancel" | "retry" | "remove") {
   }
 }
 
-export function PullDialog() {
+export function DownloadDialog() {
   const dlg = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const isOpen = open.value;
@@ -109,7 +121,7 @@ export function PullDialog() {
   };
   return (
     <dialog
-      id="pull"
+      id="download"
       ref={dlg}
       onClose={() => {
         open.value = false;
@@ -121,7 +133,7 @@ export function PullDialog() {
           <span class="lbl">Repository</span>
           <input
             ref={input}
-            id="pull-repo"
+            id="download-repo"
             name="repo"
             type="text"
             placeholder="owner/name or huggingface.co URL"
@@ -182,16 +194,16 @@ function Icon({
   );
 }
 
-// One row per pull, shaped like a model row: the dot, the id, the bytes
+// One row per download, shaped like a model row: the dot, the id, the bytes
 // and speed, the state, the buttons; a bar under the id while it runs.
-export function PullRow({ p }: { p: Pull }) {
+export function DownloadRow({ p }: { p: Download }) {
   const slash = p.repo.lastIndexOf("/");
   const active = p.status === "queued" || p.status === "running";
   return (
-    <tr class={`pull ${p.status}`} title={p.error ?? undefined}>
+    <tr class={`download ${p.status}`} title={p.error ?? undefined}>
       <td class="name" title={p.file ? `${p.repo}: ${p.file}` : p.repo}>
         <div>
-          <span class={`dot ${pullDot(p)}`} />
+          <span class={`dot ${downloadDot(p)}`} />
           <span class="owner">{p.repo.slice(0, slash + 1)}</span>
           <a
             class="model"
@@ -203,11 +215,11 @@ export function PullRow({ p }: { p: Pull }) {
           </a>
         </div>
         <div class="bar" hidden={p.status !== "running"}>
-          <span class="fill" style={{ width: `${pullPct(p)}%` }} />
+          <span class="fill" style={{ width: `${downloadPct(p)}%` }} />
         </div>
       </td>
-      <td class="meta">{pullMeta(p)}</td>
-      <td class={`state ${p.status}`}>{pullState(p)}</td>
+      <td class="meta">{downloadMeta(p)}</td>
+      <td class={`state ${p.status}`}>{downloadState(p)}</td>
       <td class="act">
         <button
           type="button"

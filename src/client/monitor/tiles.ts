@@ -3,7 +3,7 @@
 //
 // The eight stat tiles: what each shows for a sample, and the memory a tab
 // keeps between samples (values that are per request and null in between).
-// Pure; tested in test/ui/tiles.test.ts.
+// Pure; tested in test/client/tiles.test.ts.
 
 import type { Series } from "../../shared/history.ts";
 import type { Sample } from "../../shared/sample.ts";

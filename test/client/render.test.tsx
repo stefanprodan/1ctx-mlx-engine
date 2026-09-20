@@ -13,12 +13,12 @@ import { Requests, requests } from "../../src/client/requests/Requests.tsx";
 import {
   busy,
   connection,
+  downloads,
   event,
-  pulls,
   sample,
   snapshot,
 } from "../../src/client/store.ts";
-import type { Pull } from "../../src/shared/downloads.ts";
+import type { Download } from "../../src/shared/downloads.ts";
 import type { LastRequest } from "../../src/shared/requests.ts";
 import type { Sample } from "../../src/shared/sample.ts";
 import type { Snapshot } from "../../src/shared/socket.ts";
@@ -190,7 +190,7 @@ describe("request components", () => {
 });
 
 describe("download rows", () => {
-  const base: Pull = {
+  const base: Download = {
     id: 7,
     repo: "org/new",
     revision: "abc",
@@ -223,11 +223,11 @@ describe("download rows", () => {
     ],
   } as unknown as Snapshot;
 
-  test("a running pull is a row with a bar, the bytes and a cancel", () => {
-    pulls.value = [base];
+  test("a running download is a row with a bar, the bytes and a cancel", () => {
+    downloads.value = [base];
     const html = render(<Models snap={snap} />);
     expect(html).toContain(
-      '<tr class="pull running"><td class="name" title="org/new: model.safetensors"><div><span class="dot loading"></span><span class="owner">org/</span><a class="model" href="https://huggingface.co/org/new" target="_blank" rel="noopener">new</a></div><div class="bar"><span class="fill" style="width:25%;"></span></div></td><td class="meta">1.0 / 4.0 GB · 64 MB/s · 48 s left</td><td class="state running">downloading</td><td class="act">',
+      '<tr class="download running"><td class="name" title="org/new: model.safetensors"><div><span class="dot loading"></span><span class="owner">org/</span><a class="model" href="https://huggingface.co/org/new" target="_blank" rel="noopener">new</a></div><div class="bar"><span class="fill" style="width:25%;"></span></div></td><td class="meta">1.0 / 4.0 GB · 64 MB/s · 48 s left</td><td class="state running">downloading</td><td class="act">',
     );
     expect(html).toContain('class="ibtn trash danger" title="Delete"');
     expect(html).toContain('class="ibtn" title="Pause"');
@@ -235,17 +235,19 @@ describe("download rows", () => {
     expect(html).toContain('<tr><td class="name" title="org/new">');
   });
 
-  test("a stopped pull offers resume and delete; a listed one hides", () => {
-    pulls.value = [{ ...base, status: "failed", error: "sha256 mismatch" }];
+  test("a stopped download offers resume and delete; a listed one hides", () => {
+    downloads.value = [{ ...base, status: "failed", error: "sha256 mismatch" }];
     const html = render(<Models snap={snap} />);
-    expect(html).toContain('<tr class="pull failed" title="sha256 mismatch">');
+    expect(html).toContain(
+      '<tr class="download failed" title="sha256 mismatch">',
+    );
     expect(html).toContain('<div class="bar" hidden>');
     expect(html).toContain('<td class="state failed">failed</td>');
     expect(html).toContain('class="ibtn" title="Resume"');
     expect(html).toContain('class="ibtn trash danger" title="Delete"');
-    pulls.value = [{ ...base, status: "done", bytesDone: base.bytesTotal }];
-    expect(render(<Models snap={snap} />)).not.toContain('class="pull');
-    pulls.value = [];
+    downloads.value = [{ ...base, status: "done", bytesDone: base.bytesTotal }];
+    expect(render(<Models snap={snap} />)).not.toContain('class="download');
+    downloads.value = [];
   });
 });
 
@@ -268,7 +270,7 @@ describe("event line", () => {
   });
   test("a failed download shows its error", () => {
     event.value = null;
-    pulls.value = [
+    downloads.value = [
       {
         id: 1,
         repo: "org/new",
@@ -290,7 +292,7 @@ describe("event line", () => {
     expect(render(<Event />)).toContain(
       "download org/new failed: not enough disk</div>",
     );
-    pulls.value = [];
+    downloads.value = [];
     expect(render(<Event />)).toBe('<div class="event" hidden></div>');
   });
 });

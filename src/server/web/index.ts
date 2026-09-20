@@ -21,7 +21,7 @@ import { type EngineManager, EngineManagerError } from "../engine/install.ts";
 import type { Engine } from "../engine/types.ts";
 import { diskSpace } from "../host/info.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
-import { PullError, type PullRunner } from "../models/pull.ts";
+import { DownloadError, type Downloader } from "../models/download.ts";
 import type { History } from "../monitor/history.ts";
 import type { Sampler } from "../monitor/sampler.ts";
 
@@ -49,7 +49,7 @@ export type WebDeps = {
   sampler: Sampler;
   history: History;
   actions: Actions;
-  pulls: PullRunner;
+  downloads: Downloader;
   manager?: EngineManager;
   spyRestart?: {
     isLaunchd: () => boolean;
@@ -71,8 +71,8 @@ export type WebDeps = {
 
 // handle() also serves focused tests that do not exercise downloads.
 // Production serve() requires the runner through WebDeps.
-type HandleDeps = Omit<WebDeps, "pulls" | "modelDir"> & {
-  pulls?: PullRunner;
+type HandleDeps = Omit<WebDeps, "downloads" | "modelDir"> & {
+  downloads?: Downloader;
   modelDir?: string | null;
 };
 
@@ -103,7 +103,7 @@ export function snapshot(deps: HandleDeps): Snapshot {
     disk: deps.sampler.currentDisk(),
     events: deps.actions.events,
     running: deps.actions.running(),
-    pulls: deps.pulls?.list() ?? [],
+    downloads: deps.downloads?.list() ?? [],
     modelDir: deps.modelDir ?? null,
   };
 }
@@ -219,11 +219,14 @@ async function actionRoute(
 }
 
 // Downloads: list, start (or resume) one, cancel it, forget it.
-async function pullsRoute(req: Request, deps: HandleDeps): Promise<Response> {
-  const runner = deps.pulls;
+async function downloadsRoute(
+  req: Request,
+  deps: HandleDeps,
+): Promise<Response> {
+  const runner = deps.downloads;
   if (!runner) return json({ error: "not found" }, 404);
   const url = new URL(req.url);
-  if (url.pathname === "/api/pulls") {
+  if (url.pathname === "/api/downloads") {
     if (req.method === "GET") return json(runner.list());
     if (req.method !== "POST") {
       return json({ error: "method not allowed" }, 405);
@@ -232,7 +235,7 @@ async function pullsRoute(req: Request, deps: HandleDeps): Promise<Response> {
     const repo = stringField(value, "repo", true)!;
     return json(await runner.start(repo), 202);
   }
-  const match = /^\/api\/pulls\/(\d+)(?:\/(cancel))?$/.exec(url.pathname);
+  const match = /^\/api\/downloads\/(\d+)(?:\/(cancel))?$/.exec(url.pathname);
   if (!match) return json({ error: "not found" }, 404);
   const id = Number(match[1]);
   if (match[2] === "cancel") {
@@ -243,8 +246,10 @@ async function pullsRoute(req: Request, deps: HandleDeps): Promise<Response> {
     return json(await runner.cancel(id));
   }
   if (req.method === "GET") {
-    const pull = runner.get(id);
-    return pull ? json(pull) : json({ error: "Pull not found" }, 404);
+    const download = runner.get(id);
+    return download
+      ? json(download)
+      : json({ error: "Download not found" }, 404);
   }
   if (req.method === "DELETE") {
     await runner.remove(id);
@@ -413,10 +418,10 @@ export async function handle(
       return await spyRestartRoute(req, deps);
     }
     if (
-      url.pathname === "/api/pulls" ||
-      url.pathname.startsWith("/api/pulls/")
+      url.pathname === "/api/downloads" ||
+      url.pathname.startsWith("/api/downloads/")
     ) {
-      return await pullsRoute(req, deps);
+      return await downloadsRoute(req, deps);
     }
     if (req.method !== "GET") {
       return json({ error: "method not allowed" }, 405);
@@ -451,7 +456,7 @@ export async function handle(
         err.status,
       );
     }
-    if (err instanceof PullError || err instanceof HttpError) {
+    if (err instanceof DownloadError || err instanceof HttpError) {
       return json({ error: err.message }, err.status);
     }
     throw err;
@@ -506,8 +511,8 @@ export function serve(
   const unsubscribeEvents = deps.actions.onEvent((event) =>
     publish({ type: "event", data: event }),
   );
-  const unsubscribePulls = deps.pulls.onEvent((pull) =>
-    publish({ type: "pull", data: pull }),
+  const unsubscribeDownloads = deps.downloads.onEvent((download) =>
+    publish({ type: "download", data: download }),
   );
   return {
     server,
@@ -517,7 +522,7 @@ export function serve(
     stop() {
       unsubscribe();
       unsubscribeEvents();
-      unsubscribePulls();
+      unsubscribeDownloads();
       server.stop(true);
     },
   };
