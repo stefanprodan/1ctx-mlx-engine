@@ -1,0 +1,184 @@
+@layer tokens, base, pages;
+
+@layer pages {
+  /* requests: the live bar alone in its card, then the list under its own head */
+  #requests-live {
+    padding: 16px;
+  }
+  #requests-live .request {
+    margin-bottom: 0;
+  }
+  th {
+    padding: 10px 8px 6px;
+    border-bottom: 1px solid var(--line);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #7d8794;
+    text-align: right;
+    white-space: nowrap;
+  }
+  th.when,
+  th.model {
+    text-align: left;
+  }
+  td.model {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--dim);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  td.when {
+    font-size: 13px;
+    color: var(--val);
+    white-space: nowrap;
+  }
+  td.when .fin {
+    font-family: var(--mono);
+  }
+  tr.cancelled td.when .fin {
+    color: var(--amber);
+  }
+  td.when .tag {
+    margin-left: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--faint);
+  }
+  /* the disclosure chevron: right when closed, down when open */
+  td.when .chev {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 12px 2px 2px;
+    border-right: 1.5px solid var(--faint);
+    border-bottom: 1.5px solid var(--faint);
+    transform: rotate(-45deg);
+    transition: transform 0.12s;
+  }
+  tr.open td.when .chev {
+    transform: rotate(45deg);
+    border-color: var(--accent);
+  }
+  #requests tbody tr:not(.detail):hover td.when .chev {
+    border-color: var(--dim);
+  }
+  td.num {
+    text-align: right;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--dim);
+    font-variant-numeric: tabular-nums;
+  }
+  td.num .rate {
+    color: var(--faint);
+  }
+  #requests tbody tr:not(.detail) {
+    cursor: pointer;
+  }
+  /* the opened row: an inset panel of label-over-value cells, the same
+     shape as the tiles; a phone lays them out as label/value lines */
+  tr.detail td {
+    padding: 0 8px 14px;
+  }
+  .dgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px 20px;
+    padding: 12px 14px;
+    background: var(--inset);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+  }
+  .dgrid .d {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .dgrid .d:first-child {
+    grid-column: 1 / -1; /* the model id is the long one */
+  }
+  .dgrid .k {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #7d8794;
+    white-space: nowrap;
+  }
+  .dgrid .v {
+    font-size: 13px;
+    color: var(--val);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .blank {
+    margin: 14px 0;
+    color: var(--faint);
+    font-size: 13px;
+  }
+  @media (max-width: 860px) {
+    #requests .wide .rate,
+    #requests .ttft {
+      display: none;
+    }
+  }
+  @media (max-width: 600px) {
+    /* the count tag and the total go: finished, model, prompt and
+       generated are what fits */
+    #requests .wide,
+    #requests .cached,
+    #requests .total,
+    #requests .tag {
+      display: none;
+    }
+    td.when .chev {
+      margin-right: 8px;
+    }
+    tr.detail td {
+      padding: 0 4px 12px;
+    }
+    .dgrid {
+      grid-template-columns: 1fr;
+      gap: 6px;
+      padding: 10px 12px;
+    }
+    .dgrid .d {
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .dgrid .k {
+      font-size: 12.5px;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--faint);
+    }
+    .dgrid .v {
+      font-size: 12.5px;
+      color: var(--dim);
+      text-align: right;
+    }
+    #requests-live {
+      padding: 12px;
+    }
+    td.model {
+      max-width: 80px;
+    }
+    .card.requests {
+      overflow-x: auto;
+    }
+  }
+
+  /* last: the most specific selectors on these cells */
+  #requests tr.open td {
+    border-bottom: 0;
+  }
+  #requests tbody tr:not(.detail):hover td {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}

@@ -3,6 +3,7 @@
 
 import { Mark } from "../icons.tsx";
 import type { Page } from "../store.ts";
+import "./shell.css";
 
 const PAGES: { page: Page; href: string; label: string }[] = [
   { page: "monitor", href: "/", label: "Monitor" },

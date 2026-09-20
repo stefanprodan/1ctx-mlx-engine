@@ -1,0 +1,352 @@
+@layer tokens, base, pages;
+
+@layer pages {
+  /* the last action's outcome, under the models table */
+  .event {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--dim);
+  }
+  .event .when {
+    font-family: var(--mono);
+    color: var(--faint);
+    margin-right: 8px;
+  }
+  .event.err {
+    color: #ff95a8;
+  }
+  .event.busy {
+    color: var(--accent);
+  }
+
+  /* tiles */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .tile {
+    background: var(--inset);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .lbl {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #7d8794;
+    margin-bottom: 7px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .val {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--val);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  /* no fact: one quiet dash, never a sentence */
+
+  .unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: #7d8794;
+    margin-left: 4px;
+  }
+
+  /* sparkline boxes */
+  .sparks {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .tiles + .sparks {
+    margin-top: 12px;
+  }
+  .sparks.two {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sparks.three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .spark {
+    background: var(--inset);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    padding: 10px 12px 6px;
+    min-width: 0;
+  }
+  .shd {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .shd .lbl {
+    margin: 0;
+  }
+  .chips {
+    display: flex;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--val);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--c);
+    flex: 0 0 auto;
+  }
+  .chip small {
+    font-weight: 400;
+    color: var(--faint);
+    font-size: 11px;
+  }
+  .chip .v.idle {
+    color: var(--faint);
+  }
+  .plot {
+    width: 100%;
+  }
+  .spark .plot {
+    height: 72px;
+  }
+
+  .stamp {
+    position: absolute;
+    bottom: 2px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #1a1e25;
+    color: var(--dim);
+    font: 11px var(--mono);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .stamp[hidden] {
+    display: none;
+  }
+
+  td.name {
+    font-family: var(--mono);
+    font-size: 13px;
+    width: 100%; /* the id takes what the fixed-width cells leave */
+  }
+  td.name div {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 0;
+  }
+  td.name .dot {
+    margin-right: 10px;
+  }
+  td.name .owner {
+    color: var(--faint);
+    white-space: nowrap;
+  }
+  td.name .model {
+    color: var(--val);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  td.name .model:hover {
+    text-decoration: underline;
+  }
+  .dot.ready {
+    background: #10b981;
+  }
+  .dot.loading {
+    background: var(--accent);
+    animation: blink 1s ease-in-out infinite;
+  }
+  .dot.evicting {
+    background: var(--amber);
+    animation: blink 1s ease-in-out infinite;
+  }
+  .dot.error {
+    background: var(--red);
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0.3;
+    }
+  }
+  td.meta {
+    color: var(--dim);
+    white-space: nowrap;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  td.state {
+    text-align: right;
+    white-space: nowrap;
+    font-size: 12.5px;
+    color: var(--faint);
+    width: 1%;
+    padding-left: 16px;
+  }
+  td.state.ready {
+    color: var(--green-2);
+  }
+  td.state.loading,
+  td.state.evicting {
+    color: var(--accent);
+  }
+  td.state.error,
+  td.state.failed {
+    color: #f28b82;
+  }
+  td.state.running {
+    color: var(--accent);
+  }
+  td.state.cancelled {
+    color: var(--amber);
+  }
+  /* a download row: the bar under the id shows the share that arrived */
+  tr.download td.name .bar {
+    display: block;
+    height: 3px;
+    margin: 6px 0 -3px 22px;
+    border-radius: 2px;
+    background: #1a1e25;
+    overflow: hidden;
+  }
+  tr.download td.name .bar[hidden] {
+    display: none;
+  }
+  tr.download td.name .bar .fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.4s linear;
+  }
+  td.act {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
+    padding-left: 12px;
+  }
+
+  .pill.prefill {
+    background: #12233a;
+    color: var(--accent);
+  }
+  .shead .hint .warn {
+    color: var(--amber);
+  }
+
+  /* the download dialog: one field, the target directory, the refusal */
+  #download .field {
+    display: block;
+    margin: 0 0 14px;
+  }
+  #download .field .lbl {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 6px;
+  }
+  #download input {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.5;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--fg);
+    padding: 7px 10px;
+  }
+  #download input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  #download .note {
+    font-size: 12.5px;
+    font-weight: 400;
+    color: var(--dim);
+    margin: 0 0 18px;
+  }
+  #download .note code {
+    font-size: 12px;
+    color: var(--dim);
+  }
+  #download .err {
+    font-size: 12.5px;
+    font-weight: 400;
+    color: #ff95a8;
+    margin: -8px 0 18px;
+  }
+  #download .err[hidden] {
+    display: none;
+  }
+
+  @media (max-width: 860px) {
+    .tiles {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .sparks.two,
+    .sparks.three {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* phones: the model id gets the row, the owner prefix and the size column
+     go (the id link's title still has them) */
+  @media (max-width: 600px) {
+    td.name {
+      max-width: 0; /* min-content 0: the id ellipsizes instead of widening the table */
+    }
+    td.name .owner,
+    td.meta {
+      display: none;
+    }
+    td.state {
+      padding-left: 8px;
+    }
+    td.act {
+      padding-left: 6px;
+    }
+  }
+}
+
+/* uPlot: no legend of its own, quiet axes. Outside the layer on purpose:
+   uPlot ships an unlayered stylesheet, and unlayered rules beat every
+   layered one whatever their specificity. The .plot prefix outranks
+   uPlot's own selectors, so the order the two sheets load in is moot. */
+.plot .uplot {
+  font-family: var(--mono);
+}
+.plot .u-legend {
+  display: none;
+}
+.plot .u-select {
+  background: rgba(138, 180, 248, 0.12);
+}
+.spark .u-hz .u-cursor-x {
+  border-right: 1px dashed #3a4048;
+}

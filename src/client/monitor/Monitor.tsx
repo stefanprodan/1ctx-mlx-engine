@@ -34,6 +34,7 @@ import {
   type TileMemory,
   tiles,
 } from "./tiles.ts";
+import "./monitor.css";
 
 // the page's state, outside the component so the socket listener and the
 // range loads reach it; one monitor per page

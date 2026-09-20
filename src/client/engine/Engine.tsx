@@ -14,6 +14,7 @@ import { Config, ConfigHead } from "./Config.tsx";
 import { ServiceHead } from "./Service.tsx";
 import { Spy, SpyHead } from "./Spy.tsx";
 import { engine, pageError, pushPageState, refresh, spy } from "./state.ts";
+import "./engine.css";
 
 const REFRESH_MS = 5000;
 

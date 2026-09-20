@@ -12,6 +12,7 @@ import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";
 import { busy, listen, snapshot } from "../store.ts";
 import { Row } from "./Row.tsx";
+import "./requests.css";
 
 const REQUESTS_SHOWN = 50;
 // A completion and a cancellation can share a finish time, so the pair is
