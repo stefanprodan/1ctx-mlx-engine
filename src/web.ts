@@ -57,6 +57,8 @@ export type WebDeps = {
     lock?: ExclusiveLock;
   };
   version: string;
+  // the compile time of this binary, null from source
+  build?: string | null;
   local: boolean;
   currentLimits: () => CacheLimits | null;
   host: HostInfo | null;
@@ -75,6 +77,7 @@ type HandleDeps = Omit<WebDeps, "pulls" | "modelDir"> & {
 export function snapshot(deps: HandleDeps) {
   return {
     version: deps.version,
+    build: deps.build ?? null,
     engine: {
       id: deps.engine.id,
       url: deps.engine.url,

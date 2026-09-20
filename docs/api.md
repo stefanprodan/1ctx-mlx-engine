@@ -22,6 +22,11 @@ from the dashboard's own host. Every JSON response carries
 | `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
 
+`build` is when this mlx-spy binary was compiled (null when run from
+source). The page remembers the one it loaded with and reloads itself when
+a snapshot carries another: the server was replaced under an open tab, and
+`version` cannot say so, since every development build reports the same.
+
 `engine.version` is the engine's build, which it states only while a model
 is resident; the answer is kept in mlx-spy's database, so after a restart
 with nothing loaded it is the last known build rather than nothing. Null

@@ -4,7 +4,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Actions } from "./actions.ts";
-import { type Options, VERSION } from "./cli.ts";
+import { BUILD, type Options, VERSION } from "./cli.ts";
 import { cacheLimits, configToArgs, limitsFromArgs } from "./engine/config.ts";
 import { EngineManager } from "./engine/install.ts";
 import type { EnginePageState } from "./engine/manage.ts";
@@ -171,6 +171,7 @@ export async function runApp(
         lock,
       },
       version: VERSION,
+      build: BUILD,
       local,
       currentLimits,
       host: await hostInfo(),
