@@ -56,26 +56,26 @@ jobs:
         run: make build VERSION="$GITHUB_REF_NAME"
       - name: Smoke test binary
         run: |
-          test "$(./bin/mlx-spy --version)" = "$GITHUB_REF_NAME"
-          ./bin/mlx-spy --help >/dev/null
+          test "$(./bin/1ctx-mlx-engine --version)" = "$GITHUB_REF_NAME"
+          ./bin/1ctx-mlx-engine --help >/dev/null
       - name: Build release archive
         run: |
           set -euo pipefail
           mkdir -p dist
           stage="$(mktemp -d)"
-          cp bin/mlx-spy LICENSE "$stage/"
-          tar -C "$stage" -czf dist/mlx-spy_darwin_arm64.tar.gz mlx-spy LICENSE
+          cp bin/1ctx-mlx-engine LICENSE "$stage/"
+          tar -C "$stage" -czf dist/1ctx-mlx-engine_darwin_arm64.tar.gz 1ctx-mlx-engine LICENSE
           rm -rf "$stage"
       - name: Generate checksums
         run: |
           set -euo pipefail
           cd dist
-          shasum -a 256 mlx-spy_darwin_arm64.tar.gz > mlx-spy_checksums.txt
-          cat mlx-spy_checksums.txt
+          shasum -a 256 1ctx-mlx-engine_darwin_arm64.tar.gz > 1ctx-mlx-engine_checksums.txt
+          cat 1ctx-mlx-engine_checksums.txt
       - name: Attest build provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-checksums: dist/mlx-spy_checksums.txt
+          subject-checksums: dist/1ctx-mlx-engine_checksums.txt
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -87,3 +87,15 @@ jobs:
             flags+=(--prerelease)
           fi
           gh release create "$GITHUB_REF_NAME" "${flags[@]}" dist/*
+
+  install:
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - name: Install the release with the published one-liner
+        run: |
+          set -euo pipefail
+          out="$(mktemp -d)"
+          curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/scripts/install.sh" |
+            VERSION="$GITHUB_REF_NAME" INSTALL_DIR="$out" NO_SERVICE=1 bash
+          test "$("$out/1ctx-mlx-engine" --version)" = "$GITHUB_REF_NAME"

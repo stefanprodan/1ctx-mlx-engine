@@ -43,5 +43,26 @@ jobs:
       - name: Smoke test binary
         run: |
           expected="v$(bun -e 'console.log(require("./package.json").version)')"
-          test "$(./bin/mlx-spy --version)" = "$expected"
-          ./bin/mlx-spy --help >/dev/null
+          test "$(./bin/1ctx-mlx-engine --version)" = "$expected"
+          ./bin/1ctx-mlx-engine --help >/dev/null
+      - name: Check the install script
+        run: bash -n scripts/install.sh
+      - name: Install from a local archive
+        run: |
+          set -euo pipefail
+          dist="$(mktemp -d)"
+          out="$(mktemp -d)"
+          tar -C bin -czf "$dist/1ctx-mlx-engine_darwin_arm64.tar.gz" 1ctx-mlx-engine
+          (cd "$dist" && shasum -a 256 1ctx-mlx-engine_darwin_arm64.tar.gz > 1ctx-mlx-engine_checksums.txt)
+          expected="v$(bun -e 'console.log(require("./package.json").version)')"
+          VERSION="$expected" DOWNLOAD_URL="file://$dist" INSTALL_DIR="$out" NO_SERVICE=1 \
+            bash scripts/install.sh
+          test "$("$out/1ctx-mlx-engine" --version)" = "$expected"
+          # a checksum that does not match installs nothing
+          echo "$(printf '0%.0s' {1..64})  1ctx-mlx-engine_darwin_arm64.tar.gz" > "$dist/1ctx-mlx-engine_checksums.txt"
+          if VERSION="$expected" DOWNLOAD_URL="file://$dist" INSTALL_DIR="$out/bad" NO_SERVICE=1 \
+            bash scripts/install.sh; then
+            echo "a bad checksum was accepted" >&2
+            exit 1
+          fi
+          test ! -e "$out/bad"
