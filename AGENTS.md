@@ -1,9 +1,9 @@
 # AGENTS.md
 
-How to work on **mlx-spy**, a monitor and control panel for LLM inference
-servers on Apple Silicon (mlx-serve first). One Bun/TypeScript program
-samples the engine and the host once a second, keeps history, and serves a
-dashboard with the control actions the engine's own console lacks.
+How to work on **1ctx-mlx-engine**, a monitor and control panel for LLM
+inference servers on Apple Silicon (mlx-serve first). One Bun/TypeScript
+program samples the engine and the host once a second, keeps history, and
+serves a dashboard with the control actions the engine's own console lacks.
 
 - **Runtime:** Bun only, TypeScript run directly. No Node.
 - **Platform:** macOS on Apple Silicon. Host probes use `bun:ffi`.
@@ -32,24 +32,24 @@ make deploy-studio  # build, install and restart on the Mac Studio
 
 ### Seeing a change
 
-1. `scripts/preview.sh status`. If it is not up, `make preview`. It runs
-   the source on `http://127.0.0.1:11236` against this machine's engine
+1. `scripts/preview.sh status`. If it is not up, `make preview`. It runs the
+   source on `http://127.0.0.1:11236` against this machine's engine
    (`127.0.0.1:11234`) and the real model directory,
-   `~/.mlx-spy/models`, with its pid, db and log under `.preview/`. Never
-   start the server by hand in the background. Development needs no
-   other host: when nothing is installed, the Engine page installs
-   mlx-serve here (a real LaunchAgent, a real build under
-   `~/.mlx-spy/engine`), and `mlx-community/Qwen3-0.6B-4bit` (335 MB) is
-   enough to serve requests. `PREVIEW_ENGINE=studio make preview` watches
-   the Studio named in `scripts/studio.env` (git-ignored) instead, for
-   real load and big models; everything that manages is disabled there.
-2. Edit. The preview runs with `MLX_SPY_DEV=1`, which turns on Bun's dev
-   server: an edit to a stylesheet under `src/client/` hot-reloads in the open tab, an
-   edit to a `.ts` or `.tsx` file under `src/client/` reloads the page (Bun
-   has no fast refresh for Preact; the state comes back from the server);
-   server-side TypeScript restarts the process through `bun --watch`.
-   The one exception: an edit to `index.html` can leave the dev server
-   with "Failed to load bundled module" in the page; `make preview`
+   `~/.1ctx-mlx-engine/models`, with its pid, db and log under `.preview/`.
+   Never start the server by hand in the background. Development needs no
+   other host: when nothing is installed, the Engine page installs mlx-serve
+   here (a real LaunchAgent, a real build under
+   `~/.1ctx-mlx-engine/engine`), and `mlx-community/Qwen3-0.6B-4bit` (335
+   MB) is enough to serve requests. `PREVIEW_ENGINE=studio make preview`
+   watches the Studio named in `scripts/studio.env` (git-ignored) instead,
+   for real load and big models; everything that manages is disabled there.
+2. Edit. The preview runs with `ONECTX_MLX_DEV=1`, which turns on Bun's dev
+   server: an edit to a stylesheet under `src/client/` hot-reloads in the
+   open tab, an edit to a `.ts` or `.tsx` file under `src/client/` reloads
+   the page (Bun has no fast refresh for Preact; the state comes back from
+   the server); server-side TypeScript restarts the process through `bun
+   --watch`. The one exception: an edit to `index.html` can leave the dev
+   server with "Failed to load bundled module" in the page; `make preview`
    clears it.
 3. Look at it. Open `http://127.0.0.1:11236/` and `/requests` in
    Chrome through the DevTools MCP: screenshot at a desktop width (1400)
@@ -64,7 +64,7 @@ make deploy-studio  # build, install and restart on the Mac Studio
 ### The Studio
 
 The Studio is the user's Mac Studio on the tailnet: it runs mlx-serve and
-its own mlx-spy as launchd agents. Read `docs/internal/studio.md` before
+its own 1ctx-mlx-engine as launchd agents. Read `docs/internal/studio.md` before
 any ssh command; it has the paths, the safe commands and the rules (never
 `GET /props`, never start processes by hand over ssh, never touch the
 user's other services). `make deploy-studio` is the only deploy path.
@@ -80,8 +80,8 @@ Deploy when asked, then say what is now running there.
   `test/fixtures/`. Record new ones with `curl <engine>/metrics.json` and
   `curl <engine>/v1/models`, pretty-printed. A `/props` body is recorded
   the same way, but only while a model is resident (rule 1).
-- `handle()` in `src/server/web/index.ts` is separate from `serve()`, so tests call it
-  with a `Request`.
+- `handle()` in `src/server/web/index.ts` is separate from `serve()`, so
+  tests call it with a `Request`.
 
 ## Rules that protect the engine
 
@@ -108,7 +108,7 @@ Deploy when asked, then say what is now running there.
    `huggingface.co` into `--model-dir` when a user asks for a repo, then
    asks the engine to rescan; the engine manager
    (`src/server/engine/manager/`) reads the GitHub releases of mlx-serve and
-   mlx-spy every 6 h and downloads a release asset only from a button.
+   1ctx-mlx-engine every 6 h and downloads a release asset only from a button.
 3. **No spawns on the monitor path.** Host numbers come from FFI, directory
    sizes from recursive stat. The program's spawn paths call `launchctl`
    with argument vectors and never a shell: the local-only "free" action
@@ -125,7 +125,7 @@ Deploy when asked, then say what is now running there.
    is staged and parsed before the job is touched, and the engine's swap
    writes a journal row first, which `reconcile()` finishes or rolls back
    at the next start. `launchctl print` runs after an operation, never
-   from `snapshot()`. mlx-spy manages only an engine it installed (the
+   from `snapshot()`. 1ctx-mlx-engine manages only an engine it installed (the
    `managed` marker); it never adopts or imports another agent's plist.
 
 ## Layout
@@ -136,7 +136,7 @@ src/main.ts          thin entry: CLI result dispatch and plain error handling
 src/shared/          what crosses the wire, types and pure guards only; the
                      server and the page both import it, it imports neither
   engine.ts          the contract between the manager and the Engine page:
-                     EngineConfig, EngineState, SpyState, the route bodies
+                     EngineConfig, EngineState, SelfState, the route bodies
   sample.ts          Sample, as /api/snapshot and the socket carry it
   models.ts          the model row, the capabilities, the cache budgets
   host.ts            the host facts and the disk figures
@@ -158,8 +158,8 @@ src/server/
   lib/log.ts         levelled callable logger, repeat collapsing, appending
                      file sink and stopped launchd-log rotation
   lib/lock.ts        the one lock the actions and the manager share
-  lib/secrets.ts     the key files in ~/.mlx-spy/secrets (.preview/secrets
-                     from source); loadKey and secretsDir, read once at
+  lib/secrets.ts     the key files in ~/.1ctx-mlx-engine/secrets
+                     (.preview/secrets from source); loadKey and secretsDir, read once at
                      start for the Hub token and the optional GitHub one
   lib/fetch.ts       what the two downloaders share: redirects followed by
                      hand so a token never crosses origins, the stall
@@ -177,7 +177,8 @@ src/server/
                      finished one, from the counter deltas (pure, tested)
   monitor/sampler.ts the 1 Hz loop; carries epoch, counters and the last
                      request across restarts through the history meta table
-  monitor/history.ts ring buffer (1 h) plus bun:sqlite (~/.mlx-spy/mlx-spy.db):
+  monitor/history.ts ring buffer (1 h) plus bun:sqlite
+                     (~/.1ctx-mlx-engine/engine.db):
                      samples (7 day retention, bucketed series() for uPlot;
                      only the columns the page reads back, the memory and
                      host gauges are live-only), models (ids and the
@@ -191,18 +192,18 @@ src/server/
                      resume at start; progress on /ws; tested against a fake
                      Hub in test/server/models/download.test.ts
   models/transfer.ts one file of a download: Range resume into
-                     <file>.mlx-spy-part, sha256 while writing, retries
+                     <file>.part, sha256 while writing, retries
   models/error.ts    DownloadError, the status a route answers with
-  service/plist.ts   pure LaunchAgent XML rendering and stable Homebrew path
+  service/plist.ts   pure LaunchAgent XML rendering
   service/launchd.ts injected launchctl verbs, status parse, atomic write and
                      the ordered staged reload sequence
-  service/service.ts install, status, lifecycle and uninstall for mlx-spy's
-                     own LaunchAgent
+  service/service.ts install, status, lifecycle and uninstall for its own
+                     LaunchAgent
   engine/types.ts    the Engine interface and the normalised metric types
   engine/mlxserve.ts mlx-serve adapter: parseMetrics/parseModels/parseProps
                      (pure, tested), the HTTP client, load/unload, cache dir
                      and log paths, props() under rule 1; the service
-                     label is the managed one only once mlx-spy owns it
+                     label is the managed one only once 1ctx-mlx-engine owns it
   engine/config.ts   pure: DEFAULTS, configToArgs, validateConfig over the
                      effective argv, the size grammar, and the launchd
                      argument parse that reads an unmanaged engine's budgets
@@ -218,12 +219,12 @@ src/server/
                      swap.ts (the port preflight, the staged reload, the
                      four-fact verification, the log tail), journal.ts
                      (reconcile, restore, prune), poll.ts (the release
-                     poll), spy.ts (mlx-spy's own section), context.ts
+                     poll), self.ts (1ctx-mlx-engine's own section), context.ts
   web/index.ts       Bun.serve: the page, /api/snapshot, /api/history,
                      /api/requests, POST /api/actions/<name>, /ws;
-                     development mode from MLX_SPY_DEV=1; handle() separate
+                     development mode from ONECTX_MLX_DEV=1; handle() separate
                      from serve() for tests
-  web/engine.ts      the /api/engine routes and /api/spy/restart
+  web/engine.ts      the /api/engine routes and /api/self/restart
   web/downloads.ts   /api/downloads and its sub-routes
   web/http.ts        the JSON answer, HttpError, the bounded body read,
                      sameOrigin
@@ -255,7 +256,7 @@ src/client/
                      series.ts, request.ts, download.ts (the row copy);
                      actions.ts (runAction, confirmText, engine facts)
   requests/          Requests.tsx, Row.tsx, requests.css
-  engine/            Engine.tsx (the page), Spy.tsx, Service.tsx (the
+  engine/            Engine.tsx (the page), Self.tsx, Service.tsx (the
                      mlx-serve head), Build.tsx (facts and the one row that
                      is a release, an operation or a failure), Progress.tsx,
                      Config.tsx (the form and its foot), Fields.tsx (its
@@ -270,8 +271,10 @@ test/                bun test suites: server/, client/ (pure modules and
 docs/                user docs: monitor, api (keep in step with
                      src/server/web/), development; internal/studio.md is
                      the Studio guide
-scripts/             preview.sh, deploy-studio.sh (build, copy, then `service
-                     install --restart`) and studio.env.example
+scripts/             preview.sh, install.sh (the one install path: download,
+                     verify, place the binary, `service install --restart`),
+                     deploy-studio.sh (build, copy, then the same command)
+                     and studio.env.example
 plans/               the development plan and milestones
 ```
 
@@ -326,10 +329,10 @@ in the models table of every tab.
 - The engine's version is in one endpoint only, `/props`
   (`settings.version`), which is under rule 1. It also prints it in the
   banner it writes to its log at every start ("mlx-serve 26.9.5 (MLX
-  0.32.2)", the only place the MLX version appears), but mlx-spy does not
-  read that log.
-- The engine does not say which model is the default, nor which model
-  served a request; mlx-spy attributes a request to the resident favorite,
+  0.32.2)", the only place the MLX version appears), but 1ctx-mlx-engine
+  does not read that log.
+- The engine does not say which model is the default, nor which model served
+  a request; 1ctx-mlx-engine attributes a request to the resident favorite,
   else the first resident by id.
 - Disk tier at `~/.mlx-serve/kv-cache/<fingerprint>/`; server log at
   `~/.mlx-serve/logs/mlx-serve-<port>.log`. The service label is

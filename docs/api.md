@@ -1,6 +1,6 @@
 # API
 
-mlx-spy serves its pages and a small JSON API from one port (11235 by
+1ctx-mlx-engine serves its pages and a small JSON API from one port (11235 by
 default). There is no authentication: the tailnet is the boundary, and the
 browser-facing routes check that a request with an `Origin` header comes
 from the dashboard's own host. Every JSON response carries
@@ -12,7 +12,7 @@ from the dashboard's own host. Every JSON response carries
 |---|---|
 | `GET /` | Monitor: tiles, charts, models, runtime |
 | `GET /requests` | The request in flight and the last 50 finished ones |
-| `GET /engine` | mlx-spy's own service, the mlx-serve install and its configuration |
+| `GET /engine` | 1ctx-mlx-engine's own service, the mlx-serve install and its configuration |
 
 ## Monitoring
 
@@ -22,17 +22,17 @@ from the dashboard's own host. Every JSON response carries
 | `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
 
-`build` is when this mlx-spy binary was compiled (null when run from
+`build` is when this 1ctx-mlx-engine binary was compiled (null when run from
 source). The page remembers the one it loaded with and reloads itself when
 a snapshot carries another: the server was replaced under an open tab, and
 `version` cannot say so, since every development build reports the same.
 
 `engine.version` is the engine's build, which it states only while a model
-is resident; the answer is kept in mlx-spy's database, so after a restart
-with nothing loaded it is the last known build rather than nothing. Null
-until the engine has been asked once. `engine.limits` is the pair of prefix
-cache budgets, from `--hot-cache-max`/`--disk-cache-max`, the engine's
-LaunchAgent plist, or the same answer.
+is resident; the answer is kept in 1ctx-mlx-engine's database, so after a
+restart with nothing loaded it is the last known build rather than nothing.
+Null until the engine has been asked once. `engine.limits` is the pair of
+prefix cache budgets, from `--hot-cache-max`/`--disk-cache-max`, the
+engine's LaunchAgent plist, or the same answer.
 
 A sample carries the engine state, live decode and prefill tok/s, cache hit
 ratios, the memory split (host free, inactive, wired and compressed; engine
@@ -57,7 +57,7 @@ detail}`.
 | `default` | `{"model": "<id>"}` | make a model the default, loading it if needed |
 | `free` | none | restart the engine service to free its RAM (local engine only) |
 | `diskClear` | none | restart, then delete the SSD cache tier contents (local engine only) |
-| `historyClear` | none | wipe mlx-spy's own sample history |
+| `historyClear` | none | wipe 1ctx-mlx-engine's own sample history |
 | `requestsClear` | none | wipe the stored requests and the last request in the bar; samples are kept |
 | `favorite` | `{"model": "<id>"}` | toggle the daily-driver star |
 
@@ -67,15 +67,16 @@ Errors are `{"error": "<sentence>"}` with 400 (bad input), 403
 
 ## Downloads
 
-mlx-spy downloads a model from the Hugging Face Hub itself, into
-`--model-dir` (`~/.mlx-spy/models` by default) as `<owner>/<name>/`, one
-download at a time from a queue kept in its database. Every file streams into
-`<file>.mlx-spy-part` and resumes with a Range request after a cut, a retry, a
-cancel or a restart of mlx-spy; LFS files are checked against the Hub's
-sha256 before the rename. The engine takes no part in the download; when
-a download completes mlx-spy asks it to rescan its model directory, so the
-model appears in the list when that directory is the one the engine
-serves. A gated repository needs `hf.key` in the secrets directory.
+1ctx-mlx-engine downloads a model from the Hugging Face Hub itself, into
+`--model-dir` (`~/.1ctx-mlx-engine/models` by default) as `<owner>/<name>/`,
+one download at a time from a queue kept in its database. Every file streams
+into `<file>.part` and resumes with a Range request after a cut, a retry, a
+cancel or a restart of 1ctx-mlx-engine; LFS files are checked against the
+Hub's sha256 before the rename. The engine takes no part in the download;
+when a download completes 1ctx-mlx-engine asks it to rescan its model
+directory, so the model appears in the list when that directory is the one
+the engine serves. A gated repository needs `hf.key` in the secrets
+directory.
 
 | Route | Body | Answer |
 |---|---|---|
@@ -98,11 +99,11 @@ plus 1 GB, fails at start with the numbers in `error`.
 
 ## Engine management
 
-Every route answers the page state, `{engine, spy}`: the mode (`remote`,
+Every route answers the page state, `{engine, self}`: the mode (`remote`,
 `unmanaged`, `absent` or `managed`), the active and previous installs,
 launchd's view of the job, the applied configuration and its defaults,
 the release check, the release on offer, the operation in flight and the
-last failure; and mlx-spy's own version, resources and release check.
+last failure; and 1ctx-mlx-engine's own version, resources and release check.
 Everything but the reads is refused with 403 when `--engine` is not on
 this host, and with 409 while another operation or action holds the lock.
 
@@ -119,7 +120,7 @@ this host, and with 409 while another operation or action holds the lock.
 | `POST /api/engine/rollback` | | back to the previous build; the build it leaves is removed |
 | `POST /api/engine/dismiss` | | clears the last failure |
 | `DELETE /api/engine` | | removes the LaunchAgent and the installed builds; models, caches and logs stay |
-| `POST /api/spy/restart` | | mlx-spy exits and launchd starts it again. Refused when it does not run under launchd |
+| `POST /api/self/restart` | | 1ctx-mlx-engine exits and launchd starts it again. Refused when it does not run under launchd |
 
 A tag is accepted only when it is in the stored release list. Progress
 arrives on the socket.
