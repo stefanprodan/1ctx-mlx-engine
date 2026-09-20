@@ -7,7 +7,7 @@
 
 const HUB = "https://huggingface.co";
 // the downloader's in-flight suffix; a repo file with that name is refused
-export const PART_SUFFIX = ".part";
+export const PART_SUFFIX = ".1ctx-part";
 const TIMEOUT_MS = 20_000;
 
 // A repo id is <owner>/<name>: the Hub's own rule is letters, digits, dot,

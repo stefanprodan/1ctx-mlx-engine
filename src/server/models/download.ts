@@ -3,10 +3,10 @@
 //
 // The model downloader: downloads a Hugging Face repo into the model directory,
 // one download at a time, from a queue that survives restarts through the
-// DownloadStore. Every file streams into <file>.part and resumes with a Range
-// request after a cut, a retry or a restart; the hash is computed while
-// writing (the existing part first, on a resume) and checked against the
-// Hub's LFS sha256 before the rename. Progress reaches every tab on /ws.
+// DownloadStore. Every file streams into <file>.1ctx-part and resumes with
+// a Range request after a cut, a retry or a restart; the hash is computed
+// while writing (the existing part first, on a resume) and checked against
+// the Hub's LFS sha256 before the rename. Progress reaches every tab on /ws.
 //
 // The engine is not involved in the download. After a download the runner asks
 // it to rescan its model directory (mlx-serve answers /v1/models/rescan

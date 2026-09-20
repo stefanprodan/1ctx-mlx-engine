@@ -73,7 +73,7 @@ describe("parseRepoFiles", () => {
         { rfilename: "../c.bin", size: 3 },
         { rfilename: "d/../e.bin", size: 3 },
         { rfilename: "sub/f.bin", lfs: { size: 7, sha256: "a".repeat(64) } },
-        { rfilename: "g.bin.part", size: 3 },
+        { rfilename: "g.bin.1ctx-part", size: 3 },
         { rfilename: "", size: 1 },
         { size: 1 },
       ],

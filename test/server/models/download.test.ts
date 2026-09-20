@@ -387,7 +387,7 @@ describe("Downloader", () => {
       hub.files.get("sub/extra.safetensors")!,
     );
     expect(await readdir(join(dir, "org", "model"))).not.toContain(
-      "model.safetensors.part",
+      "model.safetensors.1ctx-part",
     );
     expect(engine.rescans).toBe(1);
     expect(refreshed).toBe(1);
@@ -453,7 +453,8 @@ describe("Downloader", () => {
     expect(done.error).toBe("got 50 of 50000 bytes");
     // the part stays for a later retry
     expect(
-      (await stat(join(dir, "org", "model", "model.safetensors.part"))).size,
+      (await stat(join(dir, "org", "model", "model.safetensors.1ctx-part")))
+        .size,
     ).toBe(50);
   });
 
@@ -464,7 +465,7 @@ describe("Downloader", () => {
     expect(done.status).toBe("failed");
     expect(done.error).toBe("model.safetensors: sha256 mismatch");
     await expect(
-      stat(join(dir, "org", "model", "model.safetensors.part")),
+      stat(join(dir, "org", "model", "model.safetensors.1ctx-part")),
     ).rejects.toThrow();
     expect(engine.rescans).toBe(0);
   });
@@ -684,7 +685,7 @@ describe("Downloader", () => {
 
   test("a zero-byte file and a file named like a part", async () => {
     hub.files.set("empty.txt", new Uint8Array(0));
-    hub.files.set("model.safetensors.part", bytesOf(10));
+    hub.files.set("model.safetensors.1ctx-part", bytesOf(10));
     const { r } = runner();
     const download = await r.start(REPO);
     expect(download.filesTotal).toBe(4);

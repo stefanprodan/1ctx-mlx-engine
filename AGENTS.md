@@ -192,7 +192,7 @@ src/server/
                      resume at start; progress on /ws; tested against a fake
                      Hub in test/server/models/download.test.ts
   models/transfer.ts one file of a download: Range resume into
-                     <file>.part, sha256 while writing, retries
+                     <file>.1ctx-part, sha256 while writing, retries
   models/error.ts    DownloadError, the status a route answers with
   service/plist.ts   pure LaunchAgent XML rendering
   service/launchd.ts injected launchctl verbs, status parse, atomic write and
