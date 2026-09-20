@@ -44,8 +44,8 @@ make deploy-studio  # build, install and restart on the Mac Studio
    the Studio named in `scripts/studio.env` (git-ignored) instead, for
    real load and big models; everything that manages is disabled there.
 2. Edit. The preview runs with `MLX_SPY_DEV=1`, which turns on Bun's dev
-   server: an edit to `src/ui/style.css` hot-reloads in the open tab, an
-   edit to a `.ts` or `.tsx` file under `src/ui/` reloads the page (Bun
+   server: an edit to a stylesheet under `src/client/` hot-reloads in the open tab, an
+   edit to a `.ts` or `.tsx` file under `src/client/` reloads the page (Bun
    has no fast refresh for Preact; the state comes back from the server);
    server-side TypeScript restarts the process through `bun --watch`.
    The one exception: an edit to `index.html` can leave the dev server
@@ -80,7 +80,7 @@ Deploy when asked, then say what is now running there.
   `test/fixtures/`. Record new ones with `curl <engine>/metrics.json` and
   `curl <engine>/v1/models`, pretty-printed. A `/props` body is recorded
   the same way, but only while a model is resident (rule 1).
-- `handle()` in `src/web.ts` is separate from `serve()`, so tests call it
+- `handle()` in `src/server/web/index.ts` is separate from `serve()`, so tests call it
   with a `Request`.
 
 ## Rules that protect the engine
@@ -104,10 +104,10 @@ Deploy when asked, then say what is now running there.
    `diskClear` run only from an explicit user action through the actions
    layer, are logged, and are disabled when the engine URL is not local.
    There are two other network callers, and the engine takes no part in
-   either: the pull runner (`src/pull.ts`) downloads from
+   either: the downloader (`src/server/models/`) fetches from
    `huggingface.co` into `--model-dir` when a user asks for a repo, then
    asks the engine to rescan; the engine manager
-   (`src/engine/install.ts`) reads the GitHub releases of mlx-serve and
+   (`src/server/engine/manager/`) reads the GitHub releases of mlx-serve and
    mlx-spy every 6 h and downloads a release asset only from a button.
 3. **No spawns on the monitor path.** Host numbers come from FFI, directory
    sizes from recursive stat. The program's spawn paths call `launchctl`
@@ -132,119 +132,171 @@ Deploy when asked, then say what is now running there.
 
 ```
 src/main.ts          thin entry: CLI result dispatch and plain error handling
-src/cli.ts           pure CLI parsing for foreground and service commands;
-                     VERSION from package.json in development and injected at
-                     build time
-src/app.ts           foreground application wiring, macOS floor and log sink
-src/plist.ts         pure LaunchAgent XML rendering and stable Homebrew path
-src/launchd.ts       injected launchctl verbs, status parse, atomic write and
-                     the ordered staged reload sequence
-src/service.ts       install, status, lifecycle and uninstall for mlx-spy's
-                     own LaunchAgent
-src/log.ts           levelled callable logger, repeat collapsing, appending
-                     file sink and stopped launchd-log rotation
-src/engine/types.ts  the Engine interface and the normalised metric types
-src/engine/mlxserve.ts
-                     mlx-serve adapter: parseMetrics/parseModels/parseProps
-                     (pure, tested), the HTTP client, load/unload, cache dir
-                     and log paths, props() under rule 1; the service
-                     label is the managed one only once mlx-spy owns it
-src/engine/manage.ts the contract between the manager and the Engine page:
+
+src/shared/          what crosses the wire, types and pure guards only; the
+                     server and the page both import it, it imports neither
+  engine.ts          the contract between the manager and the Engine page:
                      EngineConfig, EngineState, SpyState, the route bodies
-                     (types only, so the page can import it)
-src/engine/config.ts pure: DEFAULTS, configToArgs, validateConfig over the
-                     effective argv, the size grammar, and the launchd
-                     argument parse that reads an unmanaged engine's budgets
-src/engine/release.ts
-                     pure: the GitHub releases body, the asset pick, tag
-                     order and trust, offered() (never a downgrade), the
-                     `--version` output; fetchReleases is the one I/O call
-src/engine/store.ts  EngineStore over the History db handle: the applied
-                     and pending config, the settings, the managed marker,
-                     the install records, the journal, the release checks
-src/engine/install.ts
-                     EngineManager under rule 5: install, upgrade, cancel,
-                     applyConfig, service, rollback, uninstall, reconcile;
-                     the port preflight, the four-fact verification, the
-                     release poll and mlx-spy's own section of the state
-src/download.ts      what the two downloaders share: redirects followed by
-                     hand so a token never crosses origins, the stall
-                     timeout, the free-space margin
-src/secrets.ts       the key files in ~/.mlx-spy/secrets (.preview/secrets
+  sample.ts          Sample, as /api/snapshot and the socket carry it
+  models.ts          the model row, the capabilities, the cache budgets
+  host.ts            the host facts and the disk figures
+  requests.ts        the request in flight and the last finished one
+  history.ts         the ranges and the columnar series of /api/history
+  actions.ts         the action names, isActionName, the action log row
+  downloads.ts       a model download as the routes and the socket say it
+  socket.ts          Snapshot and the WsMessage union
+  paths.ts           expandHome, abbreviateHome
+
+src/server/
+  app.ts             foreground application wiring, macOS floor and log sink
+  cli.ts             pure CLI parsing for foreground and service commands;
+                     VERSION from package.json in development and injected
+                     at build time
+  actions.ts         load, unload, default, free, diskClear (local-only),
+                     historyClear, favorite; one at a time, logged, last 50
+  lib/log.ts         levelled callable logger, repeat collapsing, appending
+                     file sink and stopped launchd-log rotation
+  lib/lock.ts        the one lock the actions and the manager share
+  lib/secrets.ts     the key files in ~/.mlx-spy/secrets (.preview/secrets
                      from source); loadKey and secretsDir, read once at
                      start for the Hub token and the optional GitHub one
-src/sample.ts        Sample type; computeRates and buildSample (pure, tested);
-                     takeSample does the I/O for --once
-src/requests.ts      trackRequests: the request in flight and the last
+  lib/fetch.ts       what the two downloaders share: redirects followed by
+                     hand so a token never crosses origins, the stall
+                     timeout, the free-space margin
+  lib/net.ts         the default port and the tailnet address
+  host/              probes: darwin.ts (bun:ffi, offsets verified with
+                     offsetof(), load-bearing comments), info.ts (static host
+                     facts), disk.ts (cache dir sizes, no spawn), local.ts
+                     (is the engine on this host), index.ts (facade)
+  monitor/sample.ts  computeRates and buildSample (pure, tested); takeSample
+                     does the I/O for --once
+  monitor/requests.ts
+                     trackRequests: the request in flight and the last
                      finished one, from the counter deltas (pure, tested)
-src/sampler.ts       the 1 Hz loop; carries epoch, counters and the last
+  monitor/sampler.ts the 1 Hz loop; carries epoch, counters and the last
                      request across restarts through the history meta table
-src/history.ts       ring buffer (1 h) plus bun:sqlite (~/.mlx-spy/mlx-spy.db):
+  monitor/history.ts ring buffer (1 h) plus bun:sqlite (~/.mlx-spy/mlx-spy.db):
                      samples (7 day retention, bucketed series() for uPlot;
                      only the columns the page reads back, the memory and
                      host gauges are live-only), models (ids and the
                      favorite flag), requests (the last 50), meta (the
                      sampler's carry-over and the engine's last /props)
-src/hub.ts           the Hugging Face Hub: parseRepoId, parseRepoFiles (pure,
+  models/hub.ts      the Hugging Face Hub: parseRepoId, parseRepoFiles (pure,
                      tested on a recorded body), the resolve URL, fetchRepo
-src/pulls.ts         PullStore: pulls and pull_files over the same sqlite
-                     file; the rows are the resume state
-src/pull.ts          PullRunner: the download queue (one at a time), Range
-                     resume into <file>.mlx-spy-part, sha256 while writing, retries,
-                     cancel, remove, resume at start; progress on /ws;
-                     tested against a fake Hub in test/pull.test.ts
-src/actions.ts       load, unload, default, free, diskClear (local-only),
-                     historyClear, favorite; one at a time, logged, last 50
-src/web.ts           Bun.serve: the page, /api/snapshot, /api/history,
-                     /api/requests, POST /api/actions/<name> and /api/pulls
-                     with its sub-routes, /ws; development mode from
-                     MLX_SPY_DEV=1; handle() separate from serve() for tests
-src/ui/index.html    the shell: head, the header, page and footer roots,
-                     the script tag; Bun bundles style.css and main.tsx
-                     from it
-src/ui/main.tsx      entry: renders the shell and the page's root, opens
+  models/store.ts    DownloadStore: downloads and download_files over the
+                     same sqlite file; the rows are the resume state
+  models/download.ts Downloader: the queue (one at a time), cancel, remove,
+                     resume at start; progress on /ws; tested against a fake
+                     Hub in test/server/models/download.test.ts
+  models/transfer.ts one file of a download: Range resume into
+                     <file>.mlx-spy-part, sha256 while writing, retries
+  models/error.ts    DownloadError, the status a route answers with
+  service/plist.ts   pure LaunchAgent XML rendering and stable Homebrew path
+  service/launchd.ts injected launchctl verbs, status parse, atomic write and
+                     the ordered staged reload sequence
+  service/service.ts install, status, lifecycle and uninstall for mlx-spy's
+                     own LaunchAgent
+  engine/types.ts    the Engine interface and the normalised metric types
+  engine/mlxserve.ts mlx-serve adapter: parseMetrics/parseModels/parseProps
+                     (pure, tested), the HTTP client, load/unload, cache dir
+                     and log paths, props() under rule 1; the service
+                     label is the managed one only once mlx-spy owns it
+  engine/config.ts   pure: DEFAULTS, configToArgs, validateConfig over the
+                     effective argv, the size grammar, and the launchd
+                     argument parse that reads an unmanaged engine's budgets
+  engine/release.ts  pure: the GitHub releases body, the asset pick, tag
+                     order and trust, offered() (never a downgrade), the
+                     `--version` output; fetchReleases is the one I/O call
+  engine/store.ts    EngineStore over the History db handle: the applied
+                     and pending config, the settings, the managed marker,
+                     the install records, the journal, the release checks
+  engine/manager/    EngineManager under rule 5, one class over plain
+                     functions that share a context: index.ts (the verbs,
+                     the lock, state), stage.ts (download, hash, unpack),
+                     swap.ts (the port preflight, the staged reload, the
+                     four-fact verification, the log tail), journal.ts
+                     (reconcile, restore, prune), poll.ts (the release
+                     poll), spy.ts (mlx-spy's own section), context.ts
+  web/index.ts       Bun.serve: the page, /api/snapshot, /api/history,
+                     /api/requests, POST /api/actions/<name>, /ws;
+                     development mode from MLX_SPY_DEV=1; handle() separate
+                     from serve() for tests
+  web/engine.ts      the /api/engine routes and /api/spy/restart
+  web/downloads.ts   /api/downloads and its sub-routes
+  web/http.ts        the JSON answer, HttpError, the bounded body read,
+                     sameOrigin
+  web/deps.ts        WebDeps: what the routes are handed
+
+src/client/
+  index.html         the shell: head, the header, page and footer roots,
+                     the script tag; Bun bundles the CSS and main.tsx from it
+  main.tsx           entry: renders the shell and the page's root, opens
                      the store
-src/ui/store.ts      the WebSocket client and its signals (connection,
-                     snapshot, sample, models, event, busy, pulls);
+  store.ts           the WebSocket client and its signals (connection,
+                     snapshot, sample, models, event, busy, downloads);
                      listen() for the code that renders by hand
-src/ui/api.ts        api<T>(): one JSON call to this server
-src/ui/format.ts     gb, num, count, diskSize, duration, orderModels
+  api.ts             api<T>(): one JSON call to this server
+  format.ts          gb, size, num, count, diskSize, duration, orderModels
                      (pure, tested)
-src/ui/icons.tsx     the inline SVGs as components
-src/ui/shell/        Header.tsx, Footer.tsx, Pill.tsx, Confirm.tsx (the
-                     dialog with a promise API)
-src/ui/monitor/      Monitor.tsx (the page: range, series and tile memory
+  icons.tsx          the inline SVGs as components
+  style/tokens.css   the custom properties, the only :root that has any
+  style/base.css     what more than one page uses: cards, section heads,
+                     pills, buttons, tables, the request bar, facts
+  shell/             Header.tsx, Footer.tsx, Pill.tsx, Confirm.tsx (the
+                     dialog with a promise API), shell.css
+  monitor/           Monitor.tsx (the page: range, series and tile memory
                      signals), Tiles.tsx, Charts.tsx (uPlot in a ref),
                      Models.tsx, Runtime.tsx, RangePicker.tsx, RequestBar.tsx,
-                     Event.tsx, Pull.tsx (the download dialog and the rows
-                     in the models table); the pure, tested tiles.ts
-                     (seed/apply and the eight tiles), range.ts, series.ts,
-                     request.ts, pull.ts (the row copy); actions.ts
-                     (runAction, confirmText, engine facts)
-src/ui/requests/     Requests.tsx, Row.tsx
-src/ui/engine/       Engine.tsx (the page), Spy.tsx, Service.tsx (the
+                     Event.tsx, Download.tsx (the download dialog and the
+                     rows in the models table), monitor.css; the pure, tested
+                     tiles.ts (seed/apply and the eight tiles), range.ts,
+                     series.ts, request.ts, download.ts (the row copy);
+                     actions.ts (runAction, confirmText, engine facts)
+  requests/          Requests.tsx, Row.tsx, requests.css
+  engine/            Engine.tsx (the page), Spy.tsx, Service.tsx (the
                      mlx-serve head), Build.tsx (facts and the one row that
                      is a release, an operation or a failure), Progress.tsx,
-                     Config.tsx (the form and its foot); state.ts (the
-                     signals and the calls); the pure, tested config.ts
-                     (form to config, changed fields) and release.ts (the
-                     row and pill copy)
-src/ui/style.css     follows the engine's own console (its tokens: #131314
-                     page, #1e1f20 cards, #0f1216 inset tiles, 10px uppercase
-                     labels, bold mono values)
-src/host/            probes: darwin.ts (bun:ffi, offsets verified with
-                     offsetof(), load-bearing comments), info.ts (static host
-                     facts), disk.ts (cache dir sizes, no spawn), local.ts
-                     (is the engine on this host), index.ts (facade)
-test/                bun test suites; fixtures/ holds recorded engine bodies,
-                     ui/ the client's pure modules and render-to-string
-                     checks of its components
-docs/                user docs: monitor, api (keep in step with web.ts),
-                     development; internal/studio.md is the Studio guide
+                     Config.tsx (the form and its foot), Fields.tsx (its
+                     rows), engine.css; state.ts (the signals and the
+                     calls); the pure, tested config.ts (form to config,
+                     changed fields) and release.ts (the row and pill copy)
+
+test/                bun test suites: server/, client/ (pure modules and
+                     render-to-string checks) and shared/ mirror src/;
+                     fixtures/ holds recorded engine bodies; structure.ts
+                     and structure.test.ts are the layout rules
+docs/                user docs: monitor, api (keep in step with
+                     src/server/web/), development; internal/studio.md is
+                     the Studio guide
 scripts/             preview.sh, deploy-studio.sh (build, copy, then `service
                      install --restart`) and studio.env.example
 plans/               the development plan and milestones
 ```
+
+The styles follow the engine's own console (its tokens: #131314 page,
+#1e1f20 cards, #0f1216 inset tiles, 10px uppercase labels, bold mono
+values).
+
+### Rules the structure test enforces
+
+`test/structure.ts` is the source of truth; `make test` fails on a
+violation, and every rule has a rejected fixture under
+`test/fixtures/structure/`.
+
+- `shared/` imports only `shared/`. `client/` imports `client/` and
+  `shared/`, never `server/`. `server/` imports `client/` only in
+  `app.ts`, for the page.
+- `web/` is the outermost server area: only `app.ts` imports it, and
+  nothing imports `app.ts` or `main.ts`.
+- No import cycles between files, type-only imports included.
+- A file under `src/` over 500 lines fails unless it is listed in
+  `LINE_EXEMPTIONS` with a reason. The list is empty.
+- Every relative import carries its extension.
+- Every stylesheet opens with `@layer tokens, base, pages;` and puts its
+  rules in one of the three. Only `style/tokens.css` declares custom
+  properties on `:root`. One exception lives in `monitor.css`: the uPlot
+  overrides are unlayered, because uPlot's own sheet is, and an unlayered
+  rule beats every layered one.
 
 Data flow: adapter (`/metrics.json`, `/v1/models`) → `Reading` →
 `computeRates` over the previous reading, joined with the host probes →
@@ -252,8 +304,8 @@ Data flow: adapter (`/metrics.json`, `/v1/models`) → `Reading` →
 `/api/history` and the `/ws` push → the page. Actions go the other way: a
 button → confirm dialog → `POST /api/actions/<name>` → `Actions.run` → an
 event on `/ws` that every tab shows. A download: the dialog → `POST
-/api/pulls` → `PullRunner` → `{type: "pull"}` on `/ws` → the row in the
-models table of every tab.
+/api/downloads` → `Downloader` → `{type: "download"}` on `/ws` → the row
+in the models table of every tab.
 
 ## mlx-serve specifics worth knowing
 

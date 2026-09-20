@@ -252,8 +252,9 @@ models.
 
 ### The database
 
-The schema is in `src/history.ts` (samples, meta, models, requests) and
-`src/server/models/store.ts` (downloads, download_files). Fixes go in with `sqlite3` on the box.
+The schema is in `src/server/monitor/history.ts` (samples, meta, models,
+requests) and `src/server/models/store.ts` (downloads, download_files).
+Fixes go in with `sqlite3` on the box.
 Two rules:
 
 - **Stop the agent first** (`launchctl bootout`), fix, then `bootstrap`.
