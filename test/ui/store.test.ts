@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../src/engine/types.ts";
-import { modelsKeyOf, pageOf } from "../../src/ui/store.ts";
+import { modelsKeyOf, pageOf, replaced } from "../../src/ui/store.ts";
 
 const model = (over: Partial<ModelInfo> = {}): ModelInfo => ({
   id: "org/model",
@@ -22,6 +22,16 @@ describe("store", () => {
     expect(pageOf("/requests")).toBe("requests");
     expect(pageOf("/engine")).toBe("engine");
     expect(pageOf("/requests/")).toBe("monitor");
+  });
+
+  test("a page reloads only when a compiled server was replaced", () => {
+    expect(replaced("1789915000", "1789916000")).toBeTrue();
+    expect(replaced("1789915000", "1789915000")).toBeFalse();
+    // from source there is no build id: Bun's dev server reloads instead
+    expect(replaced(null, null)).toBeFalse();
+    expect(replaced(null, "1789916000")).toBeFalse();
+    expect(replaced("1789915000", null)).toBeFalse();
+    expect(replaced(undefined, "1789916000")).toBeFalse();
   });
 
   test("the models key changes only with the residency picture", () => {

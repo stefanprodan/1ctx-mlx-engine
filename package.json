@@ -11,7 +11,7 @@
     "dev": "MLX_SPY_DEV=1 bun --watch src/main.ts",
     "test": "bun test",
     "lint": "bun biome check --write . && bun tsc --noEmit",
-    "build": "mkdir -p bin && bun build src/main.ts --compile --define \"process.env.MLX_SPY_BUILD_VERSION=\\\"${VERSION:-}\\\"\" --outfile bin/mlx-spy && rm -f .*.bun-build",
+    "build": "mkdir -p bin && bun build src/main.ts --compile --define \"process.env.MLX_SPY_BUILD_VERSION=\\\"${VERSION:-}\\\"\" --define \"process.env.MLX_SPY_BUILD_ID=\\\"$(date +%s)\\\"\" --outfile bin/mlx-spy && rm -f .*.bun-build",
     "clean": "scripts/preview.sh clean && rm -rf bin .*.bun-build",
     "deploy-studio": "scripts/deploy-studio.sh",
     "preview": "scripts/preview.sh restart",

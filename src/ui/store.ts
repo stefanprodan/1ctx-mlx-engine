@@ -56,6 +56,20 @@ export function applyPull(pull: Pull) {
     at === -1 ? [pull, ...list] : list.map((p, i) => (i === at ? pull : p));
 }
 
+// The page is the bundle the tab loaded; the server behind the socket can
+// be replaced under it (a deploy, a brew upgrade and Restart). The first
+// snapshot's build is the one this bundle came from, so a later snapshot
+// with another build means the code on screen is old. Pure, for the test.
+export const replaced = (
+  loaded: string | null | undefined,
+  now: string | null | undefined,
+) => loaded != null && now != null && loaded !== now;
+let loadedBuild: string | null | undefined;
+function checkBuild(snap: Snapshot) {
+  if (loadedBuild === undefined) loadedBuild = snap.build;
+  else if (replaced(loadedBuild, snap.build)) location.reload();
+}
+
 export const modelsKeyOf = (list: Sample["models"]) =>
   list
     .map((m) => `${m.id}:${m.state}:${m.bytesResident}:${m.favorite ? 1 : 0}`)
@@ -104,6 +118,7 @@ export function connect() {
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data) as WsMessage;
     if (msg.type === "snapshot") {
+      checkBuild(msg.data);
       setSnapshot(msg.data);
       if (msg.data.sample) sample.value = msg.data.sample;
     } else if (msg.type === "sample") {

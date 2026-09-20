@@ -9,6 +9,11 @@ import { DEFAULT_PORT } from "./web.ts";
 
 const buildVersion = process.env.MLX_SPY_BUILD_VERSION;
 export const VERSION = buildVersion || `v${pkg.version}`;
+// When the binary was compiled, injected like the version. It is what
+// tells an open page that the server behind it was replaced: every dev
+// build reports the same VERSION, so the version cannot. Null from
+// source, where Bun's dev server reloads the page itself.
+export const BUILD = process.env.MLX_SPY_BUILD_ID || null;
 
 export const DEFAULT_ENGINE = "http://127.0.0.1:11234";
 export const DEFAULT_DB = join(homedir(), ".mlx-spy", "mlx-spy.db");
