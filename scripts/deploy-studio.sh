@@ -15,6 +15,8 @@ ssh_() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "$@"; }
 make build
 # Upload beside the live binary and rename: an interrupted copy must not
 # leave launchd restarting a truncated executable.
+# a Studio that starts fresh has no directory yet
+ssh_ 'mkdir -p ~/.1ctx-mlx-engine/bin'
 scp -q bin/1ctx-mlx-engine "$HOST:~/.1ctx-mlx-engine/bin/1ctx-mlx-engine.new"
 ssh_ 'mv -f ~/.1ctx-mlx-engine/bin/1ctx-mlx-engine.new ~/.1ctx-mlx-engine/bin/1ctx-mlx-engine &&
   ~/.1ctx-mlx-engine/bin/1ctx-mlx-engine service install --restart \

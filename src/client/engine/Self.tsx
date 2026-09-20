@@ -11,7 +11,10 @@ import { Copy } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
 import { locked, restartSelf } from "./state.ts";
 
-export const BREW_UPGRADE = "brew upgrade stefanprodan/tap/1ctx-mlx-engine";
+// The install script again: the path of the binary never changes, so it
+// is the upgrade too.
+export const UPGRADE =
+  "curl -fsSL https://raw.githubusercontent.com/stefanprodan/1ctx-mlx-engine/main/scripts/install.sh | bash";
 
 const mem = (bytes: number) =>
   bytes >= 2 ** 30
@@ -97,13 +100,13 @@ export function Self({ self }: { self: SelfState | null }) {
           <span class="what">Update available</span>
           <span class="ver">{offered.tag}</span>
           <span class="grow" />
-          <code class="cmd">{BREW_UPGRADE}</code>
+          <code class="cmd">{UPGRADE}</code>
           <button
             type="button"
             class="ibtn"
             title="Copy"
-            aria-label="Copy the brew command"
-            onClick={() => void navigator.clipboard?.writeText(BREW_UPGRADE)}
+            aria-label="Copy the install command"
+            onClick={() => void navigator.clipboard?.writeText(UPGRADE)}
           >
             <Copy />
           </button>

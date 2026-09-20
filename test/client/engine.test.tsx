@@ -19,7 +19,7 @@ import {
   progressPct,
   servicePill,
 } from "../../src/client/engine/release.ts";
-import { Self, SelfHead } from "../../src/client/engine/Self.tsx";
+import { Self, SelfHead, UPGRADE } from "../../src/client/engine/Self.tsx";
 import { ServiceHead } from "../../src/client/engine/Service.tsx";
 import {
   changed,
@@ -520,10 +520,8 @@ describe("the sections", () => {
     expect(html).toContain(
       "84 MB <small>MEM</small> / 0.6% <small>CPU</small>",
     );
-    expect(html).toContain(
-      '<code class="cmd">brew upgrade stefanprodan/tap/1ctx-mlx-engine</code>',
-    );
-    expect(html).toContain('aria-label="Copy the brew command"');
+    expect(html).toContain(`<code class="cmd">${UPGRADE}</code>`);
+    expect(html).toContain('aria-label="Copy the install command"');
   });
 
   test("an edit survives every push, another tab's Apply included", () => {
