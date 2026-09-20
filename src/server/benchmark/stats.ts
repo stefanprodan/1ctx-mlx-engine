@@ -44,7 +44,15 @@ const MIN_DECODE_TOKENS = 64;
 // token, so the limit only has to catch a fit that went wrong.
 const DRIFT_LIMIT = 0.1;
 
+// A turn that stops at a tool call before its ceiling is what models do in
+// a tool session, and it costs nothing: prefill is untouched and the decode
+// rate is over the tokens that were generated. Only a run that generated
+// under this share of what it could has too little behind its decode rate.
+const MIN_GENERATED_SHARE = 0.25;
+
 export type Expectations = {
+  // the ceiling of a turn
+  maxTokens: number;
   // the first request's token target, null when the fit did not run
   firstTarget: number | null;
   // the engine served requests the runner did not make
@@ -145,7 +153,6 @@ export function suspects(
   const found = new Set<SuspectReason>();
   for (const rep of byRepetition(turns)) {
     rep.forEach((turn, i) => {
-      if (turn.finishReason !== "length") found.add("turn ended early");
       if (turn.turn === 1) {
         if (turn.cachedN > COLD_ALLOWANCE) found.add("cold turn hit the cache");
         const target = expect.firstTarget;
@@ -167,6 +174,13 @@ export function suspects(
         found.add("cache did not hold");
       }
     });
+  }
+  const generated = sum(turns, (t) => t.predictedN);
+  if (
+    turns.length > 0 &&
+    generated < turns.length * expect.maxTokens * MIN_GENERATED_SHARE
+  ) {
+    found.add("little was generated");
   }
   if (expect.otherRequests) found.add("other requests ran");
   return [...found];

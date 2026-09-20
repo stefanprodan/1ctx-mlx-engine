@@ -47,7 +47,7 @@ const recorded: BenchmarkTurn[] = [
   },
 ];
 
-const clean = { firstTarget: 13000, otherRequests: false };
+const clean = { firstTarget: 13000, otherRequests: false, maxTokens: 256 };
 
 test("median", () => {
   expect(median([])).toBeNull();
@@ -119,8 +119,13 @@ test("each rule names its reason", () => {
   expect(suspects([cold, { ...second, cachedN: 4096 }, third], clean)).toEqual(
     [],
   );
-  expect(suspects([{ ...cold, finishReason: "stop" }], clean)).toEqual([
-    "turn ended early",
+  // a turn that stops at a tool call is what models do: no suspicion
+  expect(
+    suspects([{ ...cold, finishReason: "tool_calls", predictedN: 96 }], clean),
+  ).toEqual([]);
+  // a run that generated almost nothing has no decode rate to speak of
+  expect(suspects([{ ...cold, predictedN: 20 }], clean)).toEqual([
+    "little was generated",
   ]);
   expect(suspects([cold], { ...clean, firstTarget: 15000 })).toEqual([
     "prompt size drifted",

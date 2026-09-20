@@ -156,8 +156,9 @@ token per request, and queue time is not in it.
 `cold turn hit the cache`, `cache did not hold` (a turn from the third on found under 90%
 of the previous prompt cached; the second turn is the first with tool
 messages, which the engine renders differently from the tool schemas on, a
-cost that shows in `cachePct`), `turn ended early` (a turn did not run to
-`maxTokens`), `prompt size drifted`, `other requests ran`.
+cost that shows in `cachePct`), `little was generated` (under a quarter of what the turns
+allowed, too little for a decode rate; a turn that stops at a tool call is
+normal and no reason), `prompt size drifted`, `other requests ran`.
 
 A turn is `{repetition, turn, promptN, cachedN, promptMs, predictedN,
 predictedMs, tokenizeMs, finishReason}`, as the engine stated them.

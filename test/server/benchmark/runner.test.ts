@@ -324,6 +324,13 @@ test("a run left running by a dead process is interrupted at start", () => {
   expect(store.get(left.id)?.status).toBe("interrupted");
   expect(store.get(left.id)?.finishedAt).toBe(42);
   expect(store.interruptRunning(43)).toBe(0);
+  // a reason an older build stored and this one no longer has is dropped
+  store.save({
+    ...store.get(left.id)!,
+    suspect: ["turn ended early", "cache did not hold"] as never,
+  });
+  expect(store.get(left.id)?.suspect).toEqual(["cache did not hold"]);
+  expect(store.list()[0]?.suspect).toEqual(["cache did not hold"]);
   // the turns go with the run
   expect(store.remove(left.id)).toBe(true);
   expect(store.turns(left.id)).toEqual([]);

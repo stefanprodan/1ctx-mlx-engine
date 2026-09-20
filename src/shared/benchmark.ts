@@ -28,12 +28,15 @@ export type BenchmarkPhase = "fit" | "prepare" | "warmup" | "turns" | "finish";
 
 // Why a run's numbers should not be trusted as they stand. Shown, never
 // hidden: a cache that does not hold is a finding.
-export type SuspectReason =
-  | "cold turn hit the cache"
-  | "cache did not hold"
-  | "turn ended early"
-  | "prompt size drifted"
-  | "other requests ran";
+export const SUSPECT_REASONS = [
+  "cold turn hit the cache",
+  "cache did not hold",
+  "little was generated",
+  "prompt size drifted",
+  "other requests ran",
+] as const;
+
+export type SuspectReason = (typeof SUSPECT_REASONS)[number];
 
 // what the engine's `timings` said about one request
 export type TurnTimings = {

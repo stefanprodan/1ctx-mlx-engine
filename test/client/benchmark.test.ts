@@ -3,7 +3,6 @@
 
 import { expect, test } from "bun:test";
 import {
-  COLD_LATENCY,
   COLUMNS,
   comparable,
   delta,
@@ -73,7 +72,7 @@ test("a figure reads at the precision its size deserves", () => {
 
 test("the delta is against the baseline and says which way is better", () => {
   const decode = COLUMNS.find((c) => c.key === "decodeTps")!;
-  const cold = COLD_LATENCY;
+  const cold = COLUMNS.find((c) => c.key === "coldLatencyMs")!;
   expect(delta(fig(110), fig(100))).toBeCloseTo(10, 6);
   expect(delta(fig(null), fig(100))).toBeNull();
   expect(delta(fig(100), fig(0))).toBeNull();
@@ -110,9 +109,9 @@ test("the progress line names the phase, the repetition and the turn", () => {
 
 test("the status cell says why, not just what", () => {
   expect(statusCopy(run())).toBe("");
-  const early = run({ suspect: ["turn ended early"] });
+  const early = run({ suspect: ["cache did not hold"] });
   expect(statusCopy(early)).toBe("suspect");
-  expect(statusDetail(early)).toBe("turn ended early");
+  expect(statusDetail(early)).toBe("cache did not hold");
   const failed = run({ status: "failed", error: "HTTP 500" });
   expect(statusCopy(failed)).toBe("failed");
   expect(statusDetail(failed)).toBe("HTTP 500");

@@ -300,7 +300,11 @@ export class BenchmarkRunner {
       b.summary = progress.done.length > 0 ? summarize(progress.done) : null;
       b.suspect =
         b.status === "done"
-          ? suspects(progress.done, { firstTarget: target, otherRequests })
+          ? suspects(progress.done, {
+              firstTarget: target,
+              otherRequests,
+              maxTokens: this.maxTokens,
+            })
           : [];
       b.peakMemoryBytes = peakMemory > 0 ? peakMemory : null;
       b.peakActiveBytes = peakActive > 0 ? peakActive : null;

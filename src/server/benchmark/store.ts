@@ -5,7 +5,11 @@
 // the run as the page reads it, and one row per measured turn.
 
 import type { Database } from "bun:sqlite";
-import type { Benchmark, BenchmarkTurn } from "../../shared/benchmark.ts";
+import {
+  type Benchmark,
+  type BenchmarkTurn,
+  SUSPECT_REASONS,
+} from "../../shared/benchmark.ts";
 
 type RunRow = { id: number; record: string };
 
@@ -20,6 +24,18 @@ type TurnRow = {
   tokenize_ms: number;
   finish_reason: string | null;
 };
+
+// A stored run keeps the reasons of the build that made it; one this build
+// no longer has would reach the page as a flag nobody can explain.
+function read(row: RunRow): Benchmark {
+  const benchmark = JSON.parse(row.record) as Benchmark;
+  const known = SUSPECT_REASONS as readonly string[];
+  return {
+    ...benchmark,
+    id: row.id,
+    suspect: (benchmark.suspect ?? []).filter((r) => known.includes(r)),
+  };
+}
 
 export class BenchmarkStore {
   constructor(private readonly db: Database) {
@@ -109,9 +125,7 @@ export class BenchmarkStore {
     const row = this.db
       .query("SELECT id, record FROM benchmarks WHERE id = ?")
       .get(id) as RunRow | null;
-    return row
-      ? { ...(JSON.parse(row.record) as Benchmark), id: row.id }
-      : null;
+    return row ? read(row) : null;
   }
 
   list(): Benchmark[] {
@@ -120,10 +134,7 @@ export class BenchmarkStore {
         "SELECT id, record FROM benchmarks ORDER BY started_at DESC, id DESC",
       )
       .all() as RunRow[];
-    return rows.map((row) => ({
-      ...(JSON.parse(row.record) as Benchmark),
-      id: row.id,
-    }));
+    return rows.map(read);
   }
 
   turns(id: number): BenchmarkTurn[] {

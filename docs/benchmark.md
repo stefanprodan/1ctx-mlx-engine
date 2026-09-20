@@ -53,14 +53,16 @@ Each figure is the median of the three repetitions.
 
 | Column | What it is |
 |---|---|
-| Cold | tokenize plus prefill time of the first turn, nothing cached. The engine reports no time to first token per request; this is the closest, without queue time |
+| Latency | tokenize plus prefill time of the first turn, nothing cached: how long a new session waits. The engine reports no time to first token per request; this is the closest, without queue time |
 | Prefill | prompt tokens per second on the first turn |
 | Warm prefill | the same on the later turns, over the tokens that were not cached; a turn that prefilled under 256 tokens is left out |
 | Decode | generated tokens per second over the whole session, reasoning included |
-| Cache | cached over prompt tokens on the later turns |
-| Peak | the engine process footprint at its highest, sampled once a second |
 
-A row opens to the rest: the latency of the warm turns, decode on the
+A phone keeps Prefill and Decode.
+
+A row opens to the rest: the preset, the share of the later turns' prompt
+tokens that came from the cache, the engine process footprint at its
+highest (sampled once a second), the latency of the warm turns, decode on the
 first and on the last turn (the slope with depth), the spread between
 repetitions, MLX's peak active memory, and every turn as the engine stated
 it. The turns are where a cache problem shows: a `cached` that stops
@@ -81,11 +83,16 @@ when its numbers should not be trusted as they stand:
 |---|---|
 | cold turn hit the cache | the first turn found more cached than the template's opening tokens |
 | cache did not hold | a turn from the third on found under 90% of the previous prompt cached |
-| turn ended early | a turn stopped before 256 tokens, usually at a tool call; it is left out of the first and last decode rates |
+| little was generated | the run generated under a quarter of what its turns allowed, too little for a decode rate |
 | prompt size drifted | the first prompt is over 10% off its target |
 | other requests ran | the engine served somebody else during the run |
 
 A suspect run is kept and shown: a cache that does not hold is a finding.
+
+A turn that stops at a tool call before its 256 tokens is what models do in
+a tool session and no reason for suspicion: prefill is untouched, the decode
+rate is over the tokens that were generated, and a turn under 64 tokens is
+only left out of the first and last turn rates. The turns table marks it.
 
 ## Comparing
 

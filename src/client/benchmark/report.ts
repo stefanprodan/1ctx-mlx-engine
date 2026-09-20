@@ -25,8 +25,10 @@ export type Column = {
 };
 
 // The row shows the four figures the page is for; the rest is in the
-// opened row.
+// opened row. The latency is the cold one: how long the first request of a
+// session waits for its first token.
 export const COLUMNS: Column[] = [
+  { key: "coldLatencyMs", label: "Latency", unit: "ms", higherIsBetter: false },
   {
     key: "coldPrefillTps",
     label: "Prefill",
@@ -40,15 +42,7 @@ export const COLUMNS: Column[] = [
     higherIsBetter: true,
   },
   { key: "decodeTps", label: "Decode", unit: "tok/s", higherIsBetter: true },
-  { key: "cachePct", label: "Cache", unit: "%", higherIsBetter: true },
 ];
-
-export const COLD_LATENCY: Column = {
-  key: "coldLatencyMs",
-  label: "Cold",
-  unit: "ms",
-  higherIsBetter: false,
-};
 
 export const modelName = (id: string) => id.split("/").pop() ?? id;
 
