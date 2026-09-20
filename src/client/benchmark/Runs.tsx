@@ -200,7 +200,6 @@ export function Runs() {
             {COLUMNS.map((column) => (
               <th class={`fig ${column.key}`} key={column.key}>
                 {column.label}
-                {column.unit === "tok/s" && <span class="unit"> tok/s</span>}
               </th>
             ))}
           </tr>

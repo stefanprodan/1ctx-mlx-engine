@@ -143,11 +143,6 @@
   #benchmarks td.run .note {
     color: var(--amber);
   }
-  #benchmarks th .unit {
-    text-transform: none;
-    letter-spacing: 0;
-    color: var(--faint);
-  }
   /* the figures are what the page is for: the tiles' bold mono values */
   #benchmarks th.fig {
     width: 15%;
@@ -209,8 +204,7 @@
   @media (max-width: 600px) {
     /* a phone keeps the two rates; the opened row has the rest */
     #benchmarks .warmPrefillTps,
-    #benchmarks .cachePct,
-    #benchmarks th .unit {
+    #benchmarks .cachePct {
       display: none;
     }
     #benchmarks td.fig,
