@@ -8,7 +8,7 @@ import { effect } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";
-import { benchmarksEnded } from "../store.ts";
+import { benchmark, benchmarksEnded, listen } from "../store.ts";
 import { Run } from "./Run.tsx";
 import { Runs } from "./Runs.tsx";
 import { comparable } from "./report.ts";
@@ -16,15 +16,24 @@ import { fetchRuns, runs, picked as ticked } from "./state.ts";
 import "./benchmark.css";
 
 export function Benchmark() {
-  // read again whenever a run ends, in this tab or another
-  useEffect(
-    () =>
-      effect(() => {
-        benchmarksEnded.value;
-        fetchRuns();
-      }),
-    [],
-  );
+  // The list is read again whenever it can have changed: a run started or
+  // ended, in this tab, another one or a script, and every snapshot, which
+  // is what a tab gets when its socket comes back (a phone drops it when
+  // the screen locks, and the run's last message with it).
+  useEffect(() => {
+    const stop = effect(() => {
+      benchmarksEnded.value;
+      benchmark.value?.benchmark.id;
+      fetchRuns();
+    });
+    const unlisten = listen((message) => {
+      if (message.type === "snapshot") fetchRuns();
+    });
+    return () => {
+      stop();
+      unlisten();
+    };
+  }, []);
 
   const [first, second] = ticked.value.map((id) =>
     runs.value.find((b) => b.id === id),
