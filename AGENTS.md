@@ -153,7 +153,8 @@ src/server/
                      VERSION from package.json in development and injected
                      at build time
   actions.ts         load, unload, default, free, diskClear (local-only),
-                     historyClear, favorite; one at a time, logged, last 50
+                     historyClear, requestsClear, favorite; one at a time,
+                     logged, last 50
   lib/log.ts         levelled callable logger, repeat collapsing, appending
                      file sink and stopped launchd-log rotation
   lib/lock.ts        the one lock the actions and the manager share
@@ -167,7 +168,8 @@ src/server/
   host/              probes: darwin.ts (bun:ffi, offsets verified with
                      offsetof(), load-bearing comments), info.ts (static host
                      facts), disk.ts (cache dir sizes, no spawn), local.ts
-                     (is the engine on this host), index.ts (facade)
+                     (is the engine on this host), types.ts (the probe
+                     interface), index.ts (facade)
   monitor/sample.ts  computeRates and buildSample (pure, tested); takeSample
                      does the I/O for --once
   monitor/requests.ts
@@ -286,17 +288,19 @@ violation, and every rule has a rejected fixture under
 - `shared/` imports only `shared/`. `client/` imports `client/` and
   `shared/`, never `server/`. `server/` imports `client/` only in
   `app.ts`, for the page.
-- `web/` is the outermost server area: only `app.ts` imports it, and
-  nothing imports `app.ts` or `main.ts`.
+- `web/` is the outermost server area: only `app.ts` imports it. Only
+  `main.ts` imports `app.ts`, and nothing imports `main.ts`.
 - No import cycles between files, type-only imports included.
 - A file under `src/` over 500 lines fails unless it is listed in
   `LINE_EXEMPTIONS` with a reason. The list is empty.
-- Every relative import carries its extension.
+- Every relative import carries its extension, and every import is a
+  string literal: no computed `import()` and no `require`.
 - Every stylesheet opens with `@layer tokens, base, pages;` and puts its
   rules in one of the three. Only `style/tokens.css` declares custom
-  properties on `:root`. One exception lives in `monitor.css`: the uPlot
-  overrides are unlayered, because uPlot's own sheet is, and an unlayered
-  rule beats every layered one.
+  properties on `:root`. A rule outside every layer fails unless the
+  file is in `UNLAYERED` with a reason. `monitor.css` is the one entry:
+  uPlot's own sheet is unlayered, an unlayered rule beats every layered
+  one, so the overrides of it have to be unlayered too.
 
 Data flow: adapter (`/metrics.json`, `/v1/models`) → `Reading` →
 `computeRates` over the previous reading, joined with the host probes →
