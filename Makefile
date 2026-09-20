@@ -41,7 +41,7 @@ uninstall-bin: ## Remove the installed binary (override PREFIX=...)
 deploy-studio: ## Build, install on the Mac Studio and restart its agent (docs/internal/studio.md)
 	@bun run deploy-studio
 
-preview: ## (Re)start the local preview on 127.0.0.1:11236 against the Studio engine (hot reload)
+preview: ## (Re)start the local preview on 127.0.0.1:11236 against this machine's engine (hot reload; PREVIEW_ENGINE=studio for the Studio)
 	@bun run preview
 
 preview-stop: ## Stop the local preview

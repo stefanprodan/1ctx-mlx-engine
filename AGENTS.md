@@ -33,13 +33,16 @@ make deploy-studio  # build, install and restart on the Mac Studio
 ### Seeing a change
 
 1. `scripts/preview.sh status`. If it is not up, `make preview`. It runs
-   the source against the Studio's engine (named in `scripts/studio.env`,
-   git-ignored) on `http://127.0.0.1:11236`, with its pid, db and log
-   under `.preview/`. Never start the server by hand in the background.
-   The Engine page manages only a local engine, so for it run
-   `PREVIEW_ENGINE=http://127.0.0.1:11234
-   PREVIEW_MODEL_DIR=~/.mlx-spy/models make preview`: it installs a real
-   LaunchAgent and a real build under `~/.mlx-spy/engine` on this machine.
+   the source on `http://127.0.0.1:11236` against this machine's engine
+   (`127.0.0.1:11234`) and the real model directory,
+   `~/.mlx-spy/models`, with its pid, db and log under `.preview/`. Never
+   start the server by hand in the background. Development needs no
+   other host: when nothing is installed, the Engine page installs
+   mlx-serve here (a real LaunchAgent, a real build under
+   `~/.mlx-spy/engine`), and `mlx-community/Qwen3-0.6B-4bit` (335 MB) is
+   enough to serve requests. `PREVIEW_ENGINE=studio make preview` watches
+   the Studio named in `scripts/studio.env` (git-ignored) instead, for
+   real load and big models; everything that manages is disabled there.
 2. Edit. The preview runs with `MLX_SPY_DEV=1`, which turns on Bun's dev
    server: an edit to `src/ui/style.css` hot-reloads in the open tab, an
    edit to a `.ts` or `.tsx` file under `src/ui/` reloads the page (Bun
@@ -69,10 +72,10 @@ Deploy when asked, then say what is now running there.
 
 ### Testing without a browser
 
-- `bun src/main.ts --engine http://<studio>:11234 --once` prints one
-  sample: exit 0 when the engine answered, 2 when it did not, 1 on bad
-  arguments. From the MacBook the engine is remote, so `enginePid` is
-  null, `procRss` 0 and `disk` empty by design.
+- `bun src/main.ts --once` prints one sample from the local engine: exit
+  0 when the engine answered, 2 when it did not, 1 on bad arguments.
+  With `--engine http://<studio>:11234` the engine is remote, so
+  `enginePid` is null, `procRss` 0 and `disk` empty by design.
 - Parsers and rate math are pure and tested on recorded fixtures in
   `test/fixtures/`. Record new ones with `curl <engine>/metrics.json` and
   `curl <engine>/v1/models`, pretty-printed. A `/props` body is recorded
