@@ -3,6 +3,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { render } from "preact-render-to-string";
+import { Turns } from "../../src/client/benchmark/Turns.tsx";
 import { Event } from "../../src/client/monitor/Event.tsx";
 import { Models } from "../../src/client/monitor/Models.tsx";
 import { RequestBar } from "../../src/client/monitor/RequestBar.tsx";
@@ -19,6 +20,7 @@ import {
   sample,
   snapshot,
 } from "../../src/client/store.ts";
+import type { BenchmarkTurn } from "../../src/shared/benchmark.ts";
 import type { Download } from "../../src/shared/downloads.ts";
 import type { LastRequest } from "../../src/shared/requests.ts";
 import type { Sample } from "../../src/shared/sample.ts";
@@ -345,5 +347,41 @@ describe("runtime facts", () => {
     snapshot.value = snap(null);
     const html = render(<Runtime snap={snapshot.value} s={null} />);
     expect(html).toContain("<span>mlx-serve</span><small></small>");
+  });
+});
+
+describe("Turns", () => {
+  const turn = (n: number, finishReason: string | null): BenchmarkTurn => ({
+    repetition: 1,
+    turn: n,
+    promptN: 1000,
+    cachedN: 900,
+    promptMs: 50,
+    predictedN: 256,
+    predictedMs: 1000,
+    tokenizeMs: 1,
+    finishReason,
+  });
+
+  test("only an ending a tool session does not have is marked", () => {
+    const html = render(
+      <Turns
+        turns={[
+          turn(1, "length"),
+          turn(2, "tool_calls"),
+          turn(3, "stop"),
+          turn(4, "error"),
+          turn(5, null),
+        ]}
+      />,
+    );
+    // the two odd ones: an engine word we do not know, and none at all
+    expect(html.match(/class="num wide warn"/g)).toHaveLength(2);
+    expect(html).toMatch(/class="num wide warn">error</);
+    // the engine's words, as the page says them
+    expect(html).toContain(">limit<");
+    expect(html).toContain(">tools<");
+    expect(html).not.toContain("tool_calls");
+    expect(html).not.toContain(">length<");
   });
 });

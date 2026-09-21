@@ -39,7 +39,7 @@ make deploy-studio  # build, install and restart on the Mac Studio
    Never start the server by hand in the background. Development needs no
    other host: when nothing is installed, the Engine page installs mlx-serve
    here (a real LaunchAgent, a real build under
-   `~/.1ctx-mlx-engine/engine`), and `mlx-community/Qwen3-0.6B-4bit` (335
+   `~/.1ctx-mlx-engine/engine`), and `mlx-community/Qwen3.5-0.8B-4bit` (625
    MB) is enough to serve requests. `PREVIEW_ENGINE=studio make preview`
    watches the Studio named in `scripts/studio.env` (git-ignored) instead,
    for real load and big models; everything that manages is disabled there.
@@ -201,6 +201,10 @@ src/server/
                      compare
   benchmark/stats.ts pure: the figures and the suspect rules over the
                      engine's timings
+  benchmark/output.ts
+                     pure: whether a turn's answer looks like a model that
+                     does not work (empty, undecodable, noise, a loop), and
+                     whether it is in another script than English's
   benchmark/store.ts benchmarks and benchmark_turns over the same sqlite file
   benchmark/runner.ts
                      one run as one locked operation: the tokenizer fit, then per

@@ -400,7 +400,9 @@ function toolSchema(tool: ToolSpec): ToolSchema {
 
 function systemPrompt(rand: Rand, chars: number): string {
   const out = [
+    // a model that cannot follow this is no use, and the runner checks it
     "You are an operations agent working on a GitOps managed cluster. " +
+      "Respond only in English. " +
       "Answer from what the tools return and keep a record of every step.",
   ];
   let size = out[0]!.length;

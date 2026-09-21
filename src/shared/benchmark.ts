@@ -3,7 +3,9 @@
 //
 // A benchmark run as the routes, the socket and the store say it. The run
 // replays a generated agentic session with a forced trajectory and reads
-// the engine's own timings: it measures the engine, never the model.
+// the engine's own timings: it measures the engine, never the model's
+// answers, beyond signs that the model does not work at all or does not
+// follow the one rule it is given, to answer in English.
 
 export const BENCHMARK_PRESETS = ["20K", "40K", "60K"] as const;
 
@@ -34,6 +36,8 @@ export const SUSPECT_REASONS = [
   "little was generated",
   "prompt size drifted",
   "other requests ran",
+  "output looks broken",
+  "did not answer in English",
 ] as const;
 
 export type SuspectReason = (typeof SUSPECT_REASONS)[number];

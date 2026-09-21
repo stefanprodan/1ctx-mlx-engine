@@ -13,7 +13,7 @@ import {
   parseMetrics,
   parseModels,
 } from "../../../src/server/engine/mlxserve.ts";
-import type { ChatTimings } from "../../../src/server/engine/types.ts";
+import type { ChatAnswer } from "../../../src/server/engine/types.ts";
 import { ExclusiveLock } from "../../../src/server/lib/lock.ts";
 import type { Log } from "../../../src/server/lib/log.ts";
 import type { Sample } from "../../../src/shared/sample.ts";
@@ -42,6 +42,9 @@ function fakeEngine() {
     extraRequests: 0,
     serving: 0,
     up: true,
+    // what the model writes on every turn, and the tool calls it makes
+    output: "I will read the manifest next and check the image tag.",
+    tools: "",
     onClear: () => {},
   };
   const engine = {
@@ -61,7 +64,7 @@ function fakeEngine() {
       calls.push(`load ${id} ${asDefault}`);
     },
     unload: async () => {},
-    chat: async (body: unknown, signal: AbortSignal): Promise<ChatTimings> => {
+    chat: async (body: unknown, signal: AbortSignal): Promise<ChatAnswer> => {
       const chat = body as Chat;
       state.chats++;
       calls.push(`chat ${chat.messages.length} ${chat.max_tokens}`);
@@ -89,7 +92,7 @@ function fakeEngine() {
         finishReason: "length",
       };
       cached = promptN;
-      return timings;
+      return { timings, prose: state.output, tools: state.tools };
     },
     tokenize: async (content: string) => {
       calls.push("tokenize");
@@ -307,6 +310,61 @@ test("requests from somebody else make the run suspect", async () => {
   stop();
   const { benchmark } = t.runner.detail(started.id);
   expect(benchmark.suspect).toEqual(["other requests ran"]);
+});
+
+test("a model that loops makes the run suspect, once, and says where", async () => {
+  const t = setup();
+  // a working model at full speed, but the same words over and over
+  t.state.output = "the image tag is wrong. ".repeat(60);
+  const started = t.runner.start(body);
+  await t.runner.idle();
+  const { benchmark, turns } = t.runner.detail(started.id);
+  expect(benchmark.status).toBe("done");
+  expect(benchmark.suspect).toEqual(["output looks broken"]);
+  // the figures stand: the engine did its work
+  expect(benchmark.summary?.decodeTps.median).not.toBeNull();
+  const flagged = t.lines.filter((l) => l.includes("output looks broken"));
+  expect(flagged).toEqual([
+    `benchmark ${body.model} (${body.preset}): turn 1.1 output looks broken`,
+  ]);
+  // the text is read, never kept
+  expect(JSON.stringify(turns)).not.toContain("image tag");
+});
+
+test("a model that answers in Chinese makes the run suspect", async () => {
+  const t = setup();
+  t.state.output = "我将读取清单并检查镜像标签，然后记录每一步。";
+  const started = t.runner.start(body);
+  await t.runner.idle();
+  const { benchmark } = t.runner.detail(started.id);
+  expect(benchmark.status).toBe("done");
+  expect(benchmark.suspect).toEqual(["did not answer in English"]);
+  expect(t.lines.filter((l) => l.includes("in English"))).toEqual([
+    `benchmark ${body.model} (${body.preset}): turn 1.1 did not answer in English`,
+  ]);
+});
+
+test("a tool call's arguments are data, not the answer's language", async () => {
+  const t = setup();
+  t.state.tools = 'read {"path":"docs/部署指南.md","note":"部署 配置 镜像"}';
+  const started = t.runner.start(body);
+  await t.runner.idle();
+  expect(t.runner.detail(started.id).benchmark.suspect).toEqual([]);
+});
+
+test("the session asks for English", async () => {
+  const t = setup();
+  let system = "";
+  const chat = t.engine.chat;
+  t.engine.chat = async (b: unknown, signal: AbortSignal) => {
+    // the warmup is one user message; a turn opens with the system prompt
+    const { messages } = b as Chat;
+    if (messages.length > 1) system = messages[0]!.content;
+    return chat(b, signal);
+  };
+  t.runner.start(body);
+  await t.runner.idle();
+  expect(system).toContain("Respond only in English.");
 });
 
 test("a request that began after the route's check fails the run before any restart", async () => {

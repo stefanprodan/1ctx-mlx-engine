@@ -62,7 +62,7 @@ dialogs, timers). A new component gets a render-to-string check in
 against this machine's engine on `127.0.0.1:11234` (`make preview-stop`,
 `make preview-log`, `make preview-clean` to also wipe its db and log).
 When no engine is installed, the Engine page installs one, and a small
-checkpoint such as `mlx-community/Qwen3-0.6B-4bit` is enough to serve
+checkpoint such as `mlx-community/Qwen3.5-0.8B-4bit` is enough to serve
 requests. `PREVIEW_ENGINE=studio make preview` watches the engine named
 in `scripts/studio.env` instead; any other value is taken as its URL.
 

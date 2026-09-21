@@ -4,7 +4,6 @@
 import { Fragment } from "preact";
 import { useState } from "preact/hooks";
 import type { Benchmark } from "../../shared/benchmark.ts";
-import { DASH, sizeText } from "../format.ts";
 import { Copy, Trash } from "../icons.tsx";
 import { busy } from "../store.ts";
 import {
@@ -12,10 +11,12 @@ import {
   comparable,
   delta,
   deltaCopy,
+  detailGroups,
   modelName,
   report,
   statusCopy,
   statusDetail,
+  tuningArgs,
   value,
 } from "./report.ts";
 import {
@@ -68,11 +69,16 @@ function RunRow({
             {modelName(run.model)}
           </span>
           <span class="meta">
-            <span class="day">{fmtDay.format(run.startedAt)}, </span>
-            {fmtTime.format(run.startedAt)}
-            <span class="preset"> · {run.preset}</span>
+            <span class="when">
+              <span class="day">{fmtDay.format(run.startedAt)}, </span>
+              {fmtTime.format(run.startedAt)}
+            </span>
+            <span class="preset">{run.preset}</span>
             {note && (
-              <span class="note" title={statusDetail(run) ?? undefined}>
+              <span
+                class={`note ${run.status}`}
+                title={statusDetail(run) ?? undefined}
+              >
                 {" "}
                 · {note}
               </span>
@@ -121,44 +127,46 @@ function Detail({ run }: { run: Benchmark }) {
         setTimeout(() => setCopied(false), 1500);
       });
   };
-  const s = run.summary;
-  const facts: [string, string][] = [
-    ["Model", run.model + (run.quantization ? ` (${run.quantization})` : "")],
-    ["Context", s?.contextTokens ? `${s.contextTokens} tokens` : DASH],
-    ["Engine", `mlx-serve ${run.engineVersion ?? DASH}`],
-    ["Preset", `${run.preset}, ${run.turns} turns x ${run.repetitions}`],
-    ["Cache", value(s?.cachePct, "%")],
-    ["Warm latency", value(s?.warmLatencyMs, "ms")],
-    ["Decode, first turn", value(s?.decodeFirstTps, "tok/s")],
-    ["Decode, last turn", value(s?.decodeLastTps, "tok/s")],
-    [
-      "Spread",
-      s?.decodeTps.spreadPct == null
-        ? DASH
-        : `±${s.decodeTps.spreadPct.toFixed(1)}% decode`,
-    ],
-    [
-      "Memory, peak",
-      run.peakMemoryBytes ? sizeText(run.peakMemoryBytes) : DASH,
-    ],
-    [
-      "MLX active, peak",
-      run.peakActiveBytes ? sizeText(run.peakActiveBytes) : DASH,
-    ],
-    ["Script", run.scriptHash],
-  ];
   const why = statusDetail(run);
-  if (why) facts.splice(1, 0, [run.error ? "Error" : "Suspect", why]);
+  const args = tuningArgs(run.engineArgs).join(" ");
   return (
     <tr class="detail">
       <td colSpan={COLUMNS.length + 2}>
-        <div class="dgrid">
-          {facts.map(([label, text]) => (
-            <div class="d" key={label}>
-              <span class="k">{label}</span>
-              <span class="v">{text}</span>
+        <div class="dpanel">
+          <div class="dhead">
+            <span class="dmodel">{run.model}</span>
+            {run.quantization && <span class="dquant">{run.quantization}</span>}
+          </div>
+          {why && (
+            <p class="dwhy">
+              {run.error ? "Error" : "Suspect"}: {why}
+            </p>
+          )}
+          <div class="dgroups">
+            {detailGroups(run).map((group) => (
+              <section class="dgroup" key={group.title}>
+                <h3>{group.title}</h3>
+                <dl>
+                  {group.rows.map((row) => (
+                    <div class="drow" key={row.label}>
+                      <dt>{row.label}</dt>
+                      <dd>
+                        {row.value}
+                        {row.unit && <span class="dim"> {row.unit}</span>}
+                        {row.spread && <span class="dim"> {row.spread}</span>}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ))}
+          </div>
+          {args && (
+            <div class="dargs">
+              <h3>Engine arguments</h3>
+              <code>{args}</code>
             </div>
-          ))}
+          )}
         </div>
         {detail && detail.turns.length > 0 && <Turns turns={detail.turns} />}
         <div class="btns bench-foot">

@@ -112,10 +112,12 @@ while a benchmark runs.
 A benchmark replays a generated agentic session against the engine and keeps
 what the engine measured. It measures the engine, not the model: the
 session is scripted (a long system prompt with tool schemas, then turns
-that each append a tool call and its result), no answer is checked, and
-the figures come from the `timings` of the engine's own answers. Every
-model gets the same prompts, so two quantizations of a model, two engine
-builds or two configurations compare. A real client sends the model's own
+that each append a tool call and its result), no answer is checked for
+being right (only for a model that does not work at all or does not answer
+in English, as the session asks), and the figures
+come from the `timings` of the engine's own answers. Every model gets the
+same prompts, so two quantizations of a model, two engine builds or two
+configurations compare. A real client sends the model's own
 output back, which the cache already holds, so its cache hit rate is a
 little higher than the one reported here.
 
@@ -164,7 +166,12 @@ of the previous prompt cached; the second turn is the first with tool
 messages, which the engine renders differently from the tool schemas on, a
 cost that shows in `cachePct`), `little was generated` (under a quarter of what the turns
 allowed, too little for a decode rate; a turn that stops at a tool call is
-normal and no reason), `prompt size drifted`, `other requests ran`.
+normal and no reason), `prompt size drifted`, `other requests ran`,
+`output looks broken` (a turn's answer was empty though tokens were
+generated, did not decode, was noise, or looped; the text is read for this
+and never stored), `did not answer in English` (over 5% of the letters of a turn's
+reasoning and answer were outside the Latin alphabet, tool call arguments
+aside; the session asks for English).
 
 A turn is `{repetition, turn, promptN, cachedN, promptMs, predictedN,
 predictedMs, tokenizeMs, finishReason}`, as the engine stated them.

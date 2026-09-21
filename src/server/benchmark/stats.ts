@@ -57,6 +57,10 @@ export type Expectations = {
   firstTarget: number | null;
   // the engine served requests the runner did not make
   otherRequests: boolean;
+  // a turn's answer was empty, did not decode or looped (see output.ts)
+  brokenOutput: boolean;
+  // a turn's answer was not in English, which the session asks for
+  foreignOutput: boolean;
 };
 
 export function median(values: number[]): number | null {
@@ -183,5 +187,7 @@ export function suspects(
     found.add("little was generated");
   }
   if (expect.otherRequests) found.add("other requests ran");
+  if (expect.brokenOutput) found.add("output looks broken");
+  if (expect.foreignOutput) found.add("did not answer in English");
   return [...found];
 }

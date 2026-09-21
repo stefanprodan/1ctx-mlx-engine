@@ -47,7 +47,13 @@ const recorded: BenchmarkTurn[] = [
   },
 ];
 
-const clean = { firstTarget: 13000, otherRequests: false, maxTokens: 256 };
+const clean = {
+  firstTarget: 13000,
+  otherRequests: false,
+  brokenOutput: false,
+  foreignOutput: false,
+  maxTokens: 256,
+};
 
 test("median", () => {
   expect(median([])).toBeNull();
@@ -134,5 +140,11 @@ test("each rule names its reason", () => {
   expect(suspects([cold], { ...clean, firstTarget: null })).toEqual([]);
   expect(suspects(recorded, { ...clean, otherRequests: true })).toEqual([
     "other requests ran",
+  ]);
+  expect(suspects(recorded, { ...clean, brokenOutput: true })).toEqual([
+    "output looks broken",
+  ]);
+  expect(suspects(recorded, { ...clean, foreignOutput: true })).toEqual([
+    "did not answer in English",
   ]);
 });

@@ -11,7 +11,7 @@ import { Pill } from "../shell/Pill.tsx";
 import { benchmark, benchmarksEnded, listen } from "../store.ts";
 import { Run } from "./Run.tsx";
 import { Runs } from "./Runs.tsx";
-import { comparable } from "./report.ts";
+import { comparable, versus } from "./report.ts";
 import { fetchRuns, runs, picked as ticked } from "./state.ts";
 import "./benchmark.css";
 
@@ -45,7 +45,7 @@ export function Benchmark() {
     !first || !second
       ? "Tick two runs to compare."
       : comparable(first, second)
-        ? "The second ticked run against the first."
+        ? versus(second, first)
         : "These two ran different workloads.";
   return (
     <>

@@ -27,6 +27,7 @@ import type { Engine } from "../engine/types.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
 import type { Log } from "../lib/log.ts";
 import { scriptHash } from "./hash.ts";
+import { looksBroken, notEnglish } from "./output.ts";
 import {
   buildSession,
   piecesOf,
@@ -221,6 +222,8 @@ export class BenchmarkRunner {
       peakActive = Math.max(peakActive, s.mem.mlxActive);
     });
     let otherRequests = false;
+    let brokenOutput = false;
+    let foreignOutput = false;
     const target = targetsOf(preset, window, this.maxTokens).first;
     this.deps.log(`benchmark ${model} (${preset}): started`);
     try {
@@ -281,10 +284,22 @@ export class BenchmarkRunner {
         });
         for (let turn = 1; turn <= progress.benchmark.turns; turn++) {
           this.step(progress, "turns", rep, turn);
-          const timings = await this.chat(
+          const { timings, prose, tools } = await this.chat(
             requestFor(session, turn, model, this.maxTokens),
             signal,
           );
+          // the text is read here and dropped: a run keeps timings only
+          const where = `benchmark ${model} (${preset}): turn ${rep}.${turn}`;
+          const output = [prose, tools].filter((s) => s !== "").join("\n");
+          if (!brokenOutput && looksBroken(output, timings.predictedN)) {
+            brokenOutput = true;
+            this.deps.log(`${where} output looks broken`);
+          }
+          // the language is the prose's: a tool call's arguments are data
+          if (!foreignOutput && notEnglish(prose)) {
+            foreignOutput = true;
+            this.deps.log(`${where} did not answer in English`);
+          }
           const measured: BenchmarkTurn = { ...timings, repetition: rep, turn };
           this.deps.store.addTurn(progress.benchmark.id, measured);
           progress.done.push(measured);
@@ -319,6 +334,8 @@ export class BenchmarkRunner {
           ? suspects(progress.done, {
               firstTarget: target,
               otherRequests,
+              brokenOutput,
+              foreignOutput,
               maxTokens: this.maxTokens,
             })
           : [];
