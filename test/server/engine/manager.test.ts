@@ -25,6 +25,7 @@ import { History } from "../../../src/server/monitor/history.ts";
 import type { LaunchdInfo } from "../../../src/server/service/launchd.ts";
 import { plistPath, renderPlist } from "../../../src/server/service/plist.ts";
 import type { EngineConfig } from "../../../src/shared/engine.ts";
+import { testServer } from "../serve.ts";
 
 const servers: Bun.Server<unknown>[] = [];
 const roots: string[] = [];
@@ -35,7 +36,8 @@ const log: Log = Object.assign(() => {}, {
 });
 
 afterEach(async () => {
-  for (const server of servers.splice(0)) server.stop(true);
+  // awaited: an old server must be gone before the next test binds a port
+  await Promise.all(servers.splice(0).map((server) => server.stop(true)));
   await Promise.all(
     roots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   );
@@ -65,15 +67,12 @@ function assetServer(
   inspect?: (request: Request) => void,
 ): { url: string; hits: () => number } {
   let count = 0;
-  const server = Bun.serve({
-    port: 0,
-    fetch(request) {
-      count++;
-      inspect?.(request);
-      return new Response(new Blob([bytes as BlobPart]), {
-        headers: { "content-length": String(bytes.length) },
-      });
-    },
+  const server = testServer((request) => {
+    count++;
+    inspect?.(request);
+    return new Response(new Blob([bytes as BlobPart]), {
+      headers: { "content-length": String(bytes.length) },
+    });
   });
   servers.push(server);
   return {
@@ -94,6 +93,8 @@ type HarnessOptions = {
   token?: string | null;
   url?: string;
   holdReload?: Promise<void>;
+  // the port check waits for this, so a test can act during the preflight
+  holdProbe?: Promise<void>;
 };
 
 async function harness(options: HarnessOptions = {}) {
@@ -161,7 +162,10 @@ async function harness(options: HarnessOptions = {}) {
     retryDelayMs: 0,
     verifyStableMs: 1,
     verifyTimeoutMs: 5,
-    portProbe: async () => options.portInUse ?? false,
+    portProbe: async () => {
+      await options.holdProbe;
+      return options.portInUse ?? false;
+    },
     freeSpace: () => Number.MAX_SAFE_INTEGER,
     spawn: async (argv) => {
       if (argv[1] === "--version") {
@@ -253,7 +257,7 @@ async function installed(options: HarnessOptions = {}) {
 
 describe("the port probe", () => {
   test("a port that accepts is in use, a closed one is free", async () => {
-    const server = Bun.serve({ port: 0, fetch: () => new Response("ok") });
+    const server = testServer(() => new Response("ok"));
     const port = server.port as number;
     expect(await defaultPortProbe("127.0.0.1", port)).toBeTrue();
     // the wide bind is probed through loopback
@@ -346,12 +350,9 @@ describe("EngineManager install", () => {
     const target = assetServer(bytes, (request) => {
       authorization = request.headers.get("authorization");
     });
-    const redirect = Bun.serve({
-      port: 0,
-      fetch(request) {
-        expect(request.headers.get("authorization")).toBe("Bearer secret");
-        return Response.redirect(target.url, 302);
-      },
+    const redirect = testServer((request) => {
+      expect(request.headers.get("authorization")).toBe("Bearer secret");
+      return Response.redirect(target.url, 302);
     });
     servers.push(redirect);
     const value = await installed({
@@ -398,13 +399,12 @@ describe("EngineManager install", () => {
 
   test("cancels a stalled download before the swap", async () => {
     const bytes = await archive();
-    const stalled = Bun.serve({
-      port: 0,
-      fetch() {
-        return new Response(new ReadableStream({ start() {} }), {
-          headers: { "content-length": String(bytes.length) },
-        });
-      },
+    let asked = 0;
+    const stalled = testServer(() => {
+      asked++;
+      return new Response(new ReadableStream({ start() {} }), {
+        headers: { "content-length": String(bytes.length) },
+      });
     });
     servers.push(stalled);
     const value = await harness({
@@ -412,13 +412,11 @@ describe("EngineManager install", () => {
       url: `http://127.0.0.1:${stalled.port}/asset`,
     });
     value.manager.install(value.tag, value.config);
-    for (let attempt = 0; attempt < 200; attempt++) {
-      if (value.manager.state().operation?.phase === "downloading") {
-        await Bun.sleep(1);
-        break;
-      }
+    // the download is under way once the server has the request
+    for (let attempt = 0; attempt < 2_000 && asked === 0; attempt++) {
       await Bun.sleep(1);
     }
+    expect(asked).toBe(1);
     await value.manager.cancel();
     expect(value.manager.state().operation).toBeNull();
     expect(value.manager.state().failure).toBeNull();
@@ -428,6 +426,26 @@ describe("EngineManager install", () => {
         join(value.engineRoot, "downloads", `${value.tag}.tar.gz.part`),
       ),
     ).toBeFalse();
+    value.history.close();
+  });
+
+  test("cancels in the preflight, before the download exists", async () => {
+    let release!: () => void;
+    const probing = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const value = await harness({ holdProbe: probing });
+    value.manager.install(value.tag, value.config);
+    // published as downloading the moment it is accepted, the page's Cancel
+    // is offered from here
+    expect(value.manager.state().operation?.phase).toBe("downloading");
+    const cancelled = value.manager.cancel();
+    release();
+    await cancelled;
+    expect(value.manager.state().operation).toBeNull();
+    expect(value.manager.state().failure).toBeNull();
+    expect(value.served?.hits()).toBe(0);
+    expect(value.bootouts()).toBe(0);
     value.history.close();
   });
 

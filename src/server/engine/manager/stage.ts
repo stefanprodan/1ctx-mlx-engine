@@ -61,7 +61,8 @@ export async function stage(
   await mkdir(versions, { recursive: true });
   const archive = join(downloads, `${value.tag}.tar.gz`);
   const active: ActiveDownload = {
-    controller: new AbortController(),
+    // the operation's own: a cancel may have come during the preflight
+    controller: context.abort ?? new AbortController(),
     part: `${archive}.part`,
     archive,
     temporary: join(versions, `${value.tag}.tmp`),
@@ -70,6 +71,9 @@ export async function stage(
     publishedAt: 0,
   };
   context.active = active;
+  if (active.controller.signal.aborted) {
+    throw active.controller.signal.reason ?? new Error("cancelled");
+  }
   const free = context.freeSpace(context.root);
   if (free !== null && free < value.assetBytes + DOWNLOAD_DISK_MARGIN) {
     throw new Error(`not enough disk: ${Math.round(free / 1024 ** 3)} GB free`);

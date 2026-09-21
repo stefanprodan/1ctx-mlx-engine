@@ -11,6 +11,7 @@ import {
   resolveUrl,
 } from "../../../src/server/models/hub.ts";
 import hubModel from "../../fixtures/hub-model.json";
+import { testServer } from "../serve.ts";
 
 describe("parseRepoId", () => {
   test("accepts ids and Hub URLs", () => {
@@ -108,11 +109,11 @@ describe("fetchRepo", () => {
     handler: (req: Request) => Response | Promise<Response>,
     run: (hub: string) => Promise<void>,
   ) {
-    const server = Bun.serve({ port: 0, fetch: handler });
+    const server = testServer(handler);
     try {
       await run(`http://127.0.0.1:${server.port}`);
     } finally {
-      server.stop(true);
+      await server.stop(true);
     }
   }
 

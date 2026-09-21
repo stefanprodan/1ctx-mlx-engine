@@ -82,6 +82,11 @@ Deploy when asked, then say what is now running there.
   the same way, but only while a model is resident (rule 1).
 - `handle()` in `src/server/web/index.ts` is separate from `serve()`, so
   tests call it with a `Request`.
+- A fake HTTP server in a test comes from `testServer()` in
+  `test/server/serve.ts`, never a bare `Bun.serve`: it binds `127.0.0.1`,
+  where the tests connect. A default bind is the IPv6 wildcard, which
+  macOS lets share a port with another program's loopback socket, and the
+  test then talks to that program.
 
 ## Rules that protect the engine
 

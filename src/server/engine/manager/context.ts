@@ -133,6 +133,11 @@ export type ManagerContext = {
   operation: Operation | null;
   failure: Failure | null;
   cachedService: ServiceState | null;
+  // The running install's or upgrade's cancel, from the moment it is
+  // accepted, and published as "downloading", until the restart. The
+  // download reuses it: a cancel during the preflight, before the download
+  // exists, must still stop the operation.
+  abort: AbortController | null;
   active: ActiveDownload | null;
   activeTask: Promise<void> | null;
   pollTimer: ReturnType<typeof setTimeout> | null;
@@ -185,6 +190,7 @@ export function createManagerContext(
     operation: null,
     failure: null,
     cachedService: null,
+    abort: null,
     active: null,
     activeTask: null,
     pollTimer: null,

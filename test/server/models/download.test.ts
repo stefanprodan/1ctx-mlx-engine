@@ -28,6 +28,7 @@ import { DownloadStore } from "../../../src/server/models/store.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import type { Download } from "../../../src/shared/downloads.ts";
 import type { Capability, ModelInfo } from "../../../src/shared/models.ts";
+import { testServer } from "../serve.ts";
 
 const testLog = (write: (line: string) => void): Log =>
   Object.assign(write, { warn: write, error: write });
@@ -67,14 +68,8 @@ class FakeHub {
   listingDelayMs = 0;
 
   constructor() {
-    this.server = Bun.serve({
-      port: 0,
-      fetch: (req) => this.handle(req),
-    });
-    this.cdn = Bun.serve({
-      port: 0,
-      fetch: (req) => this.handle(req),
-    });
+    this.server = testServer((req) => this.handle(req));
+    this.cdn = testServer((req) => this.handle(req));
   }
 
   get url() {
@@ -259,10 +254,9 @@ class RescanEngine implements Engine {
   }
 }
 
-// One Hub for the file. A Hub per test on a fresh random port let a later
-// test land on the port of a stopped one, and fetch's keep-alive pool then
-// handed the runner a dead socket ("socket connection was closed
-// unexpectedly" on the first request, seen under load on 2026-09-09).
+// One Hub for the file, reset before each test. Its servers bind
+// 127.0.0.1, where the runner connects: see ../serve.ts for the clash with
+// other programs' loopback ports that a default bind let through.
 let hub: FakeHub;
 let dir: string;
 let history: History;
