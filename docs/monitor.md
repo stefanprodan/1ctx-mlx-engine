@@ -1,8 +1,17 @@
 # Monitor and Requests
 
-## Monitor
+The rail on the left lists every page: Overview (`/`) and Requests
+(`/requests`) under Monitor, then Engine and Benchmark. The button at its
+top folds it to a strip of the same pages as icons, and the page
+remembers that choice. On a phone the rail opens full screen from the
+button at the top left. The head over each page names it and stays put
+while the page scrolls. The Admin menu at the rail's foot restarts the
+engine, as Restart engine in the Runtime head does, and links to the
+source.
 
-The Monitor page is the engine at a glance, one sample per second, with
+## Overview
+
+The Overview page is the engine at a glance, one sample per second, with
 seven days of history in SQLite so every tab and every reload shows the
 same series.
 
@@ -10,8 +19,8 @@ On a host with no mlx-serve installed the page says so: the Models and
 Runtime pills read `not installed` where a stopped engine reads
 `unreachable` and `offline`, the request bar reads `no engine`, Restart
 engine is off, and the Models card links to the Engine page. A visit that
-lands on `/` from outside goes to the Engine page directly; the Monitor
-link in the header still opens the Monitor.
+lands on `/` from outside goes to the Engine page directly; Overview in
+the rail still opens it.
 
 - **Tiles**: requests served, tokens generated, prefill and decode tok/s,
   cache efficiency, memory, RAM cache and SSD cache. The cache tiles draw

@@ -104,7 +104,7 @@ is worth knowing, though: `settings.version` is the engine build,
 live headroom, and `model_info` the default model's shape (recorded in
 `test/fixtures/props.json` on 2026-09-20, with Ornith resident). The
 engine's own web console at the server root polls it every 5 s regardless,
-so keep that console closed during measurements. 1ctx-mlx-engine's Monitor page is
+so keep that console closed during measurements. 1ctx-mlx-engine's Overview page is
 the replacement.
 
 ### Controlling the engine
@@ -224,7 +224,7 @@ bootstraps the agent and waits for `/api/snapshot`. A successful command
 prints the running version and URL. Re-run `service install --restart` with
 the complete desired flags to change policy; never edit the generated plist.
 
-A model downloaded from the Monitor page lands in `~/models/<owner>/<name>`
+A model downloaded from the Overview page lands in `~/models/<owner>/<name>`
 and 1ctx-mlx-engine asks the engine to rescan when it completes, so it shows in
 the list without an engine restart. The residency policy above still
 applies: never load a third large model.
