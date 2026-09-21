@@ -7,6 +7,7 @@
 
 import type {
   Benchmark,
+  BenchmarkPreset,
   BenchmarkProgress,
   BenchmarkSummary,
   BenchmarkTurn,
@@ -81,6 +82,32 @@ export function deltaCopy(
     text: `${pct > 0 ? "+" : "−"}${Math.abs(pct).toFixed(Math.abs(pct) < 10 ? 1 : 0)}%`,
     tone: better ? "better" : "worse",
   };
+}
+
+// The runs table narrowed to what was typed, any part of the model id in
+// any case, so "35B" finds every 35B model and "mlx-community" an org, and
+// to a preset when one is picked.
+export function matching(
+  runs: Benchmark[],
+  query: string,
+  preset: BenchmarkPreset | null,
+): Benchmark[] {
+  const q = query.trim().toLowerCase();
+  return runs.filter(
+    (b) =>
+      (preset === null || b.preset === preset) &&
+      (q === "" || b.model.toLowerCase().includes(q)),
+  );
+}
+
+// what the table says when the search and the preset leave no row
+export function noMatchCopy(
+  query: string,
+  preset: BenchmarkPreset | null,
+): string {
+  const q = query.trim();
+  const runs = preset === null ? "runs" : `${preset} runs`;
+  return q === "" ? `No ${runs}.` : `No ${runs} match ${q}.`;
 }
 
 // Two runs compare when both finished and replayed the same session: a

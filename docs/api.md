@@ -134,7 +134,7 @@ The model stays loaded at the end.
 | `POST /api/benchmarks` | `{model, preset}`: `20K` (5 turns, to about 20k tokens), `40K` (8 turns, to about 40k) or `60K` (10 turns, to about 60k) | 202, the run. 403 unless the engine is on this host, managed by 1ctx-mlx-engine, up and idle, and no download is running; 409 while anything holds the lock |
 | `GET /api/benchmarks/<id>` | | `{benchmark, turns}` |
 | `POST /api/benchmarks/<id>/cancel` | | `{ok: true}`; the request in flight is aborted, which stops the generation in the engine. 409 when it is not running |
-| `DELETE /api/benchmarks/<id>` | | `{ok: true}`. 409 for the run in progress |
+| `DELETE /api/benchmarks/<id>` | | `{ok: true}`, and `{type: "benchmarkRemoved"}` on the socket. 409 for the run in progress |
 
 A run is `{id, status, phase, error, model, quantization, preset, turns,
 repetitions, maxTokens, schema, scriptHash, firstPromptTokens, appVersion,
@@ -212,6 +212,6 @@ an action finishes in any tab, `{type: "download"}` with the download as `data`
 on every change of a download's state and twice a second while one runs,
 `{type: "benchmark"}` with `{benchmark, repetition, turn, done}` (`done`
 being the turns measured so far) on every step of a run and once more when
-it has ended,
+it has ended, `{type: "benchmarkRemoved"}` with `{id}` when a run is deleted,
 and `{type: "engine"}` with the engine page state as `data` on every change
 of the manager's state and twice a second during an engine download.

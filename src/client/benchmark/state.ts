@@ -14,10 +14,19 @@ import type {
 import { api } from "../api.ts";
 
 export const runs = signal<Benchmark[]>([]);
+// the list has been read once: until then an empty one says nothing
+export const runsLoaded = signal(false);
 export const details = signal<Record<number, BenchmarkDetail>>({});
+// what the runs table is narrowed to: as typed, and a preset or all
+export const runQuery = signal("");
+export const runPreset = signal<BenchmarkPreset | null>(null);
 // The runs ticked for comparison, the baseline first; never more than two.
 export const picked = signal<number[]>([]);
 export const failure = signal<string | null>(null);
+
+// what the run card offers first, and the scorecard shows first
+export const DEFAULT_PRESET: BenchmarkPreset = "40K";
+export const scorePreset = signal<BenchmarkPreset>(DEFAULT_PRESET);
 
 // an answer that a later read has overtaken is dropped
 let reads = 0;
@@ -28,6 +37,7 @@ export function fetchRuns() {
     .then((list) => {
       if (read !== reads) return;
       runs.value = list;
+      runsLoaded.value = true;
       // a detail read while its run went on is stale once the run ends
       for (const b of list) {
         const held = details.value[b.id]?.benchmark;

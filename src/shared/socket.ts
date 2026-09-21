@@ -47,4 +47,6 @@ export type WsMessage =
   | { type: "download"; data: Download }
   // every step of the run in progress, and once more when it has ended
   | { type: "benchmark"; data: BenchmarkProgress }
+  // a finished run deleted, in any tab
+  | { type: "benchmarkRemoved"; data: { id: number } }
   | { type: "engine"; data: EnginePageState };

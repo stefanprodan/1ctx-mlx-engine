@@ -7,11 +7,11 @@
 import { computed, effect } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { Confirm } from "../shell/Confirm.tsx";
-import { Pill } from "../shell/Pill.tsx";
-import { benchmark, benchmarksEnded, listen } from "../store.ts";
+import { benchmark, benchmarksChanged, listen } from "../store.ts";
 import { Run } from "./Run.tsx";
 import { Runs } from "./Runs.tsx";
 import { comparable, versus } from "./report.ts";
+import { Scorecard } from "./Scorecard.tsx";
 import { fetchRuns, runs, picked as ticked } from "./state.ts";
 import "./benchmark.css";
 
@@ -25,7 +25,7 @@ export function Benchmark() {
   // the screen locks, and the run's last message with it).
   useEffect(() => {
     const stop = effect(() => {
-      benchmarksEnded.value;
+      benchmarksChanged.value;
       activeId.value;
       fetchRuns();
     });
@@ -49,9 +49,9 @@ export function Benchmark() {
         : "These two ran different workloads.";
   return (
     <>
+      <Scorecard />
       <div class="shead">
         <h2>Benchmark</h2>
-        <Pill />
       </div>
       <Run />
       <div class="shead">

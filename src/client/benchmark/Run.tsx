@@ -11,7 +11,7 @@ import { confirm } from "../shell/Confirm.tsx";
 import { Select } from "../shell/Select.tsx";
 import { benchmark, busy, connected, models, snapshot } from "../store.ts";
 import { modelName, progressCopy } from "./report.ts";
-import { cancelRun, failure, startRun } from "./state.ts";
+import { cancelRun, DEFAULT_PRESET, failure, startRun } from "./state.ts";
 
 const PRESETS: Record<BenchmarkPreset, string> = {
   "20K": "5 agent turns with tool calls and prompts 10K → 20K tokens",
@@ -33,7 +33,7 @@ function refusal(): string | null {
 export function Run() {
   const list = orderModels(models.value);
   const [chosen, setChosen] = useState<string | null>(null);
-  const [preset, setPreset] = useState<BenchmarkPreset>("40K");
+  const [preset, setPreset] = useState<BenchmarkPreset>(DEFAULT_PRESET);
   const model = list.find((m) => m.id === chosen)?.id ?? list[0]?.id;
   const running = benchmark.value;
   const off = refusal();
