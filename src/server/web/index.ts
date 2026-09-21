@@ -58,6 +58,7 @@ export function snapshot(deps: HandleDeps): Snapshot {
     benchmark: deps.benchmarks?.active() ?? null,
     downloads: deps.downloads?.list() ?? [],
     modelDir: deps.modelDir ?? null,
+    updates: managed ? (deps.manager?.updates(managed) ?? null) : null,
   };
 }
 

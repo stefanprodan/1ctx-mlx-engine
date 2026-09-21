@@ -33,6 +33,10 @@
     font-family: var(--mono);
     font-weight: 700;
     color: var(--accent);
+    text-decoration: none;
+  }
+  .notice a.ver:hover {
+    text-decoration: underline;
   }
   .notice .meta {
     color: var(--cap);

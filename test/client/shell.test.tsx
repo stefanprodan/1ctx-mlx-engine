@@ -16,6 +16,8 @@ import {
   engineMode,
   type Page,
   snapshot,
+  updateNote,
+  updates,
 } from "../../src/client/store.ts";
 import type { Snapshot } from "../../src/shared/socket.ts";
 
@@ -90,6 +92,38 @@ describe("shell", () => {
     );
     expect(render(<Rail page="scorecard" />)).toContain(
       '<a href="/benchmark/scorecard" class="rail-sub rail-sub-on" aria-current="page">',
+    );
+  });
+
+  test("a newer build puts a pill on Server, a dot in the strip", () => {
+    updates.value = { engine: null, self: null };
+    expect(render(<Rail page="monitor" />)).not.toContain("rail-new");
+    expect(render(<Strip page="monitor" />)).not.toContain("strip-new");
+    updates.value = { engine: "26.9.5", self: null };
+    const rail = render(<Rail page="monitor" />);
+    expect(rail).toContain(
+      '<a href="/server" class="rail-sub" title="mlx-serve 26.9.5 available"><svg',
+    );
+    expect(rail).toContain(
+      '<span>Server</span><span class="rail-new">new</span></a>',
+    );
+    expect(rail.match(/rail-new/g)).toHaveLength(1);
+    const strip = render(<Strip page="monitor" />);
+    expect(strip).toContain(
+      'title="Server: mlx-serve 26.9.5 available" aria-label="Server, mlx-serve 26.9.5 available"',
+    );
+    expect(strip.match(/strip-new/g)).toHaveLength(1);
+    updates.value = null;
+  });
+
+  test("the pill's note names what is on offer", () => {
+    expect(updateNote(null)).toBeNull();
+    expect(updateNote({ engine: null, self: null })).toBeNull();
+    expect(updateNote({ engine: null, self: "1.2.0" })).toBe(
+      "1ctx-mlx-engine 1.2.0 available",
+    );
+    expect(updateNote({ engine: "26.9.5", self: "1.2.0" })).toBe(
+      "mlx-serve 26.9.5 and 1ctx-mlx-engine 1.2.0 available",
     );
   });
 

@@ -3,13 +3,19 @@
 
 import { describe, expect, test } from "bun:test";
 import {
+  applyEngine,
+  engineMode,
   followsInPlace,
   landsOnEngine,
   modelsKeyOf,
   pageOf,
+  refreshSnapshot,
   replaced,
+  updates,
 } from "../../src/client/store.ts";
+import type { EnginePageState } from "../../src/shared/engine.ts";
 import type { ModelInfo } from "../../src/shared/models.ts";
+import type { Snapshot } from "../../src/shared/socket.ts";
 
 const model = (over: Partial<ModelInfo> = {}): ModelInfo => ({
   id: "org/model",
@@ -85,5 +91,57 @@ describe("store", () => {
     expect(modelsKeyOf([model({ favorite: true })])).not.toBe(a);
     expect(modelsKeyOf([model(), model({ id: "org/other" })])).not.toBe(a);
     expect(modelsKeyOf([])).toBe("");
+  });
+});
+
+describe("the engine push and a snapshot in flight", () => {
+  const snap = (engine: string | null) =>
+    ({
+      engine: { mode: "managed" },
+      updates: { engine, self: null },
+      models: [],
+      downloads: [],
+      running: null,
+      benchmark: null,
+    }) as unknown as Snapshot;
+  const push = (offered: string | null) =>
+    ({
+      engine: {
+        mode: "managed",
+        operation: null,
+        failure: null,
+        offered: offered ? { version: offered } : null,
+      },
+      self: { offered: null },
+    }) as unknown as EnginePageState;
+
+  test("a snapshot sent before a push does not undo it", async () => {
+    const real = globalThis.fetch;
+    let answer: (body: Snapshot) => void = () => {};
+    globalThis.fetch = (() =>
+      Promise.resolve({
+        json: () => new Promise<Snapshot>((r) => (answer = r)),
+      })) as unknown as typeof fetch;
+    try {
+      // the offer is there, a snapshot leaves, then the upgrade starts
+      const pending = refreshSnapshot();
+      await Promise.resolve();
+      applyEngine(push(null));
+      expect(updates.value?.engine).toBeNull();
+      answer(snap("26.9.5"));
+      await pending;
+      expect(updates.value?.engine).toBeNull();
+      // a snapshot sent after the push is the newer word
+      const next = refreshSnapshot();
+      await Promise.resolve();
+      answer(snap("26.9.6"));
+      await next;
+      expect(updates.value?.engine).toBe("26.9.6");
+      expect(engineMode.value).toBe("managed");
+    } finally {
+      globalThis.fetch = real;
+      updates.value = null;
+      engineMode.value = null;
+    }
   });
 });

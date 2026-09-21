@@ -237,21 +237,35 @@ describe("downloads API", () => {
     const s = setup();
     // without a manager there is nothing to say
     expect(snapshot(s.deps).engine.mode).toBeNull();
+    expect(snapshot(s.deps).updates).toBeNull();
+    const none = () => ({ engine: null, self: null });
     const bare = {
       ...s.deps,
-      manager: { state: () => ({ mode: "absent", active: null }) },
+      manager: {
+        state: () => ({ mode: "absent", active: null }),
+        updates: none,
+      },
     } as unknown as WebDeps;
     expect(snapshot(bare).engine.mode).toBe("absent");
+    // the state the snapshot already read is the one the updates come from
+    let passed: unknown = null;
     const managed = {
       ...s.deps,
       manager: {
         state: () => ({ mode: "managed", active: { version: "26.9.4" } }),
+        updates: (state: unknown) => {
+          passed = state;
+          return { engine: "26.9.5", self: null };
+        },
       },
     } as unknown as WebDeps;
-    expect(snapshot(managed).engine).toMatchObject({
+    const snap = snapshot(managed);
+    expect(snap.engine).toMatchObject({
       mode: "managed",
       version: "26.9.4",
     });
+    expect(snap.updates).toEqual({ engine: "26.9.5", self: null });
+    expect(passed).toMatchObject({ mode: "managed" });
   });
 
   test("lists, starts, reads, cancels and forgets downloads", async () => {

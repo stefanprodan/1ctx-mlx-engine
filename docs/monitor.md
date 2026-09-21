@@ -7,8 +7,10 @@ under Engine, then Run (`/benchmark`) and Scorecard
 top folds it to a strip of the same pages as icons, and the page
 remembers that choice. On a phone the rail opens full screen from the
 button at the top left. The head over each page names it and stays put
-while the page scrolls. The Admin menu at the rail's foot restarts the
-engine and links to the source.
+while the page scrolls. Server carries a `new` pill (a dot on its icon in
+the strip) while the Server page offers a newer mlx-serve or
+1ctx-mlx-engine; the pill's tooltip names the versions. The Admin menu at
+the rail's foot restarts the engine and links to the source.
 
 ## Overview
 

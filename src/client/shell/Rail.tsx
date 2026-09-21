@@ -15,7 +15,15 @@ import { Fragment } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { GitHub, Icon, type IconName, Logo } from "../icons.tsx";
 import { restartBlocked, runAction } from "../monitor/actions.ts";
-import { busy, follow, PAGES, type Page, type Section } from "../store.ts";
+import {
+  busy,
+  follow,
+  PAGES,
+  type Page,
+  type Section,
+  updateNote,
+  updates,
+} from "../store.ts";
 import {
   closeDrawer,
   drawerOpen,
@@ -264,18 +272,24 @@ export function Rail({ page }: { page: Page }) {
                   <Icon name={SECTION_ICON[section]} />
                   <span>{section}</span>
                 </div>
-                {group.map((p) => (
-                  <a
-                    key={p.page}
-                    href={p.href}
-                    class={`rail-sub${p.page === page ? " rail-sub-on" : ""}`}
-                    aria-current={current(p.page === page)}
-                    onClick={open(p.href)}
-                  >
-                    <Icon name={ICON[p.page]} size={14} />
-                    <span>{p.label}</span>
-                  </a>
-                ))}
+                {group.map((p) => {
+                  const note =
+                    p.page === "server" ? updateNote(updates.value) : null;
+                  return (
+                    <a
+                      key={p.page}
+                      href={p.href}
+                      class={`rail-sub${p.page === page ? " rail-sub-on" : ""}`}
+                      aria-current={current(p.page === page)}
+                      title={note ?? undefined}
+                      onClick={open(p.href)}
+                    >
+                      <Icon name={ICON[p.page]} size={14} />
+                      <span>{p.label}</span>
+                      {note && <span class="rail-new">new</span>}
+                    </a>
+                  );
+                })}
               </Fragment>
             );
           })}
@@ -289,19 +303,24 @@ export function Rail({ page }: { page: Page }) {
 // the folded rail: the button that brings it back, then the pages as
 // icons, a rule between the groups the rail draws
 export function Strip({ page }: { page: Page }) {
-  const link = (p: Entry) => (
-    <a
-      key={p.page}
-      href={p.href}
-      class={`strip-icon${p.page === page ? " strip-icon-on" : ""}`}
-      title={p.label}
-      aria-label={p.label}
-      aria-current={current(p.page === page)}
-      onClick={(e) => follow(e, p.href)}
-    >
-      <Icon name={ICON[p.page]} />
-    </a>
-  );
+  const link = (p: Entry) => {
+    // the strip has no room for the word: a dot on the icon
+    const note = p.page === "server" ? updateNote(updates.value) : null;
+    return (
+      <a
+        key={p.page}
+        href={p.href}
+        class={`strip-icon${p.page === page ? " strip-icon-on" : ""}`}
+        title={note ? `${p.label}: ${note}` : p.label}
+        aria-label={note ? `${p.label}, ${note}` : p.label}
+        aria-current={current(p.page === page)}
+        onClick={(e) => follow(e, p.href)}
+      >
+        <Icon name={ICON[p.page]} />
+        {note && <span class="strip-new" />}
+      </a>
+    );
+  };
   const show = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (refocus) show.current?.focus();

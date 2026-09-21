@@ -27,8 +27,7 @@ import {
 import { plistPath } from "../../service/plist.ts";
 import type { EngineStore } from "../store.ts";
 
-export const ENGINE_REPO = "ddalcu/mlx-serve";
-export const SELF_REPO = "stefanprodan/1ctx-mlx-engine";
+export { ENGINE_REPO, SELF_REPO } from "../../../shared/engine.ts";
 export const MANAGED_LABEL = "com.stefanprodan.mlx-serve";
 export const EXPECTED_TOP = "mlx-serve-macos-arm64";
 export const VERIFY_TIMEOUT_MS = 60_000;

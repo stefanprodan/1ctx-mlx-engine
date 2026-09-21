@@ -21,7 +21,7 @@ from the dashboard's own host. Every JSON response carries
 
 | Route | Answer |
 |---|---|
-| `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads, the benchmark in progress and the model directory |
+| `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads, the benchmark in progress, the model directory and the newer builds on offer (`updates`: mlx-serve's when it is managed, 1ctx-mlx-engine's own) |
 | `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
 | `GET /api/models` | every model the engine lists, with its spec: what the engine reports of it, what its checkpoint under `--model-dir` says (local engine only), and the revision and date of the download that brought it (without one, the date of its `config.json`). A figure neither states is null. Asks the engine nothing |
