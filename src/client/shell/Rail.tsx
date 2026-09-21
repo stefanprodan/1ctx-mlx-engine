@@ -37,12 +37,43 @@ const SOURCE = "https://github.com/stefanprodan/1ctx-mlx-engine";
 
 const current = (on: boolean) => (on ? "page" : undefined);
 
+// a fold or an unfold replaces the button that had the focus: the one
+// that takes its place gets it
+let refocus = false;
+
 // the user row's two items: the engine's restart, with the Runtime
-// head's rule, and the link to the source
+// head's rule, and the link to the source. The focus moves into the
+// menu as it opens, and the arrows move it between the items
 export function UserMenu({ close }: { close: () => void }) {
   const blocked = restartBlocked.value;
+  const menu = useRef<HTMLDivElement>(null);
+  const items = () =>
+    [
+      ...(menu.current?.querySelectorAll<HTMLElement>(".rail-menu-item") ?? []),
+    ].filter((el) => !(el as HTMLButtonElement).disabled);
+  useEffect(() => {
+    items()[0]?.focus();
+  }, []);
+  const onKey = (e: KeyboardEvent) => {
+    const list = items();
+    if (list.length === 0) return;
+    const at = list.indexOf(document.activeElement as HTMLElement);
+    const to =
+      e.key === "ArrowDown"
+        ? (at + 1) % list.length
+        : e.key === "ArrowUp"
+          ? (at - 1 + list.length) % list.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? list.length - 1
+              : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    list[to]?.focus();
+  };
   return (
-    <div class="rail-menu" role="menu">
+    <div class="rail-menu" role="menu" ref={menu} onKeyDown={onKey}>
       <button
         type="button"
         class="rail-menu-item"
@@ -65,7 +96,11 @@ export function UserMenu({ close }: { close: () => void }) {
         href={SOURCE}
         target="_blank"
         rel="noopener"
-        onClick={close}
+        onClick={() => {
+          close();
+          // this tab is left showing the page, not the drawer over it
+          closeDrawer();
+        }}
       >
         <GitHub />
         <span>Source code</span>
@@ -74,24 +109,31 @@ export function UserMenu({ close }: { close: () => void }) {
   );
 }
 
-// the user row, hardcoded, its menu opened upward; Escape or a click
-// outside closes it
+// the user row, hardcoded, its menu opened upward; a click outside
+// closes it, and so does Escape, which goes no further: the drawer
+// under the menu stays open
 function User() {
   const open = useSignal(false);
   const box = useRef<HTMLDivElement>(null);
+  const row = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!open.value) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") open.value = false;
-    };
+    const el = box.current;
+    if (!open.value || !el) return;
     const onDown = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as Node)) open.value = false;
+      if (!el.contains(e.target as Node)) open.value = false;
     };
-    document.addEventListener("keydown", onKey);
+    // on the box, before the drawer's listener on the document
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      open.value = false;
+      row.current?.focus();
+    };
     document.addEventListener("pointerdown", onDown);
+    el.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("keydown", onKey);
     };
   }, [open.value]);
   return (
@@ -104,6 +146,7 @@ function User() {
         />
       )}
       <button
+        ref={row}
         type="button"
         class="rail-user-row"
         aria-haspopup="menu"
@@ -124,7 +167,8 @@ export function Rail({ page }: { page: Page }) {
   const drawer = narrow.value;
   const hide = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (drawer) hide.current?.focus();
+    if (drawer || refocus) hide.current?.focus();
+    refocus = false;
   }, [drawer]);
   // a link on a phone closes the drawer, the one to the page shown too
   const follow = drawer ? closeDrawer : undefined;
@@ -142,7 +186,14 @@ export function Rail({ page }: { page: Page }) {
             type="button"
             class="rail-btn rail-hide"
             aria-label={drawer ? "Close the menu" : "Hide the menu"}
-            onClick={drawer ? closeDrawer : hideRail}
+            onClick={
+              drawer
+                ? closeDrawer
+                : () => {
+                    refocus = true;
+                    hideRail();
+                  }
+            }
           >
             <Icon name={drawer ? "close" : "sidebar"} />
           </button>
@@ -200,13 +251,22 @@ export function Strip({ page }: { page: Page }) {
       <Icon name={ICON[p.page]} />
     </a>
   );
+  const show = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (refocus) show.current?.focus();
+    refocus = false;
+  }, []);
   return (
     <aside class="strip">
       <button
+        ref={show}
         type="button"
         class="rail-btn"
         aria-label="Show the menu"
-        onClick={showRail}
+        onClick={() => {
+          refocus = true;
+          showRail();
+        }}
       >
         <Icon name="sidebar" />
       </button>

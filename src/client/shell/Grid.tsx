@@ -131,7 +131,7 @@ export function GridTable({
 }
 
 // a row: the chevron, the name over one faint line, the figures, and the
-// end's control outside the toggle
+// end's control, which keeps its clicks from the row
 export function GridRow({
   open,
   onToggle,
@@ -161,14 +161,17 @@ export function GridRow({
   return (
     <tr class={cls || undefined} onClick={onToggle}>
       <td class="grid-name">
-        {/* the grid lives inside: a cell that is a grid drops out of the row */}
-        <div class="grid-cell">
+        {/* the keyboard's way in: its click reaches the row, which
+            toggles, so the pointer anywhere on the row does the same.
+            The grid lives inside: a cell that is a grid drops out of
+            the row */}
+        <button type="button" class="grid-cell" aria-expanded={open}>
           <span class="chev" />
           <span class="name" title={title}>
             {name}
           </span>
           <span class="meta">{meta}</span>
-        </div>
+        </button>
       </td>
       {columns.map((c) => {
         const f = figures[c.key];
