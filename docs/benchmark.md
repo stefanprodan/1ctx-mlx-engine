@@ -6,14 +6,18 @@ quantization of the same model? It replays a scripted agent session from
 empty caches, keeps what the engine measured, and puts two runs side by
 side.
 
-It measures the engine, never the model. No answer is checked, the number
-of turns is fixed, and what the model replies is thrown away. Which model
-is good at the work is a question for a real agent on a real task.
+It measures the engine, never the model. No answer is checked for being
+right, the number of turns is fixed, and what the model replies is thrown
+away once it has been looked at for two things: a model that does not work
+at all (no text, text that does not decode, noise, a loop), because it
+decodes as fast as one that does, and a model that does not answer in
+English, the one rule the session gives it. Which model is good at the work is a
+question for a real agent on a real task.
 
 ## The session
 
-Every run sends the same generated conversation: a long system prompt with
-twelve tool schemas, then turns that each append a tool call and its result
+Every run sends the same generated conversation: a long system prompt that
+asks for answers in English, with twelve tool schemas, then turns that each append a tool call and its result
 (a YAML list, a JSON inventory, a file listing). Thinking is on, the
 temperature is 1.0, and every turn may generate 256 tokens.
 
@@ -59,15 +63,26 @@ Each figure is the median of the three repetitions.
 | Warm prefill | the same on the later turns, over the tokens that were not cached; a turn that prefilled under 256 tokens is left out |
 | Decode | generated tokens per second over the whole session, reasoning included |
 
-A phone keeps Prefill and Decode.
+A phone keeps Prefill and Decode, and under the model the preset in place
+of the date.
 
-A row opens to the rest: the preset, the share of the later turns' prompt
-tokens that came from the cache, the engine process footprint at its
-highest (sampled once a second), the latency of the warm turns, decode on the
-first and on the last turn (the slope with depth), the spread between
-repetitions (half the distance from the slowest to the fastest, as a share
-of the median), MLX's peak active memory from the first restart on, and every turn as the engine stated
-it. The turns are where a cache problem shows: a `cached` that stops
+A row opens to every figure the run has, the ones a phone leaves out of
+the row included, under the model and why the run is suspect, if it is:
+
+| Group | What |
+|---|---|
+| Latency | the cold turn and the warm turns |
+| Prefill | cold and warm, and the cache hit: the share of the later turns' prompt tokens that came from the cache |
+| Decode | over the session, on the first turn and on the last (the slope with depth) |
+| Memory | the engine process footprint at its highest (sampled once a second) and MLX's peak active memory, both from the first restart on, and the host's memory |
+| Workload | the preset, turns times repetitions, the tokens a turn may generate, the first prompt, the context at the end |
+| Setup | the engine build, the chip, the OS, how long the run took, when it started |
+
+Each figure carries its spread between repetitions: half the distance from
+the slowest to the fastest, as a share of the median. Under the groups are
+the engine's arguments that tune it (serve mode, the listen address and the
+model and log locations are left out, here and in the report), then every
+turn as the engine stated it. The turns are where a cache problem shows: a `cached` that stops
 growing from one turn to the next is a hot cache budget too small for the
 session. Copy report puts all of it on the clipboard as plain text.
 
@@ -88,19 +103,22 @@ when its numbers should not be trusted as they stand:
 | little was generated | the run generated under a quarter of what its turns allowed, too little for a decode rate |
 | prompt size drifted | the first prompt is over 10% off its target |
 | other requests ran | the engine served somebody else during the run |
+| output looks broken | a turn's answer was empty though tokens were generated, did not decode, was noise (it barely compressed and held characters that did not decode), or looped (it compressed to under a quarter of its size): the model does not work, however fast |
+| did not answer in English | over 5% of the letters of a turn's reasoning and answer were outside the Latin alphabet (Chinese, Japanese, Cyrillic); symbols, emoji and accented letters do not count, nor do tool call arguments, which are data |
 
 A suspect run is kept and shown: a cache that does not hold is a finding.
 
 A turn that stops at a tool call before its 256 tokens is what models do in
 a tool session and no reason for suspicion: prefill is untouched, the decode
 rate is over the tokens that were generated, and a turn under 64 tokens is
-only left out of the first and last turn rates. The turns table marks it.
+only left out of the first and last turn rates.
 
 ## Comparing
 
 Tick two runs. The second ticked shows its change against the first under
 each figure, green when better and amber when worse; under one percent
-reads as the same. Only finished runs compare, and only when they replayed
+reads as the same. The head of the table says which against which, the
+second ticked vs the first, by model. Only finished runs compare, and only when they replayed
 the same session: the same preset, generator and request settings, and the
 same sizes, which a model with a small context window shrinks. The script id
-in the opened row names all of that.
+in the copied report names all of that.

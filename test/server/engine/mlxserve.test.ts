@@ -3,6 +3,7 @@ import {
   MlxServe,
   parseMetrics,
   parseModels,
+  parseOutput,
   parseProps,
   parseTimings,
 } from "../../../src/server/engine/mlxserve.ts";
@@ -176,5 +177,57 @@ describe("parseTimings", () => {
     expect(() => parseTimings({ ...chatFixture, timings: negative })).toThrow(
       "bad timings.cached_n",
     );
+  });
+});
+
+describe("parseOutput", () => {
+  test("the prose, reasoning then content, apart from the tool calls", () => {
+    const body = {
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            reasoning_content: "The tag is in values.yaml.",
+            content: "Reading it.",
+            tool_calls: [
+              {
+                type: "function",
+                function: { name: "read", arguments: '{"path":"values.yaml"}' },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    expect(parseOutput(body)).toEqual({
+      prose: "The tag is in values.yaml.\nReading it.",
+      tools: 'read {"path":"values.yaml"}',
+    });
+  });
+
+  test("a tool call alone, as mlx-serve answers it with null content", () => {
+    const body = {
+      choices: [
+        {
+          message: {
+            content: null,
+            tool_calls: [
+              { function: { name: "weather", arguments: '{"city":"Paris"}' } },
+            ],
+          },
+        },
+      ],
+    };
+    expect(parseOutput(body)).toEqual({
+      prose: "",
+      tools: 'weather {"city":"Paris"}',
+    });
+  });
+
+  test("nothing written is empty strings", () => {
+    const none = { prose: "", tools: "" };
+    expect(parseOutput(chatFixture)).toEqual(none);
+    expect(parseOutput({ choices: [] })).toEqual(none);
+    expect(parseOutput(null)).toEqual(none);
   });
 });

@@ -12,7 +12,7 @@ import type {
   BenchmarkTurn,
   Figure,
 } from "../../shared/benchmark.ts";
-import { DASH, sizeText } from "../format.ts";
+import { DASH, duration, sizeText } from "../format.ts";
 
 export type FigureKey = Exclude<keyof BenchmarkSummary, "contextTokens">;
 
@@ -115,6 +115,159 @@ export function progressCopy(p: BenchmarkProgress): {
   };
 }
 
+// How a turn ended, in the page's words: the engine's "length" is the token
+// limit it cut the turn at, "tool_calls" a tool call; any other word is the
+// engine's own.
+const FINISH_TEXT = new Map([
+  ["length", "limit"],
+  ["tool_calls", "tools"],
+]);
+
+export const finishText = (reason: string | null): string =>
+  reason === null ? DASH : (FINISH_TEXT.get(reason) ?? reason);
+
+// The opened row: every figure a run has, in the groups a reader looks for
+// them in, the spread beside each. The row shows four figures and a phone
+// only two, so nothing here may depend on the row.
+export type DetailRow = {
+  label: string;
+  value: string;
+  // dim, after the value: the unit of a rate, the spread of a figure
+  unit?: string;
+  spread?: string;
+};
+
+export type DetailGroup = { title: string; rows: DetailRow[] };
+
+// The engine's arguments that say how it was tuned: the ones every managed
+// engine has (serve mode, where it listens, where the models and the log
+// are) are left out, with their values.
+const PLUMBING_VALUED = new Set([
+  "--host",
+  "--port",
+  "--model-dir",
+  "--log-file",
+  "--log-level",
+]);
+const PLUMBING_BARE = new Set(["--serve", "--metrics"]);
+
+export function tuningArgs(args: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    const name = arg.split("=")[0]!;
+    if (PLUMBING_BARE.has(name)) continue;
+    if (PLUMBING_VALUED.has(name)) {
+      // the value follows, unless it came as --flag=value
+      if (!arg.includes("=") && !args[i + 1]?.startsWith("--")) i++;
+      continue;
+    }
+    out.push(arg);
+  }
+  return out;
+}
+
+// when the run started, with the year the row leaves out
+const fmtDate = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+const tokens = (n: number | null | undefined) =>
+  n == null ? DASH : `${n.toLocaleString("en-US")} tok`;
+
+function figureRow(
+  label: string,
+  figure: Figure | undefined,
+  unit: Column["unit"],
+): DetailRow {
+  const shown = value(figure, unit);
+  const row: DetailRow = { label, value: shown };
+  if (shown !== DASH && unit === "tok/s") row.unit = "tok/s";
+  if (figure?.spreadPct != null) {
+    row.spread = `±${figure.spreadPct.toFixed(1)}%`;
+  }
+  return row;
+}
+
+export function detailGroups(b: Benchmark): DetailGroup[] {
+  const s = b.summary;
+  const size = (n: number | null) => (n ? sizeText(n) : DASH);
+  return [
+    {
+      title: "Latency",
+      rows: [
+        figureRow("Cold", s?.coldLatencyMs, "ms"),
+        figureRow("Warm", s?.warmLatencyMs, "ms"),
+      ],
+    },
+    {
+      title: "Prefill",
+      rows: [
+        figureRow("Cold", s?.coldPrefillTps, "tok/s"),
+        figureRow("Warm", s?.warmPrefillTps, "tok/s"),
+        figureRow("Cache hit", s?.cachePct, "%"),
+      ],
+    },
+    {
+      title: "Decode",
+      rows: [
+        figureRow("Overall", s?.decodeTps, "tok/s"),
+        figureRow("First turn", s?.decodeFirstTps, "tok/s"),
+        figureRow("Last turn", s?.decodeLastTps, "tok/s"),
+      ],
+    },
+    {
+      title: "Memory",
+      rows: [
+        { label: "Engine, peak", value: size(b.peakMemoryBytes) },
+        { label: "MLX active, peak", value: size(b.peakActiveBytes) },
+        { label: "Host", value: size(b.memoryBytes) },
+      ],
+    },
+    {
+      title: "Workload",
+      rows: [
+        { label: "Preset", value: b.preset },
+        { label: "Turns", value: `${b.turns} x ${b.repetitions}` },
+        { label: "Per turn", value: tokens(b.maxTokens) },
+        { label: "First prompt", value: tokens(b.firstPromptTokens) },
+        { label: "Context", value: tokens(s?.contextTokens) },
+      ],
+    },
+    {
+      title: "Setup",
+      rows: [
+        { label: "Engine", value: `mlx-serve ${b.engineVersion ?? DASH}` },
+        { label: "Chip", value: b.chip ?? DASH },
+        { label: "OS", value: b.os ?? DASH },
+        { label: "Date", value: fmtDate.format(b.startedAt) },
+        {
+          label: "Duration",
+          value:
+            b.finishedAt == null ? DASH : duration(b.finishedAt - b.startedAt),
+        },
+      ],
+    },
+  ];
+}
+
+// Which against which, in a line that fits a phone: the models' names cut
+// short, never ending on a separator. The ticks in the table say which
+// rows, with their times.
+const VERSUS_CHARS = 13;
+const short = (id: string) =>
+  modelName(id)
+    .slice(0, VERSUS_CHARS)
+    .replace(/[-._]+$/, "");
+
+export const versus = (run: Benchmark, baseline: Benchmark): string =>
+  `${short(run.model)} vs ${short(baseline.model)}`;
+
 // The tag beside the model: one word, the reasons go in the opened row.
 export const statusCopy = (b: Benchmark): string =>
   b.status === "done" ? (b.suspect.length > 0 ? "suspect" : "") : b.status;
@@ -143,10 +296,11 @@ export function report(b: Benchmark, turns: BenchmarkTurn[]): string {
     `1ctx-mlx-engine benchmark #${b.id} (${b.preset}, ${b.status})`,
     `model      ${b.model}${b.quantization ? ` (${b.quantization})` : ""}`,
     `engine     mlx-serve ${b.engineVersion ?? "unknown"}`,
-    `args       ${b.engineArgs.join(" ") || "unknown"}`,
+    `args       ${tuningArgs(b.engineArgs).join(" ") || "none"}`,
     `host       ${[b.chip, b.memoryBytes ? sizeText(b.memoryBytes) : null, b.os].filter(Boolean).join(", ")}`,
     `workload   ${b.turns} turns x ${b.repetitions} repetitions, ${b.maxTokens} tokens a turn, thinking on, script ${b.scriptHash}`,
-    `context    ${s?.contextTokens ?? DASH} tokens at the last turn`,
+    `prompts    ${b.firstPromptTokens ?? DASH} tokens at the first turn, ${s?.contextTokens ?? DASH} at the last`,
+    `started    ${new Date(b.startedAt).toISOString()}${b.finishedAt == null ? "" : `, took ${duration(b.finishedAt - b.startedAt)}`}`,
     "",
     line("cold latency", s?.coldLatencyMs, "ms"),
     line("cold prefill", s?.coldPrefillTps, "tok/s"),
@@ -157,6 +311,7 @@ export function report(b: Benchmark, turns: BenchmarkTurn[]): string {
     line("decode, last turn", s?.decodeLastTps, "tok/s"),
     line("cache", s?.cachePct, "%"),
     `${"peak memory".padEnd(20)}${b.peakMemoryBytes ? sizeText(b.peakMemoryBytes) : DASH}`,
+    `${"peak MLX active".padEnd(20)}${b.peakActiveBytes ? sizeText(b.peakActiveBytes) : DASH}`,
   ];
   if (b.suspect.length > 0) out.push("", `suspect: ${b.suspect.join(", ")}`);
   if (b.error) out.push("", `error: ${b.error}`);
@@ -175,7 +330,7 @@ export function report(b: Benchmark, turns: BenchmarkTurn[]): string {
           pad(t.promptMs.toFixed(0), 11),
           pad(String(t.predictedN), 10),
           pad(t.predictedMs.toFixed(0), 10),
-          `  ${t.finishReason ?? DASH}`,
+          `  ${finishText(t.finishReason)}`,
         ].join(" "),
       );
     }

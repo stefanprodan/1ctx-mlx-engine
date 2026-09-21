@@ -19,6 +19,7 @@ import { join } from "node:path";
 import type { EngineConfig } from "../../shared/engine.ts";
 import type { Capability, ModelInfo } from "../../shared/models.ts";
 import type {
+  ChatAnswer,
   ChatTimings,
   Engine,
   EngineMetrics,
@@ -130,6 +131,30 @@ export function parseTimings(body: any): ChatTimings {
   };
 }
 
+// Pure: what the model wrote in a /v1/chat/completions answer: its prose,
+// the reasoning then the content, and its tool calls, each as its name and
+// arguments. Exported for tests.
+export function parseOutput(body: any): { prose: string; tools: string } {
+  const message = body?.choices?.[0]?.message ?? {};
+  const text = (v: unknown) => (typeof v === "string" ? v : "");
+  const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+  const lines = (parts: string[]) =>
+    parts.filter((part) => part.trim() !== "").join("\n");
+  return {
+    prose: lines([text(message.reasoning_content), text(message.content)]),
+    tools: lines(
+      calls.map(
+        (c: any) =>
+          `${text(c?.function?.name)} ${text(c?.function?.arguments)}`,
+      ),
+    ),
+  };
+}
+
+// an engine's error body goes into an action's or a run's error, which is
+// stored and shown: its message, never a page of it
+const ERROR_BODY_CHARS = 200;
+
 // Pure: the /props body → the facts worth keeping. The engine reports much
 // more (the loaded model's shape, live memory headroom, speculative decoding
 // settings), but only these two are unavailable elsewhere and constant for
@@ -179,7 +204,9 @@ export class MlxServe implements Engine {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`${path}: HTTP ${res.status} ${text}`.trim());
+      throw new Error(
+        `${path}: HTTP ${res.status} ${text.slice(0, ERROR_BODY_CHARS)}`.trim(),
+      );
     }
   }
 
@@ -243,7 +270,7 @@ export class MlxServe implements Engine {
   // No timeout of its own: a cold prefill of a long prompt on a large
   // model takes minutes. The caller's signal is the way out, and the engine
   // cancels the slot when the connection drops.
-  async chat(body: unknown, signal: AbortSignal): Promise<ChatTimings> {
+  async chat(body: unknown, signal: AbortSignal): Promise<ChatAnswer> {
     const path = "/v1/chat/completions";
     const res = await fetch(this.url + path, {
       method: "POST",
@@ -253,9 +280,12 @@ export class MlxServe implements Engine {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`${path}: HTTP ${res.status} ${text}`.trim());
+      throw new Error(
+        `${path}: HTTP ${res.status} ${text.slice(0, ERROR_BODY_CHARS)}`.trim(),
+      );
     }
-    return parseTimings(await res.json());
+    const answer = await res.json();
+    return { timings: parseTimings(answer), ...parseOutput(answer) };
   }
 
   // Raw text, no chat template. It runs on the default model, so the

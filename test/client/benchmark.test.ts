@@ -7,11 +7,15 @@ import {
   comparable,
   delta,
   deltaCopy,
+  detailGroups,
+  finishText,
   progressCopy,
   report,
   statusCopy,
   statusDetail,
+  tuningArgs,
   value,
+  versus,
 } from "../../src/client/benchmark/report.ts";
 import type { Benchmark, Figure } from "../../src/shared/benchmark.ts";
 
@@ -119,6 +123,99 @@ test("the status cell says why, not just what", () => {
   expect(statusCopy(run({ status: "cancelled" }))).toBe("cancelled");
 });
 
+test("the opened row has every figure, the phone's hidden ones too", () => {
+  const groups = detailGroups(run({ finishedAt: 1 + 95_000 }));
+  expect(groups.map((g) => g.title)).toEqual([
+    "Latency",
+    "Prefill",
+    "Decode",
+    "Memory",
+    "Workload",
+    "Setup",
+  ]);
+  const row = (title: string, label: string) =>
+    groups.find((g) => g.title === title)?.rows.find((r) => r.label === label);
+  // the two a phone drops from the row
+  expect(row("Latency", "Cold")).toEqual({
+    label: "Cold",
+    value: "24.3 s",
+    spread: "±1.0%",
+  });
+  expect(row("Prefill", "Warm")).toEqual({
+    label: "Warm",
+    value: "540",
+    unit: "tok/s",
+    spread: "±1.0%",
+  });
+  expect(row("Prefill", "Cache hit")?.value).toBe("81.3%");
+  expect(row("Decode", "Last turn")?.value).toBe("76.0");
+  expect(row("Memory", "Engine, peak")?.value).toBe("38 GB");
+  expect(row("Workload", "Context")?.value).toBe("41,200 tok");
+  expect(row("Workload", "Turns")?.value).toBe("8 x 3");
+  expect(row("Setup", "Duration")?.value).toBe("1m");
+  // the year the row leaves out; the rest is the viewer's locale
+  const started = new Date(2026, 8, 21, 11, 17).getTime();
+  const dated = detailGroups(run({ startedAt: started }));
+  const setup = dated.find((g) => g.title === "Setup")?.rows ?? [];
+  // the date, then how long from there
+  expect(setup.slice(-2).map((r) => r.label)).toEqual(["Date", "Duration"]);
+  const date = setup.at(-2);
+  expect(date?.value).toContain("2026");
+  // a run with no figures says so, and no unit hangs off a dash
+  const empty = detailGroups(run({ summary: null, finishedAt: null }));
+  const decode = empty.find((g) => g.title === "Decode")?.rows[0];
+  expect(decode).toEqual({ label: "Overall", value: "–" });
+});
+
+test("the engine arguments keep what tunes it, not what runs it", () => {
+  expect(
+    tuningArgs([
+      "--serve",
+      "--metrics",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "11234",
+      "--model-dir",
+      "/Users/x/.1ctx-mlx-engine/models",
+      "--model-dir",
+      "/Users/x/models",
+      "--prefix-cache-mem",
+      "16GB",
+      "--kv-quant",
+      "off",
+      "--mtp",
+      "--log-file=off",
+      "--log-level",
+      "info",
+    ]),
+  ).toEqual(["--prefix-cache-mem", "16GB", "--kv-quant", "off", "--mtp"]);
+  // a flag at the end, or before another flag, takes no value with it
+  expect(tuningArgs(["--temp", "1", "--port"])).toEqual(["--temp", "1"]);
+  expect(tuningArgs(["--host", "--mtp"])).toEqual(["--mtp"]);
+});
+
+test("two compared runs, the second against the first, cut short", () => {
+  const a = run({ model: "org/Qwen2.5-0.5B-Instruct-2bit-mlx" });
+  const b = run({ model: "mlx-community/Qwen3.5-0.8B-4bit" });
+  // the cut lands on a dash: it goes
+  expect(versus(b, a)).toBe("Qwen3.5-0.8B vs Qwen2.5-0.5B");
+  expect(versus(run({ model: "org/A-4bit" }), a)).toBe(
+    "A-4bit vs Qwen2.5-0.5B",
+  );
+  // and on a dot
+  expect(versus(run({ model: "org/SmolLM2-1.7B.q4" }), a)).toBe(
+    "SmolLM2-1.7B vs Qwen2.5-0.5B",
+  );
+});
+
+test("a turn's ending in the page's words", () => {
+  expect(finishText("tool_calls")).toBe("tools");
+  expect(finishText("length")).toBe("limit");
+  expect(finishText("stop")).toBe("stop");
+  expect(finishText(null)).toBe("–");
+});
+
 test("the report is what gets pasted into an issue", () => {
   const text = report(run({ suspect: ["other requests ran"] }), [
     {
@@ -141,8 +238,14 @@ test("the report is what gets pasted into an issue", () => {
   expect(text).toContain("cache               81.3%  ±1.0%");
   expect(text).toContain("peak memory         38 GB");
   expect(text).toContain("suspect: other requests ran");
+  expect(text).toContain("args       --prefix-cache-mem 16GB");
   expect(text).toContain(
-    "  1    1   15010       5       24300        256       2700   length",
+    "prompts    15010 tokens at the first turn, 41200 at the last",
+  );
+  expect(text).toMatch(/started {4}1970-01-01T00:00:00\.001Z, took 0s/);
+  expect(text).toContain("peak MLX active     30 GB");
+  expect(text).toContain(
+    "  1    1   15010       5       24300        256       2700   limit",
   );
   expect(report(run({ summary: null }), [])).toContain("decode              –");
 });

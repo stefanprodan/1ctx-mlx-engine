@@ -4,6 +4,11 @@
 import { useState } from "preact/hooks";
 import type { BenchmarkTurn } from "../../shared/benchmark.ts";
 import { DASH } from "../format.ts";
+import { finishText } from "./report.ts";
+
+// How a turn may end in a tool session: all its tokens, a tool call, or an
+// answer the model ended itself. Anything else, or nothing, is worth a look.
+const NORMAL_FINISH = new Set(["length", "tool_calls", "stop"]);
 
 const rate = (tokens: number, ms: number) =>
   tokens > 0 && ms > 0 ? Math.round((tokens * 1000) / ms).toString() : DASH;
@@ -70,8 +75,10 @@ function TurnsTable({ turns }: { turns: BenchmarkTurn[] }) {
             </td>
             <td class="num gen">{t.predictedN}</td>
             <td class="num wide">{rate(t.predictedN, t.predictedMs)}</td>
-            <td class={`num wide${t.finishReason === "length" ? "" : " warn"}`}>
-              {t.finishReason ?? DASH}
+            <td
+              class={`num wide${NORMAL_FINISH.has(t.finishReason ?? "") ? "" : " warn"}`}
+            >
+              {finishText(t.finishReason)}
             </td>
           </tr>
         ))}

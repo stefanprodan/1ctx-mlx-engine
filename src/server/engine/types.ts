@@ -79,6 +79,16 @@ export type ChatTimings = {
   finishReason: string | null;
 };
 
+// One chat answer: what the engine measured, and what the model wrote, which
+// the benchmark reads for signs of a broken model and never keeps: its prose
+// (reasoning and content) apart from its tool calls, whose arguments hold
+// file names and data in any script.
+export type ChatAnswer = {
+  timings: ChatTimings;
+  prose: string;
+  tools: string;
+};
+
 // one timestamped read of the metrics, what the rate math compares
 export type Reading = { t: number; metrics: EngineMetrics };
 
@@ -100,10 +110,9 @@ export interface Engine {
   rescan?(): Promise<void>;
   // One non-streaming chat request, for the benchmark only: never the
   // sampler, only from a button, under the shared lock. The body is the
-  // caller's; the answer's text is dropped and its timings kept. Aborting
-  // the signal cancels the generation in the engine. Engines advertise
-  // "benchmark" only when their answer carries timings.
-  chat?(body: unknown, signal: AbortSignal): Promise<ChatTimings>;
+  // caller's. Aborting the signal cancels the generation in the engine.
+  // Engines advertise "benchmark" only when their answer carries timings.
+  chat?(body: unknown, signal: AbortSignal): Promise<ChatAnswer>;
   // How many tokens the default model's tokenizer makes of a text; the
   // benchmark sizes its prompts with it. Same terms as chat(), and it needs
   // a default model resident, which a run has just loaded.

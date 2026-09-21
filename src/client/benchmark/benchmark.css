@@ -125,8 +125,26 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* the preset is what a run is compared on: a pill, like the page's
+     others, so a 20K and a 60K row read apart at a glance */
+  #benchmarks td.run .preset {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: rgba(138, 180, 248, 0.12);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 17px;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+  }
   #benchmarks td.run .note {
     color: var(--amber);
+  }
+  /* in progress is no warning: the accent, as a running row on the Monitor */
+  #benchmarks td.run .note.running {
+    color: var(--accent);
   }
   /* the figures are what the page is for: the tiles' bold mono values */
   #benchmarks th.fig {
@@ -155,6 +173,90 @@
   }
   #benchmarks tbody tr:not(.detail) {
     cursor: pointer;
+  }
+  /* the opened row: the model on top, then every figure in groups of
+     label and value lines, the same shape at every width */
+  .dpanel {
+    padding: 14px 16px 16px;
+    background: var(--inset);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+  }
+  .dhead {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+  .dmodel {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--val);
+    overflow-wrap: anywhere;
+  }
+  .dquant {
+    flex: none;
+    font-size: 12px;
+    color: var(--faint);
+  }
+  .dwhy {
+    margin: 8px 0 0;
+    font-size: 12.5px;
+    color: var(--amber);
+  }
+  .dgroups {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px 32px;
+    margin-top: 16px;
+  }
+  .dpanel h3 {
+    margin: 0 0 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line-2);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--cap);
+  }
+  .dgroup dl {
+    margin: 0;
+  }
+  .drow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 3px 0;
+    font-size: 12.5px;
+  }
+  .drow dt {
+    flex: none;
+    color: var(--faint);
+  }
+  .drow dd {
+    margin: 0;
+    min-width: 0;
+    text-align: right;
+    color: var(--val);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .drow .dim {
+    font-size: 11.5px;
+    color: var(--faint);
+  }
+  .dargs {
+    margin-top: 18px;
+  }
+  .dargs code {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--dim);
+    overflow-wrap: anywhere;
   }
   .turns-head {
     display: flex;
@@ -185,25 +287,40 @@
     .turns .wide {
       display: none;
     }
+    .dgroups {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   @media (max-width: 600px) {
-    /* a phone keeps the two rates; the opened row has the rest */
-    #benchmarks .warmPrefillTps,
-    #benchmarks .coldLatencyMs {
-      display: none;
-    }
     #benchmarks td.fig,
     #benchmarks th.fig {
       width: 24%;
       font-size: 13px;
     }
+    /* a phone keeps the two rates; the opened row has the rest. The two
+       columns stay, at no width: the opened row spans every column, and a
+       column taken out with display: none comes back as an empty one that
+       takes its width from the model */
+    #benchmarks th.fig.warmPrefillTps,
+    #benchmarks td.fig.warmPrefillTps,
+    #benchmarks th.fig.coldLatencyMs,
+    #benchmarks td.fig.coldLatencyMs {
+      width: 0;
+      padding: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      visibility: hidden;
+    }
     #benchmarks th.fig {
       font-size: 10px;
     }
-    /* the time and the status are what tells two runs apart */
-    #benchmarks td.run .day,
-    #benchmarks td.run .preset {
+    /* the preset and the status tell two runs apart; the opened row has
+       the date */
+    #benchmarks td.run .when {
       display: none;
+    }
+    #benchmarks td.run .preset {
+      margin-left: 0;
     }
     .bench-run {
       padding: 12px;
@@ -235,6 +352,14 @@
     }
     .turns-head {
       margin-left: 4px;
+    }
+    .dpanel {
+      padding: 12px;
+    }
+    .dgroups {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      margin-top: 12px;
     }
     /* nearly always the ceiling; the opened row's report has it */
     .turns .gen {
