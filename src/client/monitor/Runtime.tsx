@@ -10,7 +10,12 @@ import type { Sample } from "../../shared/sample.ts";
 import type { Snapshot } from "../../shared/socket.ts";
 import { DASH, diskSize, duration, gb, num, sizeText } from "../format.ts";
 import { absent, busy, connection } from "../store.ts";
-import { engineLocal, engineName, runAction } from "./actions.ts";
+import {
+  engineLocal,
+  engineName,
+  restartBlocked,
+  runAction,
+} from "./actions.ts";
 
 // a fact with an optional note; the dash carries no note
 function Fact({
@@ -62,10 +67,7 @@ export function RuntimeHead({
   s: Sample | null;
 }) {
   const local = engineLocal.value;
-  const canRestart =
-    (snap?.engine.capabilities.includes("restart") ?? false) &&
-    local &&
-    !absent.value;
+  const blocked = restartBlocked.value;
   return (
     <div class="shead">
       <h2>Runtime</h2>
@@ -78,14 +80,8 @@ export function RuntimeHead({
         <button
           type="button"
           class="btn"
-          disabled={!canRestart || busy.value !== null}
-          title={
-            canRestart
-              ? ""
-              : absent.value
-                ? "mlx-serve is not installed"
-                : "restarts the engine service, local engine only"
-          }
+          disabled={blocked !== "" || busy.value !== null}
+          title={blocked}
           onClick={() => void runAction("free", null)}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">

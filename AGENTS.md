@@ -55,7 +55,7 @@ make deploy-studio  # build, install and restart on the Mac Studio
    Chrome through the DevTools MCP: screenshot at a desktop width (1400)
    and a phone width (390), read the console (it must stay empty), and
    measure with `evaluate_script` when a pixel matters. A change to a
-   shared element (the header, a card, a table) is checked on every page
+   shared element (the rail, a card, a table) is checked on every page
    it appears on.
 4. `make lint` and `make test`.
 5. Report what you verified and how. Do not commit unless asked; the user
@@ -272,24 +272,32 @@ src/server/
   web/deps.ts        WebDeps: what the routes are handed
 
 src/client/
-  index.html         the shell: head, the header, page and footer roots,
-                     the script tag; Bun bundles the CSS and main.tsx from it
+  index.html         the shell: head, the rail, page head, page and footer
+                     roots, the script tag; Bun bundles the CSS and main.tsx
+                     from it
   main.tsx           entry: renders the shell and the page's root, opens
                      the store
-  store.ts           the WebSocket client and its signals (connection,
+  store.ts           PAGES (the rail's rows and the crumbs), the WebSocket
+                     client and its signals (connection,
                      snapshot, sample, models, event, busy, downloads,
                      benchmark, engineMode); listen() for the code that renders by
                      hand; landsOnEngine, the bare-host landing rule
   api.ts             api<T>(): one JSON call to this server
   format.ts          gb, size, num, count, diskSize, duration, orderModels
                      (pure, tested)
-  icons.tsx          the inline SVGs as components
-  style/tokens.css   the custom properties, the only :root that has any
+  icons.tsx          the inline SVGs as components, 1ctx's logo and the
+                     rail's icons
+  fonts/             1ctx's IBM Plex Sans and JetBrains Mono, Regular only
+  style/tokens.css   the custom properties, the only :root that has any,
+                     and the two @font-face rules
   style/base.css     what more than one page uses: cards, section heads,
                      pills, buttons, tables, the request bar, facts
-  shell/             Header.tsx, Footer.tsx, Pill.tsx, Confirm.tsx (the
-                     dialog with a promise API), Select.tsx (the one select,
-                     a button and a listbox, never a native one), shell.css
+  shell/             Rail.tsx (1ctx's rail, its folded strip, the drawer
+                     below 720 and the user menu), Head.tsx (the sticky
+                     crumb), shell.ts (narrow, folded and drawer signals),
+                     Footer.tsx, Pill.tsx, Confirm.tsx (the dialog with a
+                     promise API), Select.tsx (the one select, a button and
+                     a listbox, never a native one), shell.css, rail.css
   monitor/           Monitor.tsx (the page: range, series and tile memory
                      signals), Tiles.tsx, Charts.tsx (uPlot in a ref),
                      Models.tsx, Runtime.tsx, RangePicker.tsx, RequestBar.tsx,

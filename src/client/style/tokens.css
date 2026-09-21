@@ -47,5 +47,12 @@
     --cap: #8a9099;
     --cap-inset: #8d9299;
     --rule: #34383c;
+    /* 1ctx's rail: its ground and its text, a touch brighter than the
+       page's, and the separator its menus and crumbs use */
+    --rail: #1a1a1c;
+    --rail-fg: #e7e7e9;
+    --rail-dim: #b3b3b8;
+    --rail-faint: #8b8b91;
+    --separator: #35363a;
   }
 }

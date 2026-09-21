@@ -28,6 +28,25 @@ export const pageOf = (pathname: string): Page =>
         ? "benchmark"
         : "monitor";
 
+// the pages in the rail's order, with the section a page sits under: the
+// rail, its folded strip and the page head read this one table
+export const PAGES: readonly {
+  page: Page;
+  href: string;
+  label: string;
+  section: "Monitor" | null;
+}[] = [
+  { page: "monitor", href: "/", label: "Overview", section: "Monitor" },
+  {
+    page: "requests",
+    href: "/requests",
+    label: "Requests",
+    section: "Monitor",
+  },
+  { page: "engine", href: "/engine", label: "Engine", section: null },
+  { page: "benchmark", href: "/benchmark", label: "Benchmark", section: null },
+];
+
 export const connection = signal<Connection>("connecting");
 export const connected = computed(() => connection.value === "live");
 // the socket's first message, then /api/snapshot after an action or a

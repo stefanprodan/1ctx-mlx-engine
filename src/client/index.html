@@ -9,18 +9,22 @@
     <link rel="stylesheet" href="./style/base.css" />
   </head>
   <body>
-    <div class="page">
-      <header class="top" id="top"></header>
+    <div class="shell">
+      <div id="rail"></div>
+      <main class="shell-main" id="main">
+        <div id="head" class="shell-head"></div>
+        <div class="page">
+          <div id="view-requests" hidden></div>
 
-      <div id="view-requests" hidden></div>
+          <div id="view-monitor"></div>
 
-      <div id="view-monitor"></div>
+          <div id="view-engine" hidden></div>
 
-      <div id="view-engine" hidden></div>
+          <div id="view-benchmark" hidden></div>
 
-      <div id="view-benchmark" hidden></div>
-
-      <footer id="foot"></footer>
+          <footer id="foot"></footer>
+        </div>
+      </main>
     </div>
     <script type="module" src="./main.tsx"></script>
   </body>
