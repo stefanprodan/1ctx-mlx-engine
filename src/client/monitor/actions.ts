@@ -11,6 +11,7 @@ import type { Capability } from "../../shared/models.ts";
 import { gb } from "../format.ts";
 import { confirm, type TextPart } from "../shell/Confirm.tsx";
 import {
+  absent,
   busy,
   event,
   refreshSnapshot,
@@ -52,6 +53,17 @@ export const loadedCount = computed(
 );
 export const can = (c: Capability) =>
   snapshot.value?.engine.capabilities.includes(c) ?? false;
+
+// Restart engine, in the Runtime head and in the rail's menu: a local
+// engine this program can restart. The reason when it cannot, "" when it
+// can; either button is also off while an action runs
+export const restartBlocked = computed(() =>
+  !absent.value && engineLocal.value && can("restart")
+    ? ""
+    : absent.value
+      ? "mlx-serve is not installed"
+      : "restarts the engine service, local engine only",
+);
 
 export type ConfirmContext = {
   engineName: string;

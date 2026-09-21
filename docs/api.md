@@ -10,10 +10,11 @@ from the dashboard's own host. Every JSON response carries
 
 | Path | Page |
 |---|---|
-| `GET /` | Monitor: tiles, charts, models, runtime |
+| `GET /` | Overview: tiles, charts, models, runtime |
 | `GET /requests` | The request in flight and the last 50 finished ones |
 | `GET /engine` | 1ctx-mlx-engine's own service, the mlx-serve install and its configuration |
 | `GET /benchmark` | Run a benchmark on a model and compare the runs |
+| `GET /benchmark/scorecard` | The models ranked by their newest run at a preset |
 
 ## Monitoring
 

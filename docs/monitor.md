@@ -1,8 +1,18 @@
 # Monitor and Requests
 
-## Monitor
+The rail on the left lists every page: Overview (`/`) and Requests
+(`/requests`) under Monitor, then Engine, then Run (`/benchmark`) and
+Scorecard (`/benchmark/scorecard`) under Benchmark. The button at its
+top folds it to a strip of the same pages as icons, and the page
+remembers that choice. On a phone the rail opens full screen from the
+button at the top left. The head over each page names it and stays put
+while the page scrolls. The Admin menu at the rail's foot restarts the
+engine, as Restart engine in the Runtime head does, and links to the
+source.
 
-The Monitor page is the engine at a glance, one sample per second, with
+## Overview
+
+The Overview page is the engine at a glance, one sample per second, with
 seven days of history in SQLite so every tab and every reload shows the
 same series.
 
@@ -10,8 +20,8 @@ On a host with no mlx-serve installed the page says so: the Models and
 Runtime pills read `not installed` where a stopped engine reads
 `unreachable` and `offline`, the request bar reads `no engine`, Restart
 engine is off, and the Models card links to the Engine page. A visit that
-lands on `/` from outside goes to the Engine page directly; the Monitor
-link in the header still opens the Monitor.
+lands on `/` from outside goes to the Engine page directly; Overview in
+the rail still opens it.
 
 - **Tiles**: requests served, tokens generated, prefill and decode tok/s,
   cache efficiency, memory, RAM cache and SSD cache. The cache tiles draw
@@ -66,15 +76,19 @@ the bar and the tiles describe the engine as a whole.
 ## Requests
 
 The Requests page moves the live bar over and lists the last 50 finished or
-cancelled requests under it: when it finished, the model (the engine does
-not say which one served it, so it is the resident model, the favorite
-when several are resident), prompt and cached tokens, generated tokens,
-prefill and decode time, time to first token and the total. A cancelled
-request shows its finish time in amber. Each row opens on a click (the
-chevron in front of the time) to a panel with every field, including the
-full model id, the start time and the outcome; a phone hides most columns
-and the panel is where they are. The bin in the History head deletes the
-stored requests and the last request in the bar.
+cancelled requests under it, in the same grid as the benchmark runs. A row
+is the model (the engine does not say which one served it, so it is the
+resident model, the favorite when several are resident) over a faint line
+with the finish time, the prompt size and its cached share, then the time
+to first token and the prefill and decode rates in tok/s. A cancelled
+request says so in amber on that line. The search at the top of the card
+narrows the rows to the models whose id contains what is typed, and All,
+Completed and Cancelled pick by outcome. A row opens on a click to the
+full model id and its figures in three groups: timing (start, finish,
+time to first token, total), prefill (prompt, cached, time, rate) and
+decode (generated, time, rate). A card too narrow for every column keeps
+the two rates; the opened row has the rest. The bin in the History head
+deletes the stored requests and the last request in the bar.
 
 ## Engine
 
@@ -82,8 +96,8 @@ The third page manages the engine itself: see [engine.md](engine.md).
 
 ## Benchmark
 
-The fourth page measures the engine on a scripted agent session: see
-[benchmark.md](benchmark.md).
+Run measures the engine on a scripted agent session, and the Scorecard
+ranks the models it measured: see [benchmark.md](benchmark.md).
 
 ## Memory numbers
 

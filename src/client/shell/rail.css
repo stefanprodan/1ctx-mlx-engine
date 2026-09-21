@@ -1,0 +1,348 @@
+@layer tokens, base, pages;
+
+/* 1ctx's rail and page head. The rail is 220 wide and as tall as the
+   window, the user row flush at its bottom; folded it is a 56 wide strip
+   of icons. Below 720 (NARROW in shell.ts) it covers the screen, opened
+   by a button floating on the head's row. */
+
+@layer base {
+  .shell {
+    display: flex;
+    min-height: 100vh;
+  }
+  .shell-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    /* the room the floating button takes on the head's row */
+    --lead: 0px;
+  }
+  /* the head's root: no box of its own, so the head sticks for the
+     whole of the column, not only inside its root */
+  .shell-head {
+    display: contents;
+  }
+  .rail svg,
+  .strip svg,
+  .rail-float svg {
+    display: block;
+    flex-shrink: 0;
+  }
+  .rail a,
+  .strip a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .rail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 220px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--line);
+    background: var(--rail);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  /* over the page head and the floating button */
+  .rail-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    width: 100%;
+    height: auto;
+    border-right: 0;
+  }
+  .rail-top {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 14px;
+    padding: 14px 0;
+  }
+  .rail-head {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    flex-shrink: 0;
+    padding: 0 12px;
+  }
+  /* the logo in the brand colour, sparkle included, MLX beside it as the
+     wordmark was */
+  .rail .rail-logo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 8px;
+    color: var(--brand);
+  }
+  .rail-word {
+    color: var(--rail-fg);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .rail-btn {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    padding: 0;
+    border-radius: 6px;
+    color: var(--rail-dim);
+  }
+  .rail-btn:hover {
+    background: var(--card);
+    color: var(--rail-fg);
+  }
+  .rail-hide {
+    margin-left: auto;
+  }
+  .rail-btn:focus-visible,
+  .rail a:focus-visible,
+  .rail button:focus-visible,
+  .strip a:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+  }
+
+  .rail-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    min-height: 0;
+    overscroll-behavior: contain;
+    padding: 0 12px;
+    scrollbar-width: thin;
+  }
+  .rail .rail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+    flex-shrink: 0;
+    padding: 0 10px;
+    border-radius: 6px;
+    color: var(--rail-dim);
+    font-weight: 500;
+  }
+  .rail a.rail-item:hover {
+    color: var(--rail-fg);
+  }
+  .rail .rail-item-on {
+    background: var(--card);
+    color: var(--rail-fg);
+  }
+  /* Monitor names its pages and is no page itself: lit while one of
+     them is on screen */
+  .rail-label {
+    cursor: default;
+  }
+  .rail .rail-in {
+    color: var(--rail-fg);
+  }
+  /* a page under Monitor: indented past the icon, in mono */
+  .rail .rail-sub {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    flex-shrink: 0;
+    padding: 0 10px 0 36px;
+    border-radius: 6px;
+    color: var(--rail-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .rail .rail-sub:hover {
+    color: var(--rail-fg);
+  }
+  .rail .rail-sub-on {
+    background: var(--card);
+    color: var(--rail-fg);
+  }
+
+  .rail-user {
+    position: relative;
+    flex-shrink: 0;
+    margin-top: auto;
+    border-top: 1px solid var(--line);
+  }
+  .rail-user-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 52px;
+    padding: 0 12px 0 14px;
+    color: var(--rail-fg);
+    text-align: left;
+  }
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rail-dim);
+  }
+  .rail-user-name {
+    font-weight: 500;
+  }
+  .rail-user-chevron {
+    margin-left: auto;
+    color: var(--rail-faint);
+  }
+  .rail-menu {
+    position: absolute;
+    z-index: 10;
+    left: 8px;
+    right: 8px;
+    bottom: 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+    background: #232427;
+    border: 1px solid var(--separator);
+    border-radius: 10px;
+    box-shadow: 0 12px 32px #0000008c;
+  }
+  .rail .rail-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 6px;
+    color: var(--rail-fg);
+    text-align: left;
+  }
+  .rail .rail-menu-item:hover:not(:disabled) {
+    background: #2d2e31;
+  }
+  .rail-menu-item svg {
+    color: var(--rail-dim);
+  }
+  .rail .rail-menu-item:disabled {
+    color: var(--rail-faint);
+    cursor: default;
+  }
+
+  /* folded: the pages stay one click away, the one on screen lit */
+  .strip {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 56px;
+    flex-shrink: 0;
+    padding-top: 16px;
+    border-right: 1px solid var(--line);
+    background: var(--rail);
+  }
+  .strip-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .strip .strip-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 34px;
+    border-radius: 6px;
+    color: var(--rail-dim);
+  }
+  .strip .strip-icon:hover {
+    color: var(--rail-fg);
+  }
+  .strip .strip-icon-on {
+    background: var(--card);
+    color: var(--rail-fg);
+  }
+  .strip-rule {
+    width: 20px;
+    height: 1px;
+    margin: 6px 0;
+    background: var(--line);
+  }
+
+  /* the page head: stuck to the top, its row lined up with the page's */
+  .page-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg);
+  }
+  .page-head-stuck {
+    box-shadow: 0 1px 6px #0000008c;
+  }
+  .page-head-in {
+    display: flex;
+    align-items: center;
+    min-height: 58px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 24px 10px calc(24px + var(--lead));
+  }
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--rail-faint);
+  }
+  .crumb-sep {
+    color: var(--separator);
+  }
+  .crumb-page {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--rail-fg);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 719px) {
+    .shell-main {
+      --lead: 40px;
+    }
+    .page-head-in {
+      min-height: 56px;
+      padding: 12px 24px 8px calc(24px + var(--lead));
+    }
+    .rail-float {
+      position: fixed;
+      top: 14px;
+      left: 10px;
+      z-index: 6;
+    }
+  }
+  /* the page's own side padding on a phone */
+  @media (max-width: 600px) {
+    .page-head-in {
+      padding: 12px 14px 8px calc(14px + var(--lead));
+    }
+  }
+}

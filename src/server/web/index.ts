@@ -166,6 +166,7 @@ export function serve(
       "/requests": page,
       "/engine": page,
       "/benchmark": page,
+      "/benchmark/scorecard": page,
     },
     fetch(req, server) {
       if (new URL(req.url).pathname === "/ws") {

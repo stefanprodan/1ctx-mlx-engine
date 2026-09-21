@@ -1,23 +1,41 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The page's entry, bundled by Bun from index.html. The header, the footer
-// and the page are Preact roots. The socket opens last, once every
-// subscriber is in place.
+// The page's entry, bundled by Bun from index.html. The rail, the page
+// head, the page, the Overview's footer and the confirm dialog are Preact
+// roots. The socket opens last,
+// once every subscriber is in place.
 
+import { effect } from "@preact/signals";
 import { render } from "preact";
-import { Benchmark } from "./benchmark/Benchmark.tsx";
+import { BenchmarkRun, BenchmarkScorecard } from "./benchmark/Benchmark.tsx";
 import { Engine } from "./engine/Engine.tsx";
 import { Monitor } from "./monitor/Monitor.tsx";
 import { Requests } from "./requests/Requests.tsx";
+import { Confirm } from "./shell/Confirm.tsx";
 import { Footer } from "./shell/Footer.tsx";
-import { Header } from "./shell/Header.tsx";
+import { Head } from "./shell/Head.tsx";
+import { Side } from "./shell/Rail.tsx";
+import { drawerOpen, narrow, watchWidth } from "./shell/shell.ts";
 import { connect, pageOf } from "./store.ts";
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const page = pageOf(location.pathname);
-render(<Header page={page} />, $("top"));
-render(<Footer />, $("foot"));
+watchWidth();
+// the page under the open drawer is inert, set as the drawer opens or
+// closes, so a dialog the menu opens after closing it takes the focus
+effect(() => {
+  $("main").inert = narrow.value && drawerOpen.value;
+});
+render(<Side page={page} />, $("rail"));
+render(<Head page={page} />, $("head"));
+// the version and the credits close the Overview alone; the other pages
+// end with their last card
+if (page === "monitor") render(<Footer />, $("foot"));
+else $("foot").remove();
+// one dialog for every page and the rail's menu, outside #main so the
+// drawer's inert never reaches it
+render(<Confirm />, $("dialogs"));
 if (page === "requests") {
   document.title = "1ctx-mlx-engine · requests";
   $("view-monitor").hidden = true;
@@ -28,11 +46,14 @@ if (page === "requests") {
   $("view-monitor").hidden = true;
   $("view-engine").hidden = false;
   render(<Engine />, $("view-engine"));
-} else if (page === "benchmark") {
-  document.title = "1ctx-mlx-engine · benchmark";
+} else if (page === "run" || page === "scorecard") {
+  document.title = `1ctx-mlx-engine · ${page === "run" ? "benchmark" : "scorecard"}`;
   $("view-monitor").hidden = true;
   $("view-benchmark").hidden = false;
-  render(<Benchmark />, $("view-benchmark"));
+  render(
+    page === "run" ? <BenchmarkRun /> : <BenchmarkScorecard />,
+    $("view-benchmark"),
+  );
 } else {
   render(<Monitor />, $("view-monitor"));
 }

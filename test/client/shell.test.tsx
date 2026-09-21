@@ -2,32 +2,168 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The shell components rendered to a string, without a DOM: the class
-// names and structure style.css depends on, and the signals they read.
+// names and structure the stylesheets depend on, and the signals they read.
 
 import { describe, expect, test } from "bun:test";
 import { render } from "preact-render-to-string";
 import { Footer } from "../../src/client/shell/Footer.tsx";
-import { Header } from "../../src/client/shell/Header.tsx";
+import { Head } from "../../src/client/shell/Head.tsx";
 import { Pill } from "../../src/client/shell/Pill.tsx";
-import { connection, snapshot } from "../../src/client/store.ts";
+import { Rail, Strip, UserMenu } from "../../src/client/shell/Rail.tsx";
+import {
+  busy,
+  connection,
+  engineMode,
+  type Page,
+  snapshot,
+} from "../../src/client/store.ts";
 import type { Snapshot } from "../../src/shared/socket.ts";
 
 describe("shell", () => {
-  test("header marks the current page and carries no pill", () => {
-    const monitor = render(<Header page="monitor" />);
-    expect(monitor).toContain('<div class="wordmark"><svg class="mark"');
-    expect(monitor).toContain('<a href="/" class="active">Monitor</a>');
-    expect(monitor).toContain('<a href="/requests">Requests</a>');
-    expect(monitor).toContain('<a href="/engine">Engine</a>');
-    expect(monitor).not.toContain('class="pill');
-    const requests = render(<Header page="requests" />);
+  test("the rail lights the page on screen, a section over its pages", () => {
+    const overview = render(<Rail page="monitor" />);
+    expect(overview).toContain(
+      '<a href="/" class="rail-sub rail-sub-on" aria-current="page">',
+    );
+    expect(overview).toContain('<a href="/requests" class="rail-sub">');
+    expect(overview).toContain('<a href="/engine" class="rail-item">');
+    expect(overview).toContain('<a href="/benchmark" class="rail-sub">');
+    expect(overview).toContain(
+      '<a href="/benchmark/scorecard" class="rail-sub">',
+    );
+    // Monitor lit, Benchmark not
+    expect(overview).toContain(
+      '<div class="rail-item rail-label rail-in"><svg',
+    );
+    expect(overview).toContain("<span>Monitor</span>");
+    expect(overview.match(/rail-label/g)).toHaveLength(2);
+    expect(overview.match(/rail-in/g)).toHaveLength(1);
+    // the order: Monitor's two, Engine, Benchmark's two
+    const hrefs = [...overview.matchAll(/<a href="([^"]+)" class="rail-/g)].map(
+      (m) => m[1],
+    );
+    expect(hrefs).toEqual([
+      "/",
+      "/requests",
+      "/engine",
+      "/benchmark",
+      "/benchmark/scorecard",
+    ]);
+    expect(overview.indexOf("<span>Benchmark</span>")).toBeLessThan(
+      overview.indexOf('href="/benchmark"'),
+    );
+    expect(overview).toContain('<span class="rail-word">MLX</span>');
+    expect(overview).toContain('aria-label="Hide the menu"');
+    expect(overview).toContain(
+      '<span class="avatar">AD</span><span class="rail-user-name">Admin</span>',
+    );
+    expect(overview).not.toContain('class="rail-menu"');
+    expect(overview).not.toContain('class="pill');
+
+    const requests = render(<Rail page="requests" />);
     expect(requests).toContain(
-      '<a href="/requests" class="active">Requests</a>',
+      '<a href="/requests" class="rail-sub rail-sub-on" aria-current="page">',
     );
-    expect(requests).not.toContain('class="pill');
-    expect(render(<Header page="engine" />)).toContain(
-      '<a href="/engine" class="active">Engine</a>',
+    expect(requests).toContain('class="rail-item rail-label rail-in"');
+
+    const engine = render(<Rail page="engine" />);
+    expect(engine).toContain(
+      '<a href="/engine" class="rail-item rail-item-on" aria-current="page">',
     );
+    expect(engine).not.toContain("rail-in");
+    expect(engine.match(/aria-current/g)).toHaveLength(1);
+    const runs = render(<Rail page="run" />);
+    expect(runs).toContain(
+      '<a href="/benchmark" class="rail-sub rail-sub-on" aria-current="page">',
+    );
+    expect(runs.match(/rail-in/g)).toHaveLength(1);
+    expect(runs.indexOf("rail-in")).toBeGreaterThan(
+      runs.indexOf("<span>Engine</span>"),
+    );
+    expect(render(<Rail page="scorecard" />)).toContain(
+      '<a href="/benchmark/scorecard" class="rail-sub rail-sub-on" aria-current="page">',
+    );
+  });
+
+  test("the strip names every page and lights the one on screen", () => {
+    const html = render(<Strip page="requests" />);
+    expect(html).toContain('aria-label="Show the menu"');
+    const names = [
+      ...html.matchAll(/<a href="([^"]+)"[^>]*aria-label="([^"]+)"/g),
+    ];
+    expect(names.map((m) => `${m[1]} ${m[2]}`)).toEqual([
+      "/ Overview",
+      "/requests Requests",
+      "/engine Engine",
+      "/benchmark Run",
+      "/benchmark/scorecard Scorecard",
+    ]);
+    expect(html).toContain(
+      '<a href="/requests" class="strip-icon strip-icon-on" title="Requests" aria-label="Requests" aria-current="page">',
+    );
+    // a rule between the groups: Monitor's, Engine, Benchmark's
+    expect(html.match(/strip-rule/g)).toHaveLength(2);
+    const at = (s: string) => html.indexOf(s);
+    expect(at('href="/requests"')).toBeLessThan(at("strip-rule"));
+    expect(at("strip-rule")).toBeLessThan(at('href="/engine"'));
+    expect(at('href="/engine"')).toBeLessThan(html.lastIndexOf("strip-rule"));
+    expect(html.lastIndexOf("strip-rule")).toBeLessThan(
+      at('href="/benchmark"'),
+    );
+  });
+
+  test("the head names the page under 1ctx and its section", () => {
+    const crumb = (page: Page) =>
+      render(<Head page={page} />)
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    expect(crumb("monitor")).toBe("1ctx / Monitor / Overview");
+    expect(crumb("requests")).toBe("1ctx / Monitor / Requests");
+    expect(crumb("engine")).toBe("1ctx / Engine");
+    expect(crumb("run")).toBe("1ctx / Benchmark / Run");
+    expect(crumb("scorecard")).toBe("1ctx / Benchmark / Scorecard");
+    expect(render(<Head page="engine" />)).toContain(
+      '<span class="crumb-page">Engine</span>',
+    );
+  });
+
+  test("the user menu restarts a local engine and links the source", () => {
+    const close = () => {};
+    engineMode.value = "managed";
+    busy.value = null;
+    snapshot.value = {
+      engine: { local: true, capabilities: ["restart"] },
+    } as unknown as Snapshot;
+    const on = render(<UserMenu close={close} />);
+    expect(on).toContain(
+      '<button type="button" class="rail-menu-item" role="menuitem"><svg',
+    );
+    expect(on).toContain("<span>Restart engine</span>");
+    expect(on).toContain(
+      '<a class="rail-menu-item" role="menuitem" href="https://github.com/stefanprodan/1ctx-mlx-engine" target="_blank" rel="noopener">',
+    );
+    expect(on).toContain("<span>Source code</span>");
+
+    busy.value = "load";
+    expect(render(<UserMenu close={close} />)).toContain(
+      'role="menuitem" disabled><svg',
+    );
+    busy.value = null;
+
+    snapshot.value = {
+      engine: { local: false, capabilities: ["restart"] },
+    } as unknown as Snapshot;
+    expect(render(<UserMenu close={close} />)).toContain(
+      'disabled title="restarts the engine service, local engine only"',
+    );
+
+    engineMode.value = "absent";
+    expect(render(<UserMenu close={close} />)).toContain(
+      'disabled title="mlx-serve is not installed"',
+    );
+    engineMode.value = null;
+    snapshot.value = null;
   });
 
   test("pill follows the connection signal", () => {

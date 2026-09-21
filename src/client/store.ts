@@ -15,7 +15,7 @@ import type { EngineMode } from "../shared/engine.ts";
 import type { Sample } from "../shared/sample.ts";
 import type { Snapshot, WsMessage } from "../shared/socket.ts";
 
-export type Page = "monitor" | "requests" | "engine" | "benchmark";
+export type Page = "monitor" | "requests" | "engine" | "scorecard" | "run";
 export type Connection = "connecting" | "live" | "reconnecting";
 
 // one bundle serves every path; the page is the one the path names
@@ -25,8 +25,36 @@ export const pageOf = (pathname: string): Page =>
     : pathname === "/engine"
       ? "engine"
       : pathname === "/benchmark"
-        ? "benchmark"
-        : "monitor";
+        ? "run"
+        : pathname === "/benchmark/scorecard"
+          ? "scorecard"
+          : "monitor";
+
+// the pages in the rail's order, with the section a page sits under: the
+// rail, its folded strip and the page head read this one table
+export type Section = "Monitor" | "Benchmark";
+export const PAGES: readonly {
+  page: Page;
+  href: string;
+  label: string;
+  section: Section | null;
+}[] = [
+  { page: "monitor", href: "/", label: "Overview", section: "Monitor" },
+  {
+    page: "requests",
+    href: "/requests",
+    label: "Requests",
+    section: "Monitor",
+  },
+  { page: "engine", href: "/engine", label: "Engine", section: null },
+  { page: "run", href: "/benchmark", label: "Run", section: "Benchmark" },
+  {
+    page: "scorecard",
+    href: "/benchmark/scorecard",
+    label: "Scorecard",
+    section: "Benchmark",
+  },
+];
 
 export const connection = signal<Connection>("connecting");
 export const connected = computed(() => connection.value === "live");

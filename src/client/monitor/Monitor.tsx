@@ -12,7 +12,6 @@ import { useEffect } from "preact/hooks";
 import type { Range, Series } from "../../shared/history.ts";
 import type { Sample } from "../../shared/sample.ts";
 import { DownloadIcon } from "../icons.tsx";
-import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";
 import { absent, connection, listen, sample, snapshot } from "../store.ts";
 import { engineLocal, limits } from "./actions.ts";
@@ -168,7 +167,6 @@ export function Monitor() {
 
       <RuntimeHead snap={snap} s={s} />
       <Runtime snap={snap} s={s} />
-      <Confirm />
       <DownloadDialog />
     </>
   );
