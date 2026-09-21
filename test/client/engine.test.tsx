@@ -277,7 +277,10 @@ describe("the sections", () => {
     expect(build).toContain("26.9.3<small>MLX 0.32.2</small>");
     expect(build).toContain(">Rollback</button>");
     expect(build).toContain("Update available");
-    expect(build).toContain('<span class="ver">26.9.4</span>');
+    // the version opens the release on GitHub in a new tab
+    expect(build).toContain(
+      '<a class="ver" href="https://github.com/ddalcu/mlx-serve/releases/tag/v26.9.4" target="_blank" rel="noopener" title="Release notes on GitHub">26.9.4</a>',
+    );
     expect(build).toContain("72.1 MB, 17 September");
     expect(build).toContain("include pre-releases");
     expect(build).toContain("127.0.0.1:11234");
@@ -529,6 +532,9 @@ describe("the sections", () => {
       "84 MB <small>MEM</small> / 0.6% <small>CPU</small>",
     );
     expect(html).toContain(`<code class="cmd">${UPGRADE}</code>`);
+    expect(html).toContain(
+      '<a class="ver" href="https://github.com/stefanprodan/1ctx-mlx-engine/releases/tag/v0.2.0" target="_blank" rel="noopener" title="Release notes on GitHub">v0.2.0</a>',
+    );
     expect(html).toContain('aria-label="Copy the install command"');
   });
 

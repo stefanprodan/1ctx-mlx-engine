@@ -77,7 +77,8 @@ remove `~/.1ctx-mlx-engine`. The models are not in it and stay.
 ## Docs
 
 - [Monitor and Requests](docs/monitor.md)
-- [Engine](docs/engine.md)
+- [Models](docs/models.md)
+- [Server](docs/engine.md)
 - [Benchmark](docs/benchmark.md)
 - [API](docs/api.md)
 - [Development](docs/development.md)

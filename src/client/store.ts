@@ -11,28 +11,41 @@ import { computed, signal } from "@preact/signals";
 import type { ActionEvent, ActionName } from "../shared/actions.ts";
 import type { BenchmarkProgress } from "../shared/benchmark.ts";
 import type { Download } from "../shared/downloads.ts";
-import type { EngineMode } from "../shared/engine.ts";
+import {
+  type EngineMode,
+  type EnginePageState,
+  type Updates,
+  updatesOf,
+} from "../shared/engine.ts";
 import type { Sample } from "../shared/sample.ts";
 import type { Snapshot, WsMessage } from "../shared/socket.ts";
 
-export type Page = "monitor" | "requests" | "engine" | "scorecard" | "run";
+export type Page =
+  | "monitor"
+  | "requests"
+  | "models"
+  | "server"
+  | "scorecard"
+  | "run";
 export type Connection = "connecting" | "live" | "reconnecting";
 
 // one bundle serves every path; the page is the one the path names
 export const pageOf = (pathname: string): Page =>
   pathname === "/requests"
     ? "requests"
-    : pathname === "/engine"
-      ? "engine"
-      : pathname === "/benchmark"
-        ? "run"
-        : pathname === "/benchmark/scorecard"
-          ? "scorecard"
-          : "monitor";
+    : pathname === "/models"
+      ? "models"
+      : pathname === "/server"
+        ? "server"
+        : pathname === "/benchmark"
+          ? "run"
+          : pathname === "/benchmark/scorecard"
+            ? "scorecard"
+            : "monitor";
 
 // the pages in the rail's order, with the section a page sits under: the
 // rail, its folded strip and the page head read this one table
-export type Section = "Monitor" | "Benchmark";
+export type Section = "Monitor" | "Engine" | "Benchmark";
 export const PAGES: readonly {
   page: Page;
   href: string;
@@ -46,7 +59,8 @@ export const PAGES: readonly {
     label: "Requests",
     section: "Monitor",
   },
-  { page: "engine", href: "/engine", label: "Engine", section: null },
+  { page: "models", href: "/models", label: "Models", section: "Engine" },
+  { page: "server", href: "/server", label: "Server", section: "Engine" },
   { page: "run", href: "/benchmark", label: "Run", section: "Benchmark" },
   {
     page: "scorecard",
@@ -110,10 +124,21 @@ export function setBusy(action: ActionName | null) {
 export const version = computed(() => snapshot.value?.version ?? null);
 // What the manager makes of the engine: the snapshot's word, then every
 // engine push (an install in another tab). Absent is a bare host: there
-// the pages say not installed and point at the Engine page, where an
+// the pages say not installed and point at the Server page, where an
 // engine that is merely down says offline.
 export const engineMode = signal<EngineMode | null>(null);
 export const absent = computed(() => engineMode.value === "absent");
+// The newer builds the Server page offers, for the rail's pill: the
+// snapshot's, then every engine push (a check, an upgrade in another tab).
+export const updates = signal<Updates | null>(null);
+// what the pill says under the pointer, null when nothing is offered
+export const updateNote = (u: Updates | null): string | null => {
+  const parts = [
+    u?.engine ? `mlx-serve ${u.engine}` : null,
+    u?.self ? `1ctx-mlx-engine ${u.self}` : null,
+  ].filter(Boolean);
+  return parts.length ? `${parts.join(" and ")} available` : null;
+};
 // The benchmark in progress: the snapshot's, then every benchmark message.
 // The last message of a run carries its final status and clears this; the
 // count tells the Benchmark page to read the finished runs again, as a
@@ -156,7 +181,7 @@ function checkBuild(snap: Snapshot) {
   else if (replaced(loadedBuild, snap.build)) location.reload();
 }
 
-// A bare host has one thing to do, and it is on the Engine page: a visit
+// A bare host has one thing to do, and it is on the Server page: a visit
 // that lands on the Monitor from outside (the URL the installer printed, a
 // bookmark) goes there. A click on Monitor in the nav stays.
 export const landsOnEngine = (
@@ -176,18 +201,27 @@ function land(snap: Snapshot) {
       snap.engine.mode,
     )
   ) {
-    go("/engine", true);
+    go("/server", true);
   }
 }
 
 export const modelsKeyOf = (list: Sample["models"]) =>
   list
-    .map((m) => `${m.id}:${m.state}:${m.bytesResident}:${m.favorite ? 1 : 0}`)
+    .map(
+      (m) =>
+        `${m.id}:${m.state}:${m.bytesResident}:${m.bytesOnDisk}:${m.favorite ? 1 : 0}:${m.deleted ? 1 : 0}`,
+    )
     .join("|");
 let modelsKey = "";
-function setSnapshot(snap: Snapshot) {
+// The engine pushes own the mode and the updates: a fetched snapshot sent
+// before a push is older than it and leaves both as the push set them.
+let enginePushes = 0;
+function setSnapshot(snap: Snapshot, stale = false) {
   snapshot.value = snap;
-  engineMode.value = snap.engine.mode;
+  if (!stale) {
+    engineMode.value = snap.engine.mode;
+    updates.value = snap.updates;
+  }
   // a snapshot taken before this tab's own action registered must not
   // release the buttons early
   if (snap.running || !localAction) busy.value = snap.running;
@@ -211,11 +245,19 @@ const emit = (msg: WsMessage) => {
   for (const fn of listeners) fn(msg);
 };
 
+// an engine push: the mode and the updates, newer than any snapshot in flight
+export function applyEngine(state: EnginePageState) {
+  enginePushes++;
+  engineMode.value = state.engine.mode;
+  updates.value = updatesOf(state.engine, state.self.offered);
+}
+
 export function refreshSnapshot(): Promise<Snapshot | null> {
+  const sent = enginePushes;
   return fetch("/api/snapshot")
     .then((r) => r.json())
     .then((snap: Snapshot) => {
-      setSnapshot(snap);
+      setSnapshot(snap, sent !== enginePushes);
       return snap;
     })
     .catch(() => null);
@@ -249,7 +291,7 @@ export function connect() {
     } else if (msg.type === "benchmarkRemoved") {
       benchmarksChanged.value++;
     } else if (msg.type === "engine") {
-      engineMode.value = msg.data.engine.mode;
+      applyEngine(msg.data);
     }
     emit(msg);
   };

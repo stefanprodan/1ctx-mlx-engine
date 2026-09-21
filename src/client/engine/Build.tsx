@@ -6,7 +6,11 @@
 // failure. The row keeps its place in every state so the card's shape
 // does not depend on what there is to offer.
 
-import type { EngineState } from "../../shared/engine.ts";
+import {
+  ENGINE_REPO,
+  type EngineState,
+  releaseUrl,
+} from "../../shared/engine.ts";
 import type { Sample } from "../../shared/sample.ts";
 import { DASH } from "../format.ts";
 import { Lock } from "../icons.tsx";
@@ -148,7 +152,15 @@ function ReleaseRow({ engine }: { engine: EngineState }) {
       <span class="what">
         {managed ? "Update available" : "Latest release"}
       </span>
-      <span class="ver">{r.version}</span>
+      <a
+        class="ver"
+        href={releaseUrl(ENGINE_REPO, r.tag)}
+        target="_blank"
+        rel="noopener"
+        title="Release notes on GitHub"
+      >
+        {r.version}
+      </a>
       <span class="meta">{releaseNote(r)}</span>
       <span class="grow" />
       <PreReleases engine={engine} />

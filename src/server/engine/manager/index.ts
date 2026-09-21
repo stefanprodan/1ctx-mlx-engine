@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { rm } from "node:fs/promises";
-import type {
-  EngineConfig,
-  EnginePageState,
-  EngineState,
-  Operation,
-  OperationKind,
-  ServiceBody,
+import {
+  type EngineConfig,
+  type EnginePageState,
+  type EngineState,
+  type Operation,
+  type OperationKind,
+  type ServiceBody,
+  type Updates,
+  updatesOf,
 } from "../../../shared/engine.ts";
 import { describeError } from "../../lib/fetch.ts";
 import { LockBusyError } from "../../lib/lock.ts";
@@ -35,7 +37,7 @@ import {
   publicCheckRepos,
   schedulePoll,
 } from "./poll.ts";
-import { selfState } from "./self.ts";
+import { selfOffered, selfState } from "./self.ts";
 import { release, stage } from "./stage.ts";
 import {
   activate,
@@ -106,6 +108,11 @@ export class EngineManager {
 
   pageState(): EnginePageState {
     return { engine: this.state(), self: selfState(this.context) };
+  }
+
+  // the rail's pill, from the snapshot: no probes, no CPU window moved
+  updates(engine = this.state()): Updates {
+    return updatesOf(engine, selfOffered(this.context));
   }
 
   startPolling() {

@@ -12,7 +12,8 @@ from the dashboard's own host. Every JSON response carries
 |---|---|
 | `GET /` | Overview: tiles, charts, models, runtime |
 | `GET /requests` | The request in flight and the last 50 finished ones |
-| `GET /engine` | 1ctx-mlx-engine's own service, the mlx-serve install and its configuration |
+| `GET /models` | The models on disk, their specs and the Hub downloads |
+| `GET /server` | 1ctx-mlx-engine's own service, the mlx-serve install and its configuration |
 | `GET /benchmark` | Run a benchmark on a model and compare the runs |
 | `GET /benchmark/scorecard` | The models ranked by their newest run at a preset |
 
@@ -20,9 +21,10 @@ from the dashboard's own host. Every JSON response carries
 
 | Route | Answer |
 |---|---|
-| `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads, the benchmark in progress and the model directory |
+| `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads, the benchmark in progress, the model directory and the newer builds on offer (`updates`: mlx-serve's when it is managed, 1ctx-mlx-engine's own) |
 | `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
+| `GET /api/models` | every model the engine lists, with its spec: what the engine reports of it, what its checkpoint under `--model-dir` says (local engine only), and the revision and date of the download that brought it (without one, the date of its `config.json`). A figure neither states is null. Asks the engine nothing |
 
 `build` is when this 1ctx-mlx-engine binary was compiled (null when run from
 source). The page remembers the one it loaded with and reloads itself when

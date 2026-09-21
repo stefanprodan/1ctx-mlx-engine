@@ -89,6 +89,24 @@ export type ChatAnswer = {
   tools: string;
 };
 
+// What the engine says of a model beyond the list's row: the checkpoint's
+// shape as it read it and the sampling it applies. A remote engine's
+// models are known by this alone.
+export type EngineModelMeta = {
+  architecture: string | null;
+  layers: number | null;
+  hiddenSize: number | null;
+  vocab: number | null;
+  maxTokens: number | null;
+  isMoe: boolean | null;
+  // the multi-token prediction head in use; said for a resident model only
+  mtpLoaded: boolean | null;
+  temperature: number | null;
+  topP: number | null;
+  topK: number | null;
+  inputs: string[];
+};
+
 // one timestamped read of the metrics, what the rate math compares
 export type Reading = { t: number; metrics: EngineMetrics };
 
@@ -97,6 +115,8 @@ export interface Engine {
   readonly url: string;
   health(): Promise<boolean>;
   models(): Promise<ModelInfo[]>;
+  // the meta of the last models() read, by id; nothing new is fetched
+  modelMeta?(): ReadonlyMap<string, EngineModelMeta>;
   metrics(): Promise<EngineMetrics>;
   // Facts only the engine itself can state: its build and the budgets of
   // the running process. The call may go through the engine's model-load

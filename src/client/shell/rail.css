@@ -166,6 +166,18 @@
     background: var(--card);
     color: var(--rail-fg);
   }
+  /* a newer build on offer on the Server page */
+  .rail .rail-new {
+    margin-left: auto;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: #12233a;
+    color: var(--accent);
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
 
   .rail-user {
     position: relative;
@@ -264,6 +276,7 @@
     gap: 2px;
   }
   .strip .strip-icon {
+    position: relative;
     display: grid;
     place-items: center;
     width: 36px;
@@ -273,6 +286,15 @@
   }
   .strip .strip-icon:hover {
     color: var(--rail-fg);
+  }
+  .strip .strip-new {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
   }
   .strip .strip-icon-on {
     background: var(--card);

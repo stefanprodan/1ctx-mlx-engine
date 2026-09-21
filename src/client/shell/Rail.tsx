@@ -3,7 +3,7 @@
 //
 // 1ctx's rail, as the engine needs it: the logo with the button that
 // folds it, every page as a row (Overview and Requests under Monitor,
-// Run and Scorecard under Benchmark), and the user row at the bottom
+// Models and Server under Engine, Run and Scorecard under Benchmark), and the user row at the bottom
 // with its menu. Folded on a wide window it is a strip with the pages as
 // icons. Below 720 it is a full screen
 // opened by a button that floats over the page; while it is open the
@@ -15,7 +15,15 @@ import { Fragment } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { GitHub, Icon, type IconName, Logo } from "../icons.tsx";
 import { restartBlocked, runAction } from "../monitor/actions.ts";
-import { busy, follow, PAGES, type Page, type Section } from "../store.ts";
+import {
+  busy,
+  follow,
+  PAGES,
+  type Page,
+  type Section,
+  updateNote,
+  updates,
+} from "../store.ts";
 import {
   closeDrawer,
   drawerOpen,
@@ -31,13 +39,15 @@ import "./rail.css";
 const ICON: Record<Page, IconName> = {
   monitor: "grid",
   requests: "swap",
-  engine: "chip",
+  models: "cube",
+  server: "server",
   run: "play",
   scorecard: "bars",
 };
 
 const SECTION_ICON: Record<Section, IconName> = {
   Monitor: "pulse",
+  Engine: "chip",
   Benchmark: "gauge",
 };
 
@@ -262,18 +272,24 @@ export function Rail({ page }: { page: Page }) {
                   <Icon name={SECTION_ICON[section]} />
                   <span>{section}</span>
                 </div>
-                {group.map((p) => (
-                  <a
-                    key={p.page}
-                    href={p.href}
-                    class={`rail-sub${p.page === page ? " rail-sub-on" : ""}`}
-                    aria-current={current(p.page === page)}
-                    onClick={open(p.href)}
-                  >
-                    <Icon name={ICON[p.page]} size={14} />
-                    <span>{p.label}</span>
-                  </a>
-                ))}
+                {group.map((p) => {
+                  const note =
+                    p.page === "server" ? updateNote(updates.value) : null;
+                  return (
+                    <a
+                      key={p.page}
+                      href={p.href}
+                      class={`rail-sub${p.page === page ? " rail-sub-on" : ""}`}
+                      aria-current={current(p.page === page)}
+                      title={note ?? undefined}
+                      onClick={open(p.href)}
+                    >
+                      <Icon name={ICON[p.page]} size={14} />
+                      <span>{p.label}</span>
+                      {note && <span class="rail-new">new</span>}
+                    </a>
+                  );
+                })}
               </Fragment>
             );
           })}
@@ -287,19 +303,24 @@ export function Rail({ page }: { page: Page }) {
 // the folded rail: the button that brings it back, then the pages as
 // icons, a rule between the groups the rail draws
 export function Strip({ page }: { page: Page }) {
-  const link = (p: Entry) => (
-    <a
-      key={p.page}
-      href={p.href}
-      class={`strip-icon${p.page === page ? " strip-icon-on" : ""}`}
-      title={p.label}
-      aria-label={p.label}
-      aria-current={current(p.page === page)}
-      onClick={(e) => follow(e, p.href)}
-    >
-      <Icon name={ICON[p.page]} />
-    </a>
-  );
+  const link = (p: Entry) => {
+    // the strip has no room for the word: a dot on the icon
+    const note = p.page === "server" ? updateNote(updates.value) : null;
+    return (
+      <a
+        key={p.page}
+        href={p.href}
+        class={`strip-icon${p.page === page ? " strip-icon-on" : ""}`}
+        title={note ? `${p.label}: ${note}` : p.label}
+        aria-label={note ? `${p.label}, ${note}` : p.label}
+        aria-current={current(p.page === page)}
+        onClick={(e) => follow(e, p.href)}
+      >
+        <Icon name={ICON[p.page]} />
+        {note && <span class="strip-new" />}
+      </a>
+    );
+  };
   const show = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (refocus) show.current?.focus();

@@ -174,26 +174,98 @@ describe("snapshot", () => {
   });
 });
 
+describe("models API", () => {
+  test("the engine's list with its meta and the download's revision", async () => {
+    const { deps, engine } = setup();
+    (engine as Engine).modelMeta = () =>
+      new Map([
+        [
+          MODEL,
+          {
+            architecture: "llama",
+            layers: 16,
+            hiddenSize: 2048,
+            vocab: 32000,
+            maxTokens: 8192,
+            isMoe: false,
+            mtpLoaded: null,
+            temperature: null,
+            topP: null,
+            topK: null,
+            inputs: ["text"],
+          },
+        ],
+      ]);
+    const lastDone = (repo: string) =>
+      repo === MODEL ? { revision: "abc", finishedAt: 9 } : null;
+    const read: string[] = [];
+    const withReader = {
+      ...deps,
+      downloads: { lastDone },
+      specs: {
+        read: async (id: string) => {
+          read.push(id);
+          return null;
+        },
+      },
+    } as unknown as WebDeps;
+    const res = await response(withReader, "/api/models");
+    expect(res.status).toBe(200);
+    const [spec] = await res.json();
+    expect(spec).toMatchObject({
+      id: MODEL,
+      modelType: "llama",
+      layers: 16,
+      maxPositions: 8192,
+      contextLength: 1000,
+      revision: "abc",
+      downloadedAt: 9,
+    });
+    expect(read).toEqual([MODEL]);
+    // a remote engine's files are not here: nothing is read
+    read.length = 0;
+    await response({ ...withReader, local: false }, "/api/models");
+    expect(read).toEqual([]);
+    expect(
+      (await response(deps, "/api/models", "POST", {}, "http://x")).status,
+    ).toBe(405);
+  });
+});
+
 describe("downloads API", () => {
   test("the snapshot says what the manager makes of the engine", () => {
     const s = setup();
     // without a manager there is nothing to say
     expect(snapshot(s.deps).engine.mode).toBeNull();
+    expect(snapshot(s.deps).updates).toBeNull();
+    const none = () => ({ engine: null, self: null });
     const bare = {
       ...s.deps,
-      manager: { state: () => ({ mode: "absent", active: null }) },
+      manager: {
+        state: () => ({ mode: "absent", active: null }),
+        updates: none,
+      },
     } as unknown as WebDeps;
     expect(snapshot(bare).engine.mode).toBe("absent");
+    // the state the snapshot already read is the one the updates come from
+    let passed: unknown = null;
     const managed = {
       ...s.deps,
       manager: {
         state: () => ({ mode: "managed", active: { version: "26.9.4" } }),
+        updates: (state: unknown) => {
+          passed = state;
+          return { engine: "26.9.5", self: null };
+        },
       },
     } as unknown as WebDeps;
-    expect(snapshot(managed).engine).toMatchObject({
+    const snap = snapshot(managed);
+    expect(snap.engine).toMatchObject({
       mode: "managed",
       version: "26.9.4",
     });
+    expect(snap.updates).toEqual({ engine: "26.9.5", self: null });
+    expect(passed).toMatchObject({ mode: "managed" });
   });
 
   test("lists, starts, reads, cancels and forgets downloads", async () => {

@@ -5,7 +5,12 @@
 // line. Its job is always on the host serving this page, so it is gated
 // by the manager's lock and never by where mlx-serve is.
 
-import { DEV_VERSION, type SelfState } from "../../shared/engine.ts";
+import {
+  DEV_VERSION,
+  releaseUrl,
+  SELF_REPO,
+  type SelfState,
+} from "../../shared/engine.ts";
 import { DASH, duration, num } from "../format.ts";
 import { Copy } from "../icons.tsx";
 import { confirm } from "../shell/Confirm.tsx";
@@ -98,7 +103,15 @@ export function Self({ self }: { self: SelfState | null }) {
       {offered && (
         <div class="notice">
           <span class="what">Update available</span>
-          <span class="ver">{offered.tag}</span>
+          <a
+            class="ver"
+            href={releaseUrl(SELF_REPO, offered.tag)}
+            target="_blank"
+            rel="noopener"
+            title="Release notes on GitHub"
+          >
+            {offered.tag}
+          </a>
           <span class="grow" />
           <code class="cmd">{UPGRADE}</code>
           <button

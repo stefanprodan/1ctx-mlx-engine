@@ -11,12 +11,10 @@ import { effect, signal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import type { Range, Series } from "../../shared/history.ts";
 import type { Sample } from "../../shared/sample.ts";
-import { DownloadIcon } from "../icons.tsx";
 import { Pill } from "../shell/Pill.tsx";
 import { absent, connection, listen, sample, snapshot } from "../store.ts";
 import { engineLocal, limits } from "./actions.ts";
 import { Charts } from "./Charts.tsx";
-import { DownloadDialog, openDownload } from "./Download.tsx";
 import { Event } from "./Event.tsx";
 import { Models } from "./Models.tsx";
 import { RangePicker } from "./RangePicker.tsx";
@@ -158,25 +156,12 @@ export function Monitor() {
       <div class="shead">
         <h2>Models</h2>
         <ActivityPill s={s} />
-        <span class="grow" />
-        <span class="btns">
-          <button
-            type="button"
-            class="btn"
-            title="Download a model from the Hugging Face Hub"
-            onClick={openDownload}
-          >
-            <DownloadIcon />
-            Download
-          </button>
-        </span>
       </div>
       <Models snap={snap} />
       <Event />
 
       <RuntimeHead snap={snap} s={s} />
       <Runtime snap={snap} s={s} />
-      <DownloadDialog />
     </>
   );
 }

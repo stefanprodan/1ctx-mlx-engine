@@ -31,7 +31,6 @@ export function selfState(context: ManagerContext): SelfState {
   const cpuPct = cpuPercent(context.cpuPrevious, current);
   context.cpuPrevious = current;
   const check = publicCheck(context.deps.store.releaseCheck(SELF_REPO));
-  const development = context.deps.version === DEV_VERSION;
   return {
     version: context.deps.version,
     startedAt: context.startedAt,
@@ -40,10 +39,20 @@ export function selfState(context: ManagerContext): SelfState {
       process.memoryUsage.rss(),
     cpuPct,
     check,
-    offered: development
-      ? null
-      : offered(check.releases, false, context.deps.version),
+    offered: selfOffered(context, check),
   };
+}
+
+// the newer build of this program on offer; a build from source is
+// offered none. Without selfState's side effect on the CPU window, for
+// the snapshot every page reads.
+export function selfOffered(
+  context: ManagerContext,
+  check = publicCheck(context.deps.store.releaseCheck(SELF_REPO)),
+) {
+  return context.deps.version === DEV_VERSION
+    ? null
+    : offered(check.releases, false, context.deps.version);
 }
 
 export type { CpuReading } from "./context.ts";

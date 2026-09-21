@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The Engine page: 1ctx-mlx-engine first (short, never gated on where mlx-serve
+// The Server page: 1ctx-mlx-engine first (short, never gated on where mlx-serve
 // is), then mlx-serve, then its configuration. The manager pushes its
 // state on /ws when it changes; the resources line is the one thing that
 // moves without an operation, so the page asks again every few seconds.

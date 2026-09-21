@@ -46,7 +46,7 @@ export const Copy = () => (
   </svg>
 );
 
-// the locality line on the Engine page
+// the locality line on the Server page
 export const Lock = () => (
   <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
     <path
@@ -141,6 +141,9 @@ const PATHS = {
   swap: "M2.5 5.5h10M10 3l2.5 2.5L10 8M13.5 10.5h-10M6 8l-2.5 2.5L6 13",
   chip: "M5 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM6.5 6.5h3v3h-3zM6.5 1v2M9.5 1v2M6.5 13v2M9.5 13v2M1 6.5h2M1 9.5h2M13 6.5h2M13 9.5h2",
   gauge: "M4.1 12.9A5.5 5.5 0 1 1 11.9 12.9M8 9l2.5-2.5",
+  cube: "M8 1.5l5.5 3v7L8 14.5l-5.5-3v-7zM2.5 4.5L8 7.5l5.5-3M8 7.5v7",
+  server:
+    "M3.5 2.5h9a1 1 0 0 1 1 1v3h-11v-3a1 1 0 0 1 1-1zM2.5 9.5h11v3a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1zM2.5 6.5v3M13.5 6.5v3M5 5h.01M5 11.5h.01",
   play: "M4.5 3.5v9L12 8z",
   bars: "M3 13.5V9M8 13.5V3M13 13.5V6.5",
 } as const;

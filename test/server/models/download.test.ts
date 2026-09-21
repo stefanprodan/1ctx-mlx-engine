@@ -773,3 +773,24 @@ describe("Downloader", () => {
     expect((await cancelling).status).toBe("cancelled");
   });
 });
+
+describe("DownloadStore.lastDone", () => {
+  test("the newest finished download of a repo, whatever its case", () => {
+    const history = new History(":memory:");
+    let t = 100;
+    const store = new DownloadStore(history.db, () => t++);
+    const first = store.create("Org/Model", "aaa", "/m/Org/Model", []);
+    store.setStatus(first.id, "done");
+    const second = store.create("org/model", "bbb", "/m/org/model", []);
+    expect(store.lastDone("org/model")?.revision).toBe("aaa");
+    store.setStatus(second.id, "done");
+    expect(store.lastDone("ORG/MODEL")).toMatchObject({
+      revision: "bbb",
+      finishedAt: 103,
+    });
+    const failed = store.create("org/other", "ccc", "/m/org/other", []);
+    store.setStatus(failed.id, "failed", "boom");
+    expect(store.lastDone("org/other")).toBeNull();
+    history.close();
+  });
+});

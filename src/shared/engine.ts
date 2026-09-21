@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The contract between the engine manager and the Engine page: what
+// The contract between the engine manager and the Server page: what
 // GET /api/engine answers, what {type: "engine"} carries on /ws, and the
 // bodies the management routes take. Types only, so the page can import
 // it without dragging the manager into the bundle.
@@ -150,6 +150,13 @@ export type EngineState = {
   failure: Failure | null;
 };
 
+// The GitHub repositories the manager reads releases from, and the page
+// a release has there.
+export const ENGINE_REPO = "ddalcu/mlx-serve";
+export const SELF_REPO = "stefanprodan/1ctx-mlx-engine";
+export const releaseUrl = (repo: string, tag: string) =>
+  `https://github.com/${repo}/releases/tag/${encodeURIComponent(tag)}`;
+
 // What a build from source reports; the page labels it and the manager
 // offers it no release.
 export const DEV_VERSION = "v0.0.0-dev";
@@ -165,6 +172,24 @@ export type SelfState = {
 };
 
 export type EnginePageState = { engine: EngineState; self: SelfState };
+
+// The newer builds the Server page offers, for the rail's pill on every
+// page: mlx-serve's only when it is ours to upgrade (an unmanaged or absent
+// engine is offered an install, which is no update) and while the page
+// shows the offer (an operation or a failure takes the row's place),
+// 1ctx-mlx-engine's own whenever its section offers one. Versions, null
+// when none.
+export type Updates = { engine: string | null; self: string | null };
+export const updatesOf = (
+  engine: EngineState,
+  self: Release | null,
+): Updates => ({
+  engine:
+    engine.mode === "managed" && !engine.operation && !engine.failure
+      ? (engine.offered?.version ?? null)
+      : null,
+  self: self?.version ?? null,
+});
 
 export type InstallBody = { tag: string; config: EngineConfig };
 export type UpgradeBody = { tag: string };

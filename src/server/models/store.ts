@@ -112,6 +112,17 @@ export class DownloadStore {
     return row ? this.toDownload(row) : null;
   }
 
+  // The newest finished download of a repo: the revision on disk, and when.
+  lastDone(repo: string): Download | null {
+    const row = this.db
+      .query(
+        `SELECT ${COLUMNS} FROM downloads WHERE repo = $repo COLLATE NOCASE AND status = 'done'
+         ORDER BY id DESC LIMIT 1`,
+      )
+      .get({ repo }) as DownloadRow | null;
+    return row ? this.toDownload(row) : null;
+  }
+
   // Downloads that were running or waiting when the process stopped.
   unfinished(): Download[] {
     const rows = this.db

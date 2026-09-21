@@ -21,6 +21,26 @@ export function modelPath(modelDir: string, id: string): string | null {
   return dir.startsWith(root + sep) ? dir : null;
 }
 
+// The model's directory when it is really there: the id is one this
+// program could have downloaded and neither the owner nor the model
+// directory is a symlink. The path check is lexical, so a symlink would
+// take a delete, or a read, outside the root.
+export async function realModelDir(
+  modelDir: string,
+  id: string,
+): Promise<string | null> {
+  const dir = modelPath(modelDir, id);
+  if (dir === null) return null;
+  for (const path of [dirname(dir), dir]) {
+    const real = await lstat(path).then(
+      (s) => s.isDirectory(),
+      () => false,
+    );
+    if (!real) return null;
+  }
+  return dir;
+}
+
 // Deletes the model's directory and the owner directory it leaves empty.
 // False when there is nothing to delete: the id is not one this program
 // could have downloaded, or the checkpoint lives in another directory the
@@ -29,17 +49,8 @@ export async function removeModel(
   modelDir: string,
   id: string,
 ): Promise<boolean> {
-  const dir = modelPath(modelDir, id);
+  const dir = await realModelDir(modelDir, id);
   if (dir === null) return false;
-  // the path check is lexical: an owner or model dir that is a symlink
-  // would take the delete outside the root, so both must be real dirs
-  for (const path of [dirname(dir), dir]) {
-    const real = await lstat(path).then(
-      (s) => s.isDirectory(),
-      () => false,
-    );
-    if (!real) return false;
-  }
   await rm(dir, { recursive: true, force: true });
   await pruneEmpty(dirname(dir), modelDir);
   return true;

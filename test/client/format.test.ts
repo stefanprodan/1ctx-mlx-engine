@@ -7,6 +7,7 @@ import {
   DASH,
   diskSize,
   gb,
+  modelSize,
   num,
   orderModels,
   size,
@@ -25,6 +26,11 @@ describe("format", () => {
     expect(sizeText(10 * 2 ** 30)).toBe("10 GB");
     expect(sizeText(2.1 * 2 ** 30)).toBe("2.1 GB");
     expect(sizeText(320 * 2 ** 20)).toBe("320 MB");
+    // a model row: whole GB, MB under one
+    expect(modelSize(5.1 * 2 ** 30)).toBe("5 GB");
+    expect(modelSize(1.6 * 2 ** 30)).toBe("2 GB");
+    expect(modelSize(20.1 * 2 ** 30)).toBe("20 GB");
+    expect(modelSize(596 * 2 ** 20)).toBe("596 MB");
     expect(size(0)).toEqual({ value: "0", unit: "GB" });
   });
 

@@ -231,14 +231,14 @@ describe("request components", () => {
     } as unknown as Snapshot;
     const html = render(<Models snap={snap} />);
     expect(html).toContain(
-      '<section class="card models"><table id="models"><tbody><tr class="ready"><td class="name" title="org/one"><div><span class="dot ready"></span><span class="owner">org/</span><a class="model" href="https://huggingface.co/org/one" target="_blank" rel="noopener">one</a></div></td><td class="meta">1.0 GB · 256K ctx</td><td class="state ready">ready</td><td class="act">',
+      '<section class="card models"><table id="models"><tbody><tr class="ready"><td class="name" title="org/one"><div><span class="dot ready"></span><span class="owner">org/</span><a class="model" href="https://huggingface.co/org/one" target="_blank" rel="noopener">one</a></div></td><td class="meta">1 GB · 256K ctx</td><td class="state ready">ready</td><td class="act">',
     );
     expect(html).toContain('class="ibtn on" title="Daily driver"');
     expect(html).toContain('class="ibtn danger" title="Unload"');
     expect(html).toContain(
       '<tr><td class="name" title="two"><div><span class="dot "></span><span class="owner"></span><a class="model" href="https://huggingface.co/two"',
     );
-    expect(html).toContain('<td class="meta">3.0 GB</td>');
+    expect(html).toContain('<td class="meta">3 GB</td>');
     expect(html).toContain('class="ibtn" title="Load"');
     expect(html).toContain('<p class="blank" hidden>');
     const empty = render(
@@ -268,7 +268,7 @@ describe("request components", () => {
     );
     engineMode.value = null;
     expect(bare).toContain(
-      '<p class="blank">mlx-serve is not installed. <a href="/engine">Install</a></p>',
+      '<p class="blank">mlx-serve is not installed. <a href="/server">Install</a></p>',
     );
     expect(bare).not.toContain("unreachable");
   });

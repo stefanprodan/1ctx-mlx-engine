@@ -54,9 +54,9 @@ export const loadedCount = computed(
 export const can = (c: Capability) =>
   snapshot.value?.engine.capabilities.includes(c) ?? false;
 
-// Restart engine, in the Runtime head and in the rail's menu: a local
-// engine this program can restart. The reason when it cannot, "" when it
-// can; either button is also off while an action runs
+// Restart engine, in the rail's menu: a local engine this program can
+// restart. The reason when it cannot, "" when it can; the item is also off
+// while an action runs
 export const restartBlocked = computed(() =>
   !absent.value && engineLocal.value && can("restart")
     ? ""
