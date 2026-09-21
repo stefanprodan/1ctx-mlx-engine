@@ -192,7 +192,7 @@ this host, and with 409 while another operation or action holds the lock.
 | `POST /api/engine/check` | | asks GitHub for the releases of both programs now |
 | `POST /api/engine/install` | `{tag, config}` | 202. The first install: downloads, verifies and unpacks the release, writes the LaunchAgent from `config` and starts it. 422 with `{error, issues: [{field, message}]}` when the configuration is refused; refused when something already answers on the port |
 | `POST /api/engine/upgrade` | `{tag}` | 202. The same, then the swap to the new build with the applied configuration. A failed swap rolls back to the running build |
-| `POST /api/engine/cancel` | | stops a download, a verify or an unpack and removes the partial files. 409 once the swap has begun |
+| `POST /api/engine/cancel` | | stops an install or upgrade from the moment it is accepted, the port check before the download included, through the download, the verify and the unpack, and removes the partial files. 409 once the swap has begun, or when none is running |
 | `PUT /api/engine/config` | the configuration | validates, rewrites the LaunchAgent and restarts mlx-serve; answers when it is verified. 422 as above; a configuration the engine does not come up on is rolled back |
 | `PUT /api/engine/settings` | `{preReleases}` | whether pre-releases are offered |
 | `POST /api/engine/service` | `{op}`: `start`, `stop` or `restart` | `stop` unloads the job until `start` or the next login |

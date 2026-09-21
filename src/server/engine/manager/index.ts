@@ -117,7 +117,7 @@ export class EngineManager {
   shutdown() {
     const context = this.context;
     context.stopped = true;
-    context.active?.controller.abort();
+    context.abort?.abort();
     if (context.pollTimer !== null) {
       (context.deps.clearTimeout ?? clearTimeout)(context.pollTimer);
       context.pollTimer = null;
@@ -178,7 +178,7 @@ export class EngineManager {
   async cancel(): Promise<EnginePageState> {
     const context = this.context;
     this.assertLocal();
-    if (!context.operation || !context.active) {
+    if (!context.operation || !context.abort) {
       throw new EngineManagerError(409, "no install is running");
     }
     if (context.operation.phase === "restarting") {
@@ -187,7 +187,7 @@ export class EngineManager {
         "cancel is too late, mlx-serve is restarting",
       );
     }
-    context.active.controller.abort();
+    context.abort.abort();
     await context.activeTask;
     return this.pageState();
   }
@@ -318,6 +318,7 @@ export class EngineManager {
     const context = this.context;
     if (context.deps.lock.running()) this.busy();
     context.failure = null;
+    context.abort = new AbortController();
     context.operation = {
       kind,
       tag,
@@ -333,7 +334,7 @@ export class EngineManager {
           await operation();
         } catch (error) {
           const cancel =
-            context.active?.controller.signal.aborted === true &&
+            context.abort?.signal.aborted === true &&
             context.operation?.phase !== "restarting";
           if (context.operation?.phase !== "restarting") {
             await removeActive(context);
@@ -361,6 +362,7 @@ export class EngineManager {
           }
         } finally {
           context.operation = null;
+          context.abort = null;
           context.active = null;
           context.activeTask = null;
           this.publish();

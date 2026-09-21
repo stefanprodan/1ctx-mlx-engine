@@ -152,7 +152,7 @@ export async function activate(
     // A Cancel caught before the journal row: the job was never
     // touched, so there is nothing to restore and nothing failed.
     const cancelled =
-      context.active?.controller.signal.aborted === true &&
+      context.abort?.signal.aborted === true &&
       context.operation?.phase !== "restarting";
     if (cancelled) {
       context.deps.store.setPending(null);
@@ -188,7 +188,7 @@ export async function reloadConfig(
     home: context.home,
     onBeforeBootout: async (previous) => {
       // the last moment a Cancel can still mean "nothing happened"
-      if (context.active?.controller.signal.aborted) {
+      if (context.abort?.signal.aborted) {
         throw new EngineManagerError(409, "cancelled");
       }
       await markLog(context);

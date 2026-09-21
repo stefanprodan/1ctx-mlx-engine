@@ -93,6 +93,8 @@ type HarnessOptions = {
   token?: string | null;
   url?: string;
   holdReload?: Promise<void>;
+  // the port check waits for this, so a test can act during the preflight
+  holdProbe?: Promise<void>;
 };
 
 async function harness(options: HarnessOptions = {}) {
@@ -160,7 +162,10 @@ async function harness(options: HarnessOptions = {}) {
     retryDelayMs: 0,
     verifyStableMs: 1,
     verifyTimeoutMs: 5,
-    portProbe: async () => options.portInUse ?? false,
+    portProbe: async () => {
+      await options.holdProbe;
+      return options.portInUse ?? false;
+    },
     freeSpace: () => Number.MAX_SAFE_INTEGER,
     spawn: async (argv) => {
       if (argv[1] === "--version") {
@@ -394,25 +399,24 @@ describe("EngineManager install", () => {
 
   test("cancels a stalled download before the swap", async () => {
     const bytes = await archive();
-    const stalled = testServer(
-      () =>
-        new Response(new ReadableStream({ start() {} }), {
-          headers: { "content-length": String(bytes.length) },
-        }),
-    );
+    let asked = 0;
+    const stalled = testServer(() => {
+      asked++;
+      return new Response(new ReadableStream({ start() {} }), {
+        headers: { "content-length": String(bytes.length) },
+      });
+    });
     servers.push(stalled);
     const value = await harness({
       bytes,
       url: `http://127.0.0.1:${stalled.port}/asset`,
     });
     value.manager.install(value.tag, value.config);
-    for (let attempt = 0; attempt < 200; attempt++) {
-      if (value.manager.state().operation?.phase === "downloading") {
-        await Bun.sleep(1);
-        break;
-      }
+    // the download is under way once the server has the request
+    for (let attempt = 0; attempt < 2_000 && asked === 0; attempt++) {
       await Bun.sleep(1);
     }
+    expect(asked).toBe(1);
     await value.manager.cancel();
     expect(value.manager.state().operation).toBeNull();
     expect(value.manager.state().failure).toBeNull();
@@ -422,6 +426,26 @@ describe("EngineManager install", () => {
         join(value.engineRoot, "downloads", `${value.tag}.tar.gz.part`),
       ),
     ).toBeFalse();
+    value.history.close();
+  });
+
+  test("cancels in the preflight, before the download exists", async () => {
+    let release!: () => void;
+    const probing = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const value = await harness({ holdProbe: probing });
+    value.manager.install(value.tag, value.config);
+    // published as downloading the moment it is accepted, the page's Cancel
+    // is offered from here
+    expect(value.manager.state().operation?.phase).toBe("downloading");
+    const cancelled = value.manager.cancel();
+    release();
+    await cancelled;
+    expect(value.manager.state().operation).toBeNull();
+    expect(value.manager.state().failure).toBeNull();
+    expect(value.served?.hits()).toBe(0);
+    expect(value.bootouts()).toBe(0);
     value.history.close();
   });
 
