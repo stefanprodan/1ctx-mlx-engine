@@ -9,13 +9,8 @@
 import type { Sample } from "../../shared/sample.ts";
 import type { Snapshot } from "../../shared/socket.ts";
 import { DASH, diskSize, duration, gb, num, sizeText } from "../format.ts";
-import { absent, busy, connection } from "../store.ts";
-import {
-  engineLocal,
-  engineName,
-  restartBlocked,
-  runAction,
-} from "./actions.ts";
+import { absent, connection } from "../store.ts";
+import { engineLocal, engineName } from "./actions.ts";
 
 // a fact with an optional note; the dash carries no note
 function Fact({
@@ -67,35 +62,12 @@ export function RuntimeHead({
   s: Sample | null;
 }) {
   const local = engineLocal.value;
-  const blocked = restartBlocked.value;
   return (
     <div class="shead">
       <h2>Runtime</h2>
       <EngineState s={s} />
       <span class="hint">
         {snap?.host && !local ? "this machine, not the engine host" : ""}
-      </span>
-      <span class="grow" />
-      <span class="btns">
-        <button
-          type="button"
-          class="btn"
-          disabled={blocked !== "" || busy.value !== null}
-          title={blocked}
-          onClick={() => void runAction("free", null)}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5"
-            />
-          </svg>
-          Restart engine
-        </button>
       </span>
     </div>
   );

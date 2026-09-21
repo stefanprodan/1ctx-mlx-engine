@@ -23,6 +23,7 @@ import type {
   ChatTimings,
   Engine,
   EngineMetrics,
+  EngineModelMeta,
   EngineProps,
   HistogramSummary,
 } from "./types.ts";
@@ -102,6 +103,36 @@ export function parseModels(body: any): ModelInfo[] {
     }));
 }
 
+const numOrNull = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+// Pure: the /v1/models body → each model's meta, by id. Exported for tests.
+export function parseModelMeta(body: any): Map<string, EngineModelMeta> {
+  const data: any[] = Array.isArray(body?.data) ? body.data : [];
+  const out = new Map<string, EngineModelMeta>();
+  for (const m of data) {
+    if (typeof m?.id !== "string") continue;
+    const meta = typeof m.meta === "object" && m.meta !== null ? m.meta : {};
+    out.set(m.id, {
+      architecture:
+        typeof meta.architecture === "string" ? meta.architecture : null,
+      layers: numOrNull(meta.num_layers),
+      hiddenSize: numOrNull(meta.hidden_size),
+      vocab: numOrNull(meta.vocab_size),
+      maxTokens: numOrNull(meta.model_max_tokens),
+      isMoe: typeof meta.is_moe === "boolean" ? meta.is_moe : null,
+      mtpLoaded: typeof meta.mtp_loaded === "boolean" ? meta.mtp_loaded : null,
+      temperature: numOrNull(meta.gen_temperature),
+      topP: numOrNull(meta.gen_top_p),
+      topK: numOrNull(meta.gen_top_k),
+      inputs: Array.isArray(m.input_modalities)
+        ? m.input_modalities.filter((i: unknown) => typeof i === "string")
+        : [],
+    });
+  }
+  return out;
+}
+
 // Pure: a /v1/chat/completions answer → what the engine measured. The
 // llama.cpp-style `timings` object is on the chat path only (not on
 // /v1/completions); an answer without it cannot be benchmarked. Exported
@@ -179,6 +210,7 @@ export type MlxServeOptions = {
 export class MlxServe implements Engine {
   readonly id = "mlxserve" as const;
   readonly url: string;
+  private meta = new Map<string, EngineModelMeta>();
 
   constructor(
     url: string,
@@ -225,7 +257,12 @@ export class MlxServe implements Engine {
   async models(): Promise<ModelInfo[]> {
     const body = await this.get("/v1/models");
     if (!Array.isArray(body?.data)) throw new Error("/v1/models: no data");
+    this.meta = parseModelMeta(body);
     return parseModels(body);
+  }
+
+  modelMeta(): ReadonlyMap<string, EngineModelMeta> {
+    return this.meta;
   }
 
   async metrics(): Promise<EngineMetrics> {

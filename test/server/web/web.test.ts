@@ -174,6 +174,64 @@ describe("snapshot", () => {
   });
 });
 
+describe("models API", () => {
+  test("the engine's list with its meta and the download's revision", async () => {
+    const { deps, engine } = setup();
+    (engine as Engine).modelMeta = () =>
+      new Map([
+        [
+          MODEL,
+          {
+            architecture: "llama",
+            layers: 16,
+            hiddenSize: 2048,
+            vocab: 32000,
+            maxTokens: 8192,
+            isMoe: false,
+            mtpLoaded: null,
+            temperature: null,
+            topP: null,
+            topK: null,
+            inputs: ["text"],
+          },
+        ],
+      ]);
+    const lastDone = (repo: string) =>
+      repo === MODEL ? { revision: "abc", finishedAt: 9 } : null;
+    const read: string[] = [];
+    const withReader = {
+      ...deps,
+      downloads: { lastDone },
+      specs: {
+        read: async (id: string) => {
+          read.push(id);
+          return null;
+        },
+      },
+    } as unknown as WebDeps;
+    const res = await response(withReader, "/api/models");
+    expect(res.status).toBe(200);
+    const [spec] = await res.json();
+    expect(spec).toMatchObject({
+      id: MODEL,
+      modelType: "llama",
+      layers: 16,
+      maxPositions: 8192,
+      contextLength: 1000,
+      revision: "abc",
+      downloadedAt: 9,
+    });
+    expect(read).toEqual([MODEL]);
+    // a remote engine's files are not here: nothing is read
+    read.length = 0;
+    await response({ ...withReader, local: false }, "/api/models");
+    expect(read).toEqual([]);
+    expect(
+      (await response(deps, "/api/models", "POST", {}, "http://x")).status,
+    ).toBe(405);
+  });
+});
+
 describe("downloads API", () => {
   test("the snapshot says what the manager makes of the engine", () => {
     const s = setup();

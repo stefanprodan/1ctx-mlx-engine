@@ -21,6 +21,7 @@ import { createFileSink, createLog } from "./lib/log.ts";
 import { DEFAULT_PORT, tailscaleAddress } from "./lib/net.ts";
 import { loadKey, secretsDir } from "./lib/secrets.ts";
 import { Downloader } from "./models/download.ts";
+import { SpecReader } from "./models/read.ts";
 import { modelPath } from "./models/remove.ts";
 import { DownloadStore } from "./models/store.ts";
 import { History } from "./monitor/history.ts";
@@ -236,6 +237,7 @@ export async function runApp(
       currentLimits,
       host,
       modelDir: options.modelDir,
+      specs: new SpecReader(options.modelDir),
     },
     { hostname, port },
     page,

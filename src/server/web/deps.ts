@@ -11,6 +11,7 @@ import type { EngineManager } from "../engine/manager/index.ts";
 import type { Engine } from "../engine/types.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
 import type { Downloader } from "../models/download.ts";
+import type { SpecReader } from "../models/read.ts";
 import type { History } from "../monitor/history.ts";
 import type { Sampler } from "../monitor/sampler.ts";
 
@@ -37,6 +38,8 @@ export type WebDeps = {
   host: HostInfo | null;
   // where downloads land; null when the host cannot say (tests)
   modelDir: string | null;
+  // the checkpoints under modelDir, read for /api/models; local only
+  specs: SpecReader | null;
   now?: () => number;
 };
 
@@ -44,9 +47,10 @@ export type WebDeps = {
 // Production serve() requires the runner through WebDeps.
 export type HandleDeps = Omit<
   WebDeps,
-  "downloads" | "benchmarks" | "modelDir"
+  "downloads" | "benchmarks" | "modelDir" | "specs"
 > & {
   downloads?: Downloader;
   benchmarks?: BenchmarkRunner;
   modelDir?: string | null;
+  specs?: SpecReader | null;
 };

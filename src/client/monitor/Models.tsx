@@ -10,7 +10,7 @@ import type { VNode } from "preact";
 import type { ActionName } from "../../shared/actions.ts";
 import type { Capability, ModelInfo } from "../../shared/models.ts";
 import type { Snapshot } from "../../shared/socket.ts";
-import { orderModels, sizeText } from "../format.ts";
+import { modelSize, orderModels } from "../format.ts";
 import { Trash } from "../icons.tsx";
 import { absent, busy, downloads, follow } from "../store.ts";
 import { runAction } from "./actions.ts";
@@ -174,7 +174,7 @@ export function Models({ snap }: { snap: Snapshot | null }) {
           {models.map((m) => {
             const slash = m.id.lastIndexOf("/");
             const facts = [
-              sizeText(m.loaded ? m.bytesResident : m.bytesOnDisk),
+              modelSize(m.loaded ? m.bytesResident : m.bytesOnDisk),
             ];
             if (m.contextLength != null) {
               facts.push(`${Math.round(m.contextLength / 1024)}K ctx`);
@@ -222,7 +222,7 @@ export function Models({ snap }: { snap: Snapshot | null }) {
         // a bare host: the one sentence says what to do about it
         <p class="blank" hidden={!blank}>
           mlx-serve is not installed.{" "}
-          <a href="/engine" onClick={(e) => follow(e, "/engine")}>
+          <a href="/server" onClick={(e) => follow(e, "/server")}>
             Install
           </a>
         </p>

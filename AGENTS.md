@@ -232,6 +232,11 @@ src/server/
   models/error.ts    DownloadError, the status a route answers with
   models/remove.ts   pure path work and the delete of a model's checkpoint:
                      the id is checked against --model-dir, never followed
+  models/spec.ts     pure: config.json, the generation config, the card's
+                     license, the parameter count from safetensors
+                     headers, the join with the engine's meta
+  models/read.ts     SpecReader: a checkpoint's files read under the
+                     delete's path rules, headers only, cached by mtime
   service/plist.ts   pure LaunchAgent XML rendering
   service/launchd.ts injected launchctl verbs, status parse, atomic write and
                      the ordered staged reload sequence
@@ -239,6 +244,7 @@ src/server/
                      LaunchAgent
   engine/types.ts    the Engine interface and the normalised metric types
   engine/mlxserve.ts mlx-serve adapter: parseMetrics/parseModels/parseProps
+                     and parseModelMeta (kept from the same /v1/models read)
                      (pure, tested), the HTTP client, load/unload, cache dir
                      and log paths, props() under rule 1; the service
                      label is the managed one only once 1ctx-mlx-engine owns it
@@ -266,6 +272,7 @@ src/server/
                      from serve() for tests
   web/engine.ts      the /api/engine routes and /api/self/restart
   web/downloads.ts   /api/downloads and its sub-routes
+  web/models.ts      GET /api/models: the list with each model's spec
   web/benchmarks.ts  /api/benchmarks and its sub-routes
   web/http.ts        the JSON answer, HttpError, the bounded body read,
                      sameOrigin
@@ -309,8 +316,8 @@ src/client/
   monitor/           Monitor.tsx (the page: range, series and tile memory
                      signals), Tiles.tsx, Charts.tsx (uPlot in a ref),
                      Models.tsx, Runtime.tsx, RangePicker.tsx, RequestBar.tsx,
-                     Event.tsx, Download.tsx (the download dialog and the
-                     rows in the models table), monitor.css; the pure, tested
+                     Event.tsx, Download.tsx (the download rows in the
+                     models table), monitor.css; the pure, tested
                      tiles.ts (seed/apply and the eight tiles), range.ts,
                      series.ts, request.ts, download.ts (the row copy);
                      actions.ts (runAction, confirmText, engine facts)
@@ -326,7 +333,13 @@ src/client/
                      (the signals and the calls); the pure, tested
                      report.ts (the cells, the deltas, the text report)
                      and scorecard.ts (the rows, the bars, the best)
-  engine/            Engine.tsx (the page), Self.tsx, Service.tsx (the
+  models/            Models.tsx (the page: the Hub download form and the
+                     downloads, the models on the grid, a row opening to
+                     its spec and the actions), models.css; state.ts (the
+                     specs and their fetch), downloads.ts (the download
+                     calls, the Overview's rows share them); the pure,
+                     tested spec.ts (the join, order, filters, groups)
+  engine/            Engine.tsx (the Server page), Self.tsx, Service.tsx (the
                      mlx-serve head), Build.tsx (facts and the one row that
                      is a release, an operation or a failure), Progress.tsx,
                      Config.tsx (the form and its foot), Fields.tsx (its
@@ -338,9 +351,9 @@ test/                bun test suites: server/, client/ (pure modules and
                      render-to-string checks) and shared/ mirror src/;
                      fixtures/ holds recorded engine bodies; structure.ts
                      and structure.test.ts are the layout rules
-docs/                user docs: monitor, benchmark, api (keep in step with
-                     src/server/web/), development; internal/studio.md is
-                     the Studio guide
+docs/                user docs: monitor, models, engine, benchmark, api
+                     (keep in step with src/server/web/), development;
+                     internal/studio.md is the Studio guide
 scripts/             preview.sh, install.sh (the one install path: download,
                      verify, place the binary, `service install --restart`),
                      deploy-studio.sh (build, copy, then the same command)
@@ -380,9 +393,10 @@ Data flow: adapter (`/metrics.json`, `/v1/models`) → `Reading` →
 `buildSample` → History (ring + SQLite) and listeners → `/api/snapshot`,
 `/api/history` and the `/ws` push → the page. Actions go the other way: a
 button → confirm dialog → `POST /api/actions/<name>` → `Actions.run` → an
-event on `/ws` that every tab shows. A download: the dialog → `POST
-/api/downloads` → `Downloader` → `{type: "download"}` on `/ws` → the row
-in the models table of every tab.
+event on `/ws` that every tab shows. A download: the Models page's form →
+`POST /api/downloads` → `Downloader` → `{type: "download"}` on `/ws` →
+the rows on the Models page and in the Overview's models table of every
+tab.
 
 ## mlx-serve specifics worth knowing
 

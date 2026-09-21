@@ -27,6 +27,10 @@ export const sizeText = (b: number) => {
   const s = size(b);
   return `${s.value} ${s.unit}`;
 };
+// A model's size in a list row: whole GB, a checkpoint is 5 GB, not 5.1
+// (the opened row has the decimal); MB under 1 GB, where whole GB says 0.
+export const modelSize = (b: number) =>
+  b >= GB ? `${Math.round(b / GB)} GB` : sizeText(b);
 export const diskSize = (b: number) =>
   b >= 1e12 ? `${(b / 1e12).toFixed(1)} TB` : `${Math.round(b / 1e9)} GB`;
 export const num = (n: number | null | undefined, d = 0) =>

@@ -3,7 +3,7 @@
 //
 // 1ctx's rail, as the engine needs it: the logo with the button that
 // folds it, every page as a row (Overview and Requests under Monitor,
-// Run and Scorecard under Benchmark), and the user row at the bottom
+// Models and Server under Engine, Run and Scorecard under Benchmark), and the user row at the bottom
 // with its menu. Folded on a wide window it is a strip with the pages as
 // icons. Below 720 it is a full screen
 // opened by a button that floats over the page; while it is open the
@@ -31,13 +31,15 @@ import "./rail.css";
 const ICON: Record<Page, IconName> = {
   monitor: "grid",
   requests: "swap",
-  engine: "chip",
+  models: "cube",
+  server: "server",
   run: "play",
   scorecard: "bars",
 };
 
 const SECTION_ICON: Record<Section, IconName> = {
   Monitor: "pulse",
+  Engine: "chip",
   Benchmark: "gauge",
 };
 

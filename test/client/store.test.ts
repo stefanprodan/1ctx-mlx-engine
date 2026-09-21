@@ -43,7 +43,9 @@ describe("store", () => {
   test("pageOf names the view from the path", () => {
     expect(pageOf("/")).toBe("monitor");
     expect(pageOf("/requests")).toBe("requests");
-    expect(pageOf("/engine")).toBe("engine");
+    expect(pageOf("/models")).toBe("models");
+    expect(pageOf("/server")).toBe("server");
+    expect(pageOf("/engine")).toBe("monitor");
     expect(pageOf("/benchmark")).toBe("run");
     expect(pageOf("/benchmark/scorecard")).toBe("scorecard");
     expect(pageOf("/requests/")).toBe("monitor");

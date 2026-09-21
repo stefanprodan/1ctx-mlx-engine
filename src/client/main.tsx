@@ -11,6 +11,7 @@ import { render } from "preact";
 import { BenchmarkRun, BenchmarkScorecard } from "./benchmark/Benchmark.tsx";
 import { fetchRuns } from "./benchmark/state.ts";
 import { Engine } from "./engine/Engine.tsx";
+import { Models } from "./models/Models.tsx";
 import { Monitor, trackMonitor } from "./monitor/Monitor.tsx";
 import { fetchRequests, Requests } from "./requests/Requests.tsx";
 import { Confirm } from "./shell/Confirm.tsx";
@@ -25,7 +26,8 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const TITLE: Record<Page, string> = {
   monitor: "1ctx-mlx-engine",
   requests: "1ctx-mlx-engine · requests",
-  engine: "1ctx-mlx-engine · engine",
+  models: "1ctx-mlx-engine · models",
+  server: "1ctx-mlx-engine · server",
   run: "1ctx-mlx-engine · benchmark",
   scorecard: "1ctx-mlx-engine · scorecard",
 };
@@ -33,7 +35,8 @@ const TITLE: Record<Page, string> = {
 function Current() {
   const p = page.value;
   if (p === "requests") return <Requests />;
-  if (p === "engine") return <Engine />;
+  if (p === "models") return <Models />;
+  if (p === "server") return <Engine />;
   if (p === "run") return <BenchmarkRun />;
   if (p === "scorecard") return <BenchmarkScorecard />;
   return <Monitor />;

@@ -1,17 +1,13 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// Model downloads: the dialog that asks for a Hub repo, the rows the models
-// table shows while a download is queued, running, stopped or waiting to be
-// listed, and the calls behind their buttons. The server owns the download;
-// the rows follow the /ws download messages through the store.
+// The rows the Overview's models table shows while a download is queued,
+// running, stopped or waiting to be listed. Downloads start on the Models
+// page; the calls are models/downloads.ts.
 
-import { signal } from "@preact/signals";
-import { useEffect, useRef } from "preact/hooks";
 import type { Download } from "../../shared/downloads.ts";
 import { Trash } from "../icons.tsx";
-import { confirm } from "../shell/Confirm.tsx";
-import { applyDownload, downloads, snapshot } from "../store.ts";
+import { controlDownload } from "../models/downloads.ts";
 import {
   downloadDot,
   downloadMeta,
@@ -23,158 +19,6 @@ const ICON = {
   play: "M5 3l9 5-9 5z",
   pause: "M4 3h3v10H4zM9 3h3v10H9z",
 };
-
-const open = signal(false);
-const sending = signal(false);
-const error = signal("");
-// the last download that failed to start or to be controlled from this tab,
-// for the line under the table
-export const downloadError = signal<{
-  t: number;
-  repo: string;
-  text: string;
-} | null>(null);
-
-export function openDownload() {
-  error.value = "";
-  open.value = true;
-}
-
-async function call(path: string, method: string, body?: unknown) {
-  const res = await fetch(path, {
-    method,
-    headers: { "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = (await res.json()) as
-    | Download
-    | { ok: true }
-    | { error: string };
-  if (!res.ok) {
-    throw new Error((data as { error: string }).error ?? `HTTP ${res.status}`);
-  }
-  return data;
-}
-
-async function start(repo: string): Promise<boolean> {
-  sending.value = true;
-  error.value = "";
-  try {
-    applyDownload((await call("/api/downloads", "POST", { repo })) as Download);
-    return true;
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err);
-    return false;
-  } finally {
-    sending.value = false;
-  }
-}
-
-async function control(p: Download, what: "cancel" | "retry" | "remove") {
-  try {
-    if (what === "cancel") {
-      applyDownload(
-        (await call(`/api/downloads/${p.id}/cancel`, "POST", {})) as Download,
-      );
-    } else if (what === "retry") {
-      applyDownload(
-        (await call("/api/downloads", "POST", { repo: p.repo })) as Download,
-      );
-    } else {
-      // the files go too, whatever the state: a delete is a delete
-      const a = await confirm(
-        ["Are you sure you want to delete ", { code: p.repo }, "?"],
-        "Delete",
-      );
-      if (!a.ok) return;
-      await call(`/api/downloads/${p.id}`, "DELETE");
-      downloads.value = downloads.value.filter((x) => x.id !== p.id);
-    }
-  } catch (err) {
-    downloadError.value = {
-      t: Date.now(),
-      repo: p.repo,
-      text: err instanceof Error ? err.message : String(err),
-    };
-  }
-}
-
-export function DownloadDialog() {
-  const dlg = useRef<HTMLDialogElement>(null);
-  const input = useRef<HTMLInputElement>(null);
-  const isOpen = open.value;
-  // the page can go while the dialog is open (back, forward): it must not
-  // come back open with the Overview
-  useEffect(
-    () => () => {
-      open.value = false;
-    },
-    [],
-  );
-  useEffect(() => {
-    const d = dlg.current;
-    if (!d) return;
-    if (isOpen && !d.open) {
-      if (input.current) input.current.value = "";
-      d.showModal();
-    } else if (!isOpen && d.open) {
-      d.close();
-    }
-  }, [isOpen]);
-  const submit = async (e: Event) => {
-    e.preventDefault();
-    const repo = input.current?.value.trim() ?? "";
-    if (repo === "") return;
-    if (await start(repo)) open.value = false;
-  };
-  return (
-    <dialog
-      id="download"
-      ref={dlg}
-      onClose={() => {
-        open.value = false;
-      }}
-    >
-      <form onSubmit={(e) => void submit(e)}>
-        <p>Download a model from the Hugging Face Hub</p>
-        <label class="field">
-          <span class="lbl">Repository</span>
-          <input
-            ref={input}
-            id="download-repo"
-            name="repo"
-            type="text"
-            placeholder="owner/name or huggingface.co URL"
-            autocomplete="off"
-            spellcheck={false}
-            required
-          />
-        </label>
-        <p class="note">
-          local storage:{" "}
-          <code>{snapshot.value?.modelDir ?? "the model directory"}</code>
-        </p>
-        <p class="err" hidden={error.value === ""}>
-          {error.value}
-        </p>
-        <div class="row">
-          <button
-            type="button"
-            class="btn"
-            onClick={() => {
-              open.value = false;
-            }}
-          >
-            Cancel
-          </button>
-          <button type="submit" class="btn primary" disabled={sending.value}>
-            Download
-          </button>
-        </div>
-      </form>
-    </dialog>
-  );
-}
 
 function Icon({
   label,
@@ -234,7 +78,7 @@ export function DownloadRow({ p }: { p: Download }) {
           class="ibtn trash danger"
           title="Delete"
           aria-label="Delete"
-          onClick={() => void control(p, "remove")}
+          onClick={() => void controlDownload(p, "remove")}
         >
           <Trash />
         </button>
@@ -242,14 +86,14 @@ export function DownloadRow({ p }: { p: Download }) {
           <Icon
             label="Pause"
             glyph={ICON.pause}
-            onClick={() => void control(p, "cancel")}
+            onClick={() => void controlDownload(p, "cancel")}
           />
         ) : (
           p.status !== "done" && (
             <Icon
               label="Resume"
               glyph={ICON.play}
-              onClick={() => void control(p, "retry")}
+              onClick={() => void controlDownload(p, "retry")}
             />
           )
         )}

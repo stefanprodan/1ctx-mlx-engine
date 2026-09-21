@@ -1,9 +1,9 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
+import { downloadError } from "../models/downloads.ts";
 import { downloads, event, snapshot } from "../store.ts";
 import { ACTION_LABEL } from "./actions.ts";
-import { downloadError } from "./Download.tsx";
 
 const fmtWhen = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",

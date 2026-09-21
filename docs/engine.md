@@ -1,6 +1,6 @@
 # Engine
 
-The Engine page installs, configures, runs and upgrades one mlx-serve on
+The Server page installs, configures, runs and upgrades one mlx-serve on
 the machine 1ctx-mlx-engine runs on. It needs `--engine` to point at this host;
 for a remote engine the page is read-only and says so.
 

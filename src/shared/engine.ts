@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The contract between the engine manager and the Engine page: what
+// The contract between the engine manager and the Server page: what
 // GET /api/engine answers, what {type: "engine"} carries on /ws, and the
 // bodies the management routes take. Types only, so the page can import
 // it without dragging the manager into the bundle.

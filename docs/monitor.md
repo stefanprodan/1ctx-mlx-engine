@@ -1,14 +1,14 @@
 # Monitor and Requests
 
 The rail on the left lists every page: Overview (`/`) and Requests
-(`/requests`) under Monitor, then Engine, then Run (`/benchmark`) and
-Scorecard (`/benchmark/scorecard`) under Benchmark. The button at its
+(`/requests`) under Monitor, Models (`/models`) and Server (`/server`)
+under Engine, then Run (`/benchmark`) and Scorecard
+(`/benchmark/scorecard`) under Benchmark. The button at its
 top folds it to a strip of the same pages as icons, and the page
 remembers that choice. On a phone the rail opens full screen from the
 button at the top left. The head over each page names it and stays put
 while the page scrolls. The Admin menu at the rail's foot restarts the
-engine, as Restart engine in the Runtime head does, and links to the
-source.
+engine and links to the source.
 
 ## Overview
 
@@ -19,8 +19,8 @@ same series.
 On a host with no mlx-serve installed the page says so: the Models and
 Runtime pills read `not installed` where a stopped engine reads
 `unreachable` and `offline`, the request bar reads `no engine`, Restart
-engine is off, and the Models card links to the Engine page. A visit that
-lands on `/` from outside goes to the Engine page directly; Overview in
+engine is off, and the Models card links to the Server page. A visit that
+lands on `/` from outside goes to the Server page directly; Overview in
 the rail still opens it.
 
 - **Tiles**: requests served, tokens generated, prefill and decode tok/s,
@@ -53,19 +53,16 @@ the rail still opens it.
   daily-driver toggle and a load into an empty
   engine run at once; loading next to a resident model asks first and
   shows the estimated engine memory after the load (its footprint now
-  plus the model's weights); the rest ask for confirmation. The Download
-  button in the section head asks for a Hugging Face repository
-  (`owner/name` or its URL) and fetches it into the model directory
-  (`--model-dir`); the download is a row at the top of the table with the
-  bytes so far, the speed, the time left, a delete button (asks first;
-  stops the download and removes its files) and a pause button, which
-  becomes resume once it stopped. A finished download becomes the
-  model's own row once the engine lists it. A download that fails says
-  why under the table.
+  plus the model's weights); the rest ask for confirmation. Downloads
+  start on the [Models page](models.md); one in progress is also a row at
+  the top of this table with the bytes so far, the speed, the time left,
+  a delete button (asks first; stops the download and removes its files)
+  and a pause button, which becomes resume once it stopped. A finished
+  download becomes the model's own row once the engine lists it. A
+  download that fails says why under the table.
 - **Runtime**: the engine process (build, pid, RSS, CPU, GPU, weights)
-  next to host facts (OS, chip, cores, GPU cores, memory, disk), plus
-  Restart engine and Clear disk cache. Those two and the process probes
-  only work when the engine runs on the same host. The build comes from
+  next to host facts (OS, chip, cores, GPU cores, memory, disk). The
+  process probes only work when the engine runs on the same host. The build comes from
   the engine itself, asked once while a model is resident (asking an idle
   engine would make it load one), and kept in the database, so a restarted
   engine with nothing loaded still shows the build it last reported.

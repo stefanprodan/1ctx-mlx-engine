@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   MlxServe,
   parseMetrics,
+  parseModelMeta,
   parseModels,
   parseOutput,
   parseProps,
@@ -46,6 +47,40 @@ describe("parseMetrics", () => {
     expect(empty.gauges.memoryBytes).toBe(0);
     expect(empty.histograms.ttftSeconds).toEqual({ count: 0, sum: 0 });
     expect(parseMetrics(null).gauges.gpuPct).toBe(0);
+  });
+});
+
+describe("parseModelMeta", () => {
+  test("the meta of every model, by id", () => {
+    const meta = parseModelMeta(modelsFixture);
+    expect(meta.size).toBe(3);
+    expect(
+      meta.get("stefanprodan/Ornith-1.5-35B-A3B-BigBang-oQ4e-mtp"),
+    ).toEqual({
+      architecture: "qwen3_5_moe",
+      layers: 40,
+      hiddenSize: 2048,
+      vocab: 248320,
+      maxTokens: 262144,
+      isMoe: true,
+      mtpLoaded: true,
+      temperature: 1,
+      topP: 0.95,
+      topK: 20,
+      inputs: ["text", "image", "video"],
+    });
+    // the unloaded one carries no sampling
+    expect(
+      meta.get("stefanprodan/Apodex-1.1-mini-oQ4e-mtp")?.temperature,
+    ).toBeNull();
+  });
+
+  test("a model with no meta has nulls, junk has nothing", () => {
+    const meta = parseModelMeta({ data: [{ id: "a/b" }, { id: 3 }] });
+    expect([...meta.keys()]).toEqual(["a/b"]);
+    expect(meta.get("a/b")?.layers).toBeNull();
+    expect(meta.get("a/b")?.inputs).toEqual([]);
+    expect(parseModelMeta(null).size).toBe(0);
   });
 });
 

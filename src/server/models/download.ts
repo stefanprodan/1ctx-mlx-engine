@@ -118,6 +118,11 @@ export class Downloader {
     return download ? this.stamp(download) : null;
   }
 
+  // what the Models page says of a checkpoint this program downloaded
+  lastDone(repo: string): Download | null {
+    return this.deps.store.lastDone(repo);
+  }
+
   running(): Download | null {
     return this.active ? this.get(this.active.id) : null;
   }

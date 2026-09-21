@@ -18,6 +18,7 @@ import type { HandleDeps, WebDeps } from "./deps.ts";
 import { downloadsRoute } from "./downloads.ts";
 import { engineRoute, selfRestartRoute } from "./engine.ts";
 import { body, HttpError, json, sameOrigin } from "./http.ts";
+import { modelsRoute } from "./models.ts";
 
 const SAMPLES_TOPIC = "samples";
 
@@ -103,6 +104,7 @@ export async function handle(
     ) {
       return await downloadsRoute(req, deps);
     }
+    if (url.pathname === "/api/models") return await modelsRoute(req, deps);
     if (
       url.pathname === "/api/benchmarks" ||
       url.pathname.startsWith("/api/benchmarks/")
@@ -164,7 +166,8 @@ export function serve(
     routes: {
       "/": page,
       "/requests": page,
-      "/engine": page,
+      "/models": page,
+      "/server": page,
       "/benchmark": page,
       "/benchmark/scorecard": page,
     },
