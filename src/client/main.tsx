@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The page's entry, bundled by Bun from index.html. The rail, the page
-// head, the footer, the page and the confirm dialog are Preact roots. The socket opens last,
+// head, the page, the Overview's footer and the confirm dialog are Preact
+// roots. The socket opens last,
 // once every subscriber is in place.
 
 import { effect } from "@preact/signals";
@@ -28,7 +29,10 @@ effect(() => {
 });
 render(<Side page={page} />, $("rail"));
 render(<Head page={page} />, $("head"));
-render(<Footer />, $("foot"));
+// the version and the credits close the Overview alone; the other pages
+// end with their last card
+if (page === "monitor") render(<Footer />, $("foot"));
+else $("foot").remove();
 // one dialog for every page and the rail's menu, outside #main so the
 // drawer's inert never reaches it
 render(<Confirm />, $("dialogs"));
