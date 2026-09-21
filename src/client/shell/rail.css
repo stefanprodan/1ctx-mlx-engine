@@ -311,8 +311,6 @@
     font-family: var(--mono);
     font-size: 11px;
     line-height: 1.5;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
     color: var(--rail-faint);
   }
   .crumb-sep {
@@ -322,8 +320,6 @@
     font-family: var(--sans);
     font-size: 13px;
     font-weight: 500;
-    letter-spacing: 0;
-    text-transform: none;
     color: var(--rail-fg);
     white-space: nowrap;
   }

@@ -80,16 +80,16 @@ describe("shell", () => {
     );
   });
 
-  test("the head names the page, under Monitor for its two", () => {
+  test("the head names the page under 1ctx, and Monitor for its two", () => {
     const crumb = (page: Page) =>
       render(<Head page={page} />)
         .replace(/<[^>]+>/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-    expect(crumb("monitor")).toBe("Monitor / Overview");
-    expect(crumb("requests")).toBe("Monitor / Requests");
-    expect(crumb("engine")).toBe("Engine");
-    expect(crumb("benchmark")).toBe("Benchmark");
+    expect(crumb("monitor")).toBe("1ctx / Monitor / Overview");
+    expect(crumb("requests")).toBe("1ctx / Monitor / Requests");
+    expect(crumb("engine")).toBe("1ctx / Engine");
+    expect(crumb("benchmark")).toBe("1ctx / Benchmark");
     expect(render(<Head page="engine" />)).toContain(
       '<span class="crumb-page">Engine</span>',
     );

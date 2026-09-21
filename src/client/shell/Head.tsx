@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 //
-// The page head, 1ctx's crumb: stuck to the top of the window over the
+// The page head, 1ctx's crumb under the 1ctx root: stuck to the top of the window over the
 // page column, with a shadow once the page has scrolled under it.
 
 import { useSignal } from "@preact/signals";
@@ -23,6 +23,8 @@ export function Head({ page }: { page: Page }) {
     <div class={`page-head${stuck.value ? " page-head-stuck" : ""}`}>
       <div class="page-head-in">
         <div class="crumb">
+          <span>1ctx</span>
+          <span class="crumb-sep">/</span>
           {p.section && (
             <>
               <span>{p.section}</span>
