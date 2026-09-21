@@ -363,7 +363,8 @@ async function fileBytes(path: string): Promise<Uint8Array<ArrayBuffer>> {
 
 describe("Downloader", () => {
   test("downloads every file, verifies it and tells the engine", async () => {
-    const { r, events } = runner();
+    const restored: string[] = [];
+    const { r, events } = runner({ restored: (repo) => restored.push(repo) });
     const download = await r.start(`https://huggingface.co/${REPO}/tree/main`);
     expect(download.status).toBe("queued");
     expect(download.repo).toBe(REPO);
@@ -391,6 +392,8 @@ describe("Downloader", () => {
     );
     expect(engine.rescans).toBe(1);
     expect(refreshed).toBe(1);
+    // a deleted mark on the same model no longer holds
+    expect(restored).toEqual([REPO]);
     expect(hub.requests.every((q) => q.auth === "Bearer hf_test")).toBe(true);
     expect(hub.requests.every((q) => q.range === null)).toBe(true);
     const kinds = events.map((e) => e.status);
@@ -609,6 +612,53 @@ describe("Downloader", () => {
 
     await expect(r.remove(999)).rejects.toBeInstanceOf(DownloadError);
     await expect(r.cancel(999)).rejects.toBeInstanceOf(DownloadError);
+  });
+
+  test("a model delete asks first, then forgets the records", async () => {
+    const { r } = runner();
+    // in flight: the files must stay where the download is writing them
+    hub.faults.set("model.safetensors", { holdAfter: 10_000 });
+    const running = await r.start(REPO);
+    await hub.holding();
+    expect(r.blocking(REPO)).toMatch(/is downloading/);
+    await hub.release();
+    await settled(r, running.id);
+    hub.faults.delete("model.safetensors");
+    const done = await settled(r, (await r.start(REPO)).id);
+    expect(done.status).toBe("done");
+    // finished, failed or cancelled: the delete may go ahead
+    expect(r.blocking(REPO)).toBeNull();
+    // every record of the repo goes, whatever it ended as
+    const kept = r.list().length;
+    expect(kept).toBeGreaterThanOrEqual(2);
+    expect(r.forget(REPO)).toBe(kept);
+    expect(r.list()).toEqual([]);
+    expect(r.forget(REPO)).toBe(0);
+  });
+
+  test("a model delete holds the repo: no start until the release", async () => {
+    const { r } = runner();
+    const release = r.hold(REPO.toUpperCase());
+    await expect(r.start(REPO)).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/is being deleted/),
+    });
+    release();
+    const done = await settled(r, (await r.start(REPO)).id);
+    expect(done.status).toBe("done");
+  });
+
+  test("one repo in any case is one repo", async () => {
+    const { r } = runner();
+    hub.faults.set("model.safetensors", { holdAfter: 10_000 });
+    const running = await r.start(REPO);
+    await hub.holding();
+    // APFS is case insensitive: the same directory
+    expect(r.blocking(REPO.toUpperCase())).toMatch(/is downloading/);
+    await hub.release();
+    await settled(r, running.id);
+    expect(r.forget(REPO.toUpperCase())).toBe(1);
+    expect(r.list()).toEqual([]);
   });
 
   test("files already whole on disk are not fetched again", async () => {

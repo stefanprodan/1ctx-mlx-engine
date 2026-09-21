@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -39,6 +39,7 @@ class ControlEngine implements Engine {
     "default",
     "restart",
     "diskClear",
+    "rescan",
   ]);
   label: string | null = "com.fake.engine";
   dirs: string[] = [];
@@ -70,6 +71,9 @@ class ControlEngine implements Engine {
     if (this.failNext) throw new Error(this.failNext);
     this.set(id, false);
   }
+  async rescan() {
+    this.calls.push("rescan");
+  }
   capabilities() {
     return this.caps;
   }
@@ -95,6 +99,16 @@ async function setup(local = true) {
   const logs: string[] = [];
   const spawned: string[][] = [];
   const cleared: string[] = [];
+  // a real model directory: delete works on files, not on an injected fake
+  const modelDir = await mkdtemp(join(tmpdir(), "1ctx-models-"));
+  for (const id of [QWEN, APODEX, ORNITH]) {
+    const dir = join(modelDir, ...id.split("/"));
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "model.safetensors"), "weights");
+  }
+  const forgotten: string[] = [];
+  const held: string[] = [];
+  let downloading: string | null = null;
   const lock = new ExclusiveLock();
   const actions = new Actions({
     engine,
@@ -105,6 +119,19 @@ async function setup(local = true) {
     lock,
     uid: 501,
     now: () => 5000,
+    modelDir,
+    downloads: () => ({
+      hold: (repo) => {
+        held.push(repo);
+        return () => held.splice(held.indexOf(repo), 1);
+      },
+      blocking: (repo) =>
+        repo === downloading ? `${repo} is downloading` : null,
+      forget: (repo) => {
+        forgotten.push(repo);
+        return 1;
+      },
+    }),
     spawn: async (cmd) => {
       spawned.push(cmd);
       return { code: 0, stderr: "" };
@@ -123,6 +150,12 @@ async function setup(local = true) {
     logs,
     spawned,
     cleared,
+    modelDir,
+    forgotten,
+    held,
+    download: (repo: string | null) => {
+      downloading = repo;
+    },
   };
 }
 
@@ -151,7 +184,7 @@ describe("Actions", () => {
     expect(events).toEqual([ev]);
     expect(s.actions.events).toEqual([ev]);
     expect(s.logs).toEqual([
-      `action unload ${QWEN}: ok in 0 ms (unloaded; ${ORNITH} is the default)`,
+      `action unload ${QWEN}: ok in 0 ms (unloaded, ${ORNITH} is the default)`,
     ]);
     s.history.close();
   });
@@ -231,10 +264,15 @@ describe("Actions", () => {
     s.history.close();
   });
 
-  test("free and diskClear need a local engine", async () => {
+  test("free, diskClear and delete need a local engine", async () => {
     const s = await setup(false);
     await rejects(s.actions.run("free", {}), 403, /on this host/);
     await rejects(s.actions.run("diskClear", {}), 403, /on this host/);
+    await rejects(
+      s.actions.run("delete", { model: APODEX }),
+      403,
+      /on this host/,
+    );
     // adapter actions still work remotely
     await s.actions.run("unload", { model: QWEN });
     expect(s.spawned).toEqual([]);
@@ -266,6 +304,160 @@ describe("Actions", () => {
     expect(s.spawned).toHaveLength(1);
     expect(s.cleared).toEqual(["/tmp/a", "/tmp/b"]);
     expect(ev.detail).toBe("restarted, removed 4 cache dirs");
+    s.history.close();
+  });
+
+  test("delete removes the checkpoint and the owner dir it empties", async () => {
+    const s = await setup();
+    await s.actions.run("unload", { model: QWEN });
+    s.engine.calls = [];
+    const ev = await s.actions.run("delete", { model: QWEN });
+    expect(ev).toMatchObject({ action: "delete", model: QWEN, ok: true });
+    expect(ev.detail).toMatch(/^deleted \d+\.\d GB$/);
+    // Jundot held only this model; the other owner keeps its two
+    expect((await readdir(s.modelDir)).sort()).toEqual(["stefanprodan"]);
+    expect(await readdir(join(s.modelDir, "stefanprodan"))).toHaveLength(2);
+    // the records would resume the weights back into the gap
+    expect(s.forgotten).toEqual([QWEN]);
+    // no download of it may start while it runs, and the hold is released
+    expect(s.held).toEqual([]);
+    // a rescan only adds: the engine is not asked
+    expect(s.engine.calls).toEqual([]);
+    s.history.close();
+  });
+
+  test("delete refuses a resident model and keeps its files", async () => {
+    const s = await setup();
+    await rejects(s.actions.run("delete", { model: QWEN }), 400, /is loaded/);
+    expect(await readdir(join(s.modelDir, ...QWEN.split("/")))).toEqual([
+      "model.safetensors",
+    ]);
+    expect(s.forgotten).toEqual([]);
+    s.history.close();
+  });
+
+  test("delete asks the engine again: a load since the last list counts", async () => {
+    const s = await setup();
+    // loaded straight through the engine, after the sampler's last list
+    const m = s.engine.list.find((m) => m.id === APODEX)!;
+    m.loaded = true;
+    m.state = "ready";
+    await rejects(s.actions.run("delete", { model: APODEX }), 400, /is loaded/);
+    expect(await readdir(join(s.modelDir, ...APODEX.split("/")))).toEqual([
+      "model.safetensors",
+    ]);
+    expect(s.forgotten).toEqual([]);
+    expect(s.held).toEqual([]);
+    s.history.close();
+  });
+
+  test("delete refuses while the repo is downloading", async () => {
+    const s = await setup();
+    s.download(APODEX);
+    await rejects(
+      s.actions.run("delete", { model: APODEX }),
+      409,
+      /is downloading/,
+    );
+    expect(await readdir(join(s.modelDir, ...APODEX.split("/")))).toEqual([
+      "model.safetensors",
+    ]);
+    s.history.close();
+  });
+
+  test("delete refuses a model that is not in the model directory", async () => {
+    const s = await setup();
+    // the engine scans it from somewhere this program did not download into
+    await rm(join(s.modelDir, ...APODEX.split("/")), { recursive: true });
+    await rejects(
+      s.actions.run("delete", { model: APODEX }),
+      404,
+      /is not in /,
+    );
+    s.history.close();
+  });
+
+  test("a deleted model stays listed, marked, and cannot load", async () => {
+    const s = await setup();
+    await s.actions.run("favorite", { model: APODEX });
+    await s.actions.run("delete", { model: APODEX });
+    // a daily driver that cannot load is no daily driver
+    expect(s.history.favorite()).toBeNull();
+    const row = () => s.sampler.currentModels().find((m) => m.id === APODEX);
+    // the fake engine still lists it, as mlx-serve does after a rescan
+    await s.sampler.refreshModels();
+    expect(row()).toMatchObject({ deleted: true, state: "deleted" });
+    for (const name of ["load", "default", "delete", "favorite"] as const) {
+      await rejects(s.actions.run(name, { model: APODEX }), 400, /is deleted/);
+    }
+    // our own restart keeps the mark: the engine process is the same
+    const again = new Sampler(s.engine, s.history, { now: () => 1000 });
+    await again.tick();
+    expect(again.currentModels().find((m) => m.id === APODEX)?.deleted).toBe(
+      true,
+    );
+    // a download of the same repo puts the files back
+    s.sampler.unmarkDeleted(APODEX);
+    expect(row()?.deleted).toBeUndefined();
+    expect(row()?.state).not.toBe("deleted");
+    s.history.close();
+  });
+
+  test("a new engine process drops a mark only once the files are back", async () => {
+    const s = await setup();
+    const epoch = s.sampler.currentEpoch();
+    // a mark from another epoch: a restart detected after the delete, which
+    // may have walked the directory while the files were still there
+    s.history.saveDeleted(new Map([[APODEX, epoch + 1]]));
+    const gone = new Sampler(s.engine, s.history, {
+      now: () => 1000,
+      modelOnDisk: () => false,
+    });
+    await gone.tick();
+    expect(gone.currentModels().find((m) => m.id === APODEX)?.deleted).toBe(
+      true,
+    );
+    // the mark moves to the epoch it was checked in
+    expect(s.history.loadDeleted().get(APODEX)).toBe(epoch);
+    s.history.saveDeleted(new Map([[APODEX, epoch + 1]]));
+    const back = new Sampler(s.engine, s.history, {
+      now: () => 1000,
+      modelOnDisk: (id) => id === APODEX,
+    });
+    await back.tick();
+    expect(
+      back.currentModels().find((m) => m.id === APODEX)?.deleted,
+    ).toBeUndefined();
+    expect(s.history.loadDeleted().size).toBe(0);
+    s.history.close();
+  });
+
+  test("a deleted model that is resident keeps the mark, only unload", async () => {
+    const s = await setup();
+    await s.actions.run("delete", { model: APODEX });
+    // its unlinked weights mapped by a load that raced the delete
+    const m = s.engine.list.find((m) => m.id === APODEX)!;
+    m.loaded = true;
+    m.state = "ready";
+    await s.sampler.refreshModels();
+    const row = s.sampler.currentModels().find((m) => m.id === APODEX);
+    expect(row).toMatchObject({ deleted: true, state: "ready" });
+    await rejects(
+      s.actions.run("favorite", { model: APODEX }),
+      400,
+      /is deleted/,
+    );
+    const ev = await s.actions.run("unload", { model: APODEX });
+    expect(ev.ok).toBe(true);
+    s.history.close();
+  });
+
+  test("a mark goes when the engine stops listing the model", async () => {
+    const s = await setup();
+    await s.actions.run("delete", { model: APODEX });
+    s.engine.list = s.engine.list.filter((m) => m.id !== APODEX);
+    await s.sampler.refreshModels();
+    expect(s.history.loadDeleted().size).toBe(0);
     s.history.close();
   });
 
@@ -328,7 +520,10 @@ describe("Actions", () => {
       const body =
         name === "unload"
           ? { model: QWEN }
-          : name === "load" || name === "default" || name === "favorite"
+          : name === "load" ||
+              name === "default" ||
+              name === "favorite" ||
+              name === "delete"
             ? { model: APODEX }
             : {};
       await rejects(s.actions.run(name, body), 409, /upgrade is still running/);

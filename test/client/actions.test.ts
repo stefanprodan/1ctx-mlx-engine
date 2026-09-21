@@ -9,12 +9,15 @@ const ctx = {
   loadedCount: 1,
   diskTotal: 3 * 2 ** 30,
   loadBytes: 36.5 * 2 ** 30,
+  modelBytes: 4.2 * 2 ** 30,
+  modelDir: "/Users/x/models",
 };
 
 describe("actions", () => {
   test("every action has a label", () => {
     expect(Object.keys(ACTION_LABEL).sort()).toEqual([
       "default",
+      "delete",
       "diskClear",
       "favorite",
       "free",
@@ -44,6 +47,11 @@ describe("actions", () => {
       " the default model? It is loaded if needed and chat requests without a model go to it.",
     ]);
     expect(confirmText("unload", "org/m", ctx)).toEqual([]);
+    expect(confirmText("delete", "org/m", ctx)).toEqual([
+      "Delete ",
+      { code: "org/m" },
+      "? Its 4.2 GB are removed from /Users/x/models. The engine lists it as deleted until it restarts.",
+    ]);
     expect(confirmText("historyClear", null, ctx)).toEqual([
       "Delete the stored history? Every sample of the last 7 days is removed from 1ctx-mlx-engine's database and the graphs start over.",
     ]);

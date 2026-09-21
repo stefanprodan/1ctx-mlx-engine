@@ -23,6 +23,7 @@ export const ACTION_LABEL: Record<ActionName, string> = {
   load: "load",
   unload: "unload",
   default: "set default",
+  delete: "delete",
   free: "restart engine",
   diskClear: "clear disk cache",
   historyClear: "clear history",
@@ -59,7 +60,14 @@ export type ConfirmContext = {
   // the engine's footprint after the load: what it holds now plus the
   // model's weights, which are mmap'd whole from disk
   loadBytes: number;
+  // what a delete frees and where from
+  modelBytes: number;
+  modelDir: string;
 };
+
+export function modelBytes(model: string | null): number {
+  return snapshot.value?.models.find((m) => m.id === model)?.bytesOnDisk ?? 0;
+}
 
 export function loadEstimate(model: string | null): number {
   const s = sample.value ?? snapshot.value?.sample ?? null;
@@ -92,6 +100,12 @@ export function confirmText(
         "Make ",
         m,
         ` the default model? It is loaded if needed and chat requests without a model go to it.${evict}`,
+      ];
+    case "delete":
+      return [
+        "Delete ",
+        m,
+        `? Its ${gb(ctx.modelBytes)} GB are removed from ${ctx.modelDir}. The engine lists it as deleted until it restarts.`,
       ];
     case "unload":
       return []; // frees only, no dialog
@@ -134,6 +148,8 @@ export async function runAction(action: ActionName, model: string | null) {
         loadedCount: loadedCount.value,
         diskTotal: diskTotal.value,
         loadBytes: loadEstimate(model),
+        modelBytes: modelBytes(model),
+        modelDir: snapshot.value?.modelDir ?? "the model directory",
       }),
       label[0].toUpperCase() + label.slice(1),
       action === "free" && canDiskClear

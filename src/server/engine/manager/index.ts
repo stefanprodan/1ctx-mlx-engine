@@ -184,7 +184,7 @@ export class EngineManager {
     if (context.operation.phase === "restarting") {
       throw new EngineManagerError(
         409,
-        "cancel is too late; mlx-serve is restarting",
+        "cancel is too late, mlx-serve is restarting",
       );
     }
     context.active.controller.abort();

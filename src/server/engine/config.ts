@@ -209,8 +209,8 @@ export function validateConfig(
     issue(
       issues,
       "host",
-      `1ctx-mlx-engine reaches mlx-serve at ${validation.engineHost}; ` +
-        "a loopback-only listener would hide it.",
+      `1ctx-mlx-engine reaches mlx-serve at ${validation.engineHost}. ` +
+        "A loopback-only listener would hide it.",
     );
   }
   if (config.modelDirs.length < 1 || config.modelDirs.length > 8) {

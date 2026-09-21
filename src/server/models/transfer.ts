@@ -220,7 +220,7 @@ async function hashFile(
 
 function statusError(status: number): Error {
   if (status === 401 || status === 403) {
-    return new DownloadError(403, "gated or private repo; add hf.key");
+    return new DownloadError(403, "gated or private repo, add hf.key");
   }
   if (status === 404)
     return new DownloadError(404, "file not found on the Hub");

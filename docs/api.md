@@ -60,15 +60,19 @@ detail}`.
 | `load` | `{"model": "<id>"}` | load a model and make it the engine default |
 | `unload` | `{"model": "<id>"}` | unload it; a model still resident becomes the default |
 | `default` | `{"model": "<id>"}` | make a model the default, loading it if needed |
+| `delete` | `{"model": "<id>"}` | delete an unloaded model from `--model-dir` and forget its downloads (local engine only) |
 | `free` | none | restart the engine service to free its RAM (local engine only) |
 | `diskClear` | none | restart, then delete the SSD cache tier contents (local engine only) |
 | `historyClear` | none | wipe 1ctx-mlx-engine's own sample history |
 | `requestsClear` | none | wipe the stored requests and the last request in the bar; samples are kept |
 | `favorite` | `{"model": "<id>"}` | toggle the daily-driver star |
 
-Errors are `{"error": "<sentence>"}` with 400 (bad input), 403
-(cross-origin), 404 (unknown model or action), 409 (another action runs) or
-501 (the engine lacks the capability or is remote).
+Errors are `{"error": "<sentence>"}` with 400 (bad input, an unknown
+model, a delete of a resident model, or any action but unload on a deleted
+one), 403 (cross-origin, the engine lacks the capability, or the action
+needs a local engine), 404 (unknown action, or a model that is not in
+`--model-dir`) or 409 (another action runs, or a download of the model is in
+flight).
 
 ## Downloads
 
@@ -86,7 +90,7 @@ directory.
 | Route | Body | Answer |
 |---|---|---|
 | `GET /api/downloads` | | the last 20 downloads, newest first |
-| `POST /api/downloads` | `{repo}`: `owner/name` or a huggingface.co URL | 202, the queued download; the same repository again resumes its failed or cancelled download, and answers 409 while one is queued or running |
+| `POST /api/downloads` | `{repo}`: `owner/name` or a huggingface.co URL | 202, the queued download; the same repository again resumes its failed or cancelled download, and answers 409 while one is queued or running, or while a model delete of it runs |
 | `GET /api/downloads/<id>` | | the download |
 | `POST /api/downloads/<id>/cancel` | | the download, paused: its parts stay on disk and a new POST for the repository resumes it. 409 when it is not queued or running |
 | `DELETE /api/downloads/<id>` | | `{ok: true}`; a running download is stopped first, then its files, partial or finished, and its record are deleted |

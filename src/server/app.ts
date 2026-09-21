@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import page from "../client/index.html";
 import type { EnginePageState } from "../shared/engine.ts";
@@ -21,6 +21,7 @@ import { createFileSink, createLog } from "./lib/log.ts";
 import { DEFAULT_PORT, tailscaleAddress } from "./lib/net.ts";
 import { loadKey, secretsDir } from "./lib/secrets.ts";
 import { Downloader } from "./models/download.ts";
+import { modelPath } from "./models/remove.ts";
 import { DownloadStore } from "./models/store.ts";
 import { History } from "./monitor/history.ts";
 import { takeSample } from "./monitor/sample.ts";
@@ -99,7 +100,15 @@ export async function runApp(
   const history = new History(options.dbPath, options.retentionDays);
   const store = new EngineStore(history.db);
   engineStore = store;
-  const sampler = new Sampler(engine, history, { log, probes, local });
+  const sampler = new Sampler(engine, history, {
+    log,
+    probes,
+    local,
+    modelOnDisk: (id) => {
+      const dir = modelPath(options.modelDir, id);
+      return dir !== null && existsSync(dir);
+    },
+  });
   const currentLimits = () => {
     const managed = store.managed() ? store.config().applied : null;
     const managedLimits = managed
@@ -133,6 +142,9 @@ export async function runApp(
     local,
     log,
     lock,
+    modelDir: options.modelDir,
+    // built below; a delete forgets what the downloader knows of the model
+    downloads: () => downloads,
   });
   const downloads = new Downloader({
     store: new DownloadStore(history.db),
@@ -140,6 +152,7 @@ export async function runApp(
     token: hubToken,
     engine,
     refreshModels: () => sampler.refreshModels(),
+    restored: (repo) => sampler.unmarkDeleted(repo),
     log,
     // a download moves gigabytes through the same disk and memory bus
     blocked: () =>

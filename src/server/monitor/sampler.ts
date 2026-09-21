@@ -48,6 +48,8 @@ export type SamplerOptions = {
   probes?: HostProbes;
   // engine runs on this host: probe its pid and size its cache dirs
   local?: boolean;
+  // whether a deleted model's files are back under the model directory
+  modelOnDisk?: (id: string) => boolean;
 };
 
 // A reading that is only a counter baseline (t=0, no gauges or histograms):
@@ -93,7 +95,16 @@ export class Sampler {
   // open requests and the last finished one, for the request bar
   private requests: RequestState = EMPTY_REQUESTS;
   private epoch: number;
+  // the engine's list as it answered, and the same list stamped with the
+  // marks below, which is what everything else reads
+  private listed: ModelInfo[] = [];
   private models: ModelInfo[] = [];
+  // models whose files were deleted while this engine process listed them:
+  // mlx-serve lists what it walked at start and a rescan only adds, so the
+  // row stays until the process restarts or a download brings the files
+  // back. Id to the epoch the mark was last checked in, kept in the
+  // database so our own restart does not offer a load that cannot work.
+  private deleted: Map<string, number>;
   private ticksSinceModels = MODELS_EVERY_TICKS; // fetch on the first tick
   // what the engine stated about its own process, read once per process
   // while a model was resident (see readProps); seeded from the database,
@@ -117,6 +128,7 @@ export class Sampler {
   private readonly log: Log;
   private readonly probes: HostProbes;
   private readonly local: boolean;
+  private readonly modelOnDisk: (id: string) => boolean;
 
   constructor(
     private readonly engine: Engine,
@@ -127,11 +139,13 @@ export class Sampler {
     this.log = (opts.log ?? (() => {})) as Log;
     this.probes = opts.probes ?? NULL_PROBES;
     this.local = opts.local ?? false;
+    this.modelOnDisk = opts.modelOnDisk ?? (() => false);
     // Carry the epoch and the last counters across our own restarts, so the
     // first reading after a restart still detects an engine restart that
     // happened while we were down.
     const state = history.loadSamplerState();
     this.epoch = state.epoch;
+    this.deleted = history.loadDeleted();
     this.requests = { ...EMPTY_REQUESTS, last: state.lastRequest };
     // the list may predate this request (a database from before the list
     // existed): the write is idempotent
@@ -155,19 +169,54 @@ export class Sampler {
     return this.models;
   }
 
-  // A fresh list from the engine: record it and stamp the user's favorite.
+  // A fresh list from the engine: record it, settle the deleted marks and
+  // stamp them. A mark goes when the engine stops listing the id. A new
+  // epoch alone is not enough: a restart the sampler detects only after the
+  // delete walked the directory while the files were still there, so the
+  // new process lists the model too. The mark goes then only if the files
+  // are back, and otherwise moves to the new epoch.
   private setModels(list: ModelInfo[]) {
-    this.history.syncModels(
-      list.map((m) => m.id),
-      this.now(),
-    );
-    this.stampFavorite(list);
+    const ids = list.map((m) => m.id);
+    this.history.syncModels(ids, this.now());
+    let changed = false;
+    for (const [id, epoch] of this.deleted) {
+      if (epoch === this.epoch && ids.includes(id)) continue;
+      if (!ids.includes(id) || this.modelOnDisk(id)) this.deleted.delete(id);
+      else this.deleted.set(id, this.epoch);
+      changed = true;
+    }
+    if (changed) this.history.saveDeleted(this.deleted);
+    this.listed = list;
+    this.stampModels();
   }
 
-  // The favorite changed (or the list did): re-stamp without a fetch.
-  stampFavorite(list: ModelInfo[] = this.models) {
+  // The favorite or a deleted mark changed (or the list did): re-stamp
+  // without a fetch. A deleted model says so in place of the engine's word,
+  // unless it is resident (its unlinked weights are still mapped): then the
+  // state is the engine's and only unload is left.
+  stampModels() {
     const fav = this.history.favorite();
-    this.models = list.map((m) => ({ ...m, favorite: m.id === fav }));
+    this.models = this.listed.map((m) => {
+      const out = { ...m, favorite: m.id === fav };
+      if (!this.deleted.has(m.id)) return out;
+      return { ...out, deleted: true, state: m.loaded ? m.state : "deleted" };
+    });
+  }
+
+  // The model's files are gone but this engine process still lists it. A
+  // daily driver that cannot load is no daily driver: the star goes too.
+  markDeleted(id: string) {
+    this.deleted.set(id, this.epoch);
+    this.history.saveDeleted(this.deleted);
+    if (this.history.favorite() === id) this.history.toggleFavorite(id);
+    this.stampModels();
+  }
+
+  // A download put the model's files back.
+  unmarkDeleted(id: string) {
+    if (!this.deleted.delete(id)) return;
+    this.history.saveDeleted(this.deleted);
+    this.stampModels();
   }
 
   currentDisk(): DiskDir[] {
@@ -338,6 +387,7 @@ export class Sampler {
         this.requests = { ...EMPTY_REQUESTS, last: this.requests.last };
         this.phase = "idle";
         this.phaseSince = null;
+        this.listed = [];
         this.models = [];
         // it may come back a different build, with other budgets: ask the
         // new process once a model is resident again

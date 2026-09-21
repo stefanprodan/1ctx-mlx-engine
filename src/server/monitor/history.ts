@@ -264,6 +264,30 @@ export class History {
       .run({ v: JSON.stringify(props) });
   }
 
+  // The models deleted from disk that the engine still lists, each with the
+  // epoch of the engine process that listed it (see Sampler.markDeleted).
+  loadDeleted(): Map<string, number> {
+    const row = this.db
+      .query("SELECT value FROM meta WHERE key = 'deleted'")
+      .get() as { value: string } | null;
+    const out = new Map<string, number>();
+    if (!row) return out;
+    try {
+      for (const [id, epoch] of Object.entries(JSON.parse(row.value))) {
+        if (typeof epoch === "number") out.set(id, epoch);
+      }
+    } catch {
+      // a bad row marks nothing
+    }
+    return out;
+  }
+
+  saveDeleted(marks: Map<string, number>) {
+    this.db
+      .query("INSERT OR REPLACE INTO meta (key, value) VALUES ('deleted', $v)")
+      .run({ v: JSON.stringify(Object.fromEntries(marks)) });
+  }
+
   // The engine's current model list: new ids are added, ids the engine no
   // longer lists are dropped along with their favorite flag.
   syncModels(ids: string[], now = Date.now()) {

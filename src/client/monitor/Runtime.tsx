@@ -84,7 +84,7 @@ export function RuntimeHead({
               ? ""
               : absent.value
                 ? "mlx-serve is not installed"
-                : "restarts the engine service; only for a local engine"
+                : "restarts the engine service, local engine only"
           }
           onClick={() => void runAction("free", null)}
         >

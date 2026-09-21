@@ -7,6 +7,7 @@ export const ACTION_NAMES = [
   "load",
   "unload",
   "default",
+  "delete",
   "free",
   "diskClear",
   "historyClear",

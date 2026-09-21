@@ -6,10 +6,12 @@
 // Activity is engine-wide (the engine does not say which model is busy)
 // and lives in the section head, see Monitor.tsx.
 
+import type { VNode } from "preact";
 import type { ActionName } from "../../shared/actions.ts";
 import type { Capability, ModelInfo } from "../../shared/models.ts";
 import type { Snapshot } from "../../shared/socket.ts";
 import { orderModels, sizeText } from "../format.ts";
+import { Trash } from "../icons.tsx";
 import { absent, busy, downloads } from "../store.ts";
 import { runAction } from "./actions.ts";
 import { DownloadRow } from "./Download.tsx";
@@ -40,15 +42,21 @@ function dotFor(state: string) {
 function IconButton({
   label,
   glyph,
+  icon,
   action,
   model,
   cls = "",
+  disabled = false,
 }: {
   label: string;
-  glyph: string;
+  glyph?: string;
+  // an icon component for the buttons whose glyph is shared with another
+  // table (the trash, which a download row has too)
+  icon?: VNode;
   action: ActionName;
   model: string;
   cls?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -56,27 +64,52 @@ function IconButton({
       class={`ibtn ${cls}`.trim()}
       title={label}
       aria-label={label}
-      disabled={busy.value !== null}
+      disabled={disabled || busy.value !== null}
       onClick={() => void runAction(action, model)}
     >
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <path d={glyph} />
-      </svg>
+      {icon ?? (
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d={glyph} />
+        </svg>
+      )}
     </button>
   );
 }
 
-// Icon buttons with the action as tooltip and label: the favorite star on
-// every model, then load for an unloaded one or unload for a resident one.
+// Icon buttons with the action as tooltip and label: delete in the column
+// the download rows put it in, the favorite star on every model, then load
+// for an unloaded one or unload for a resident one. Delete is for a model
+// on this host, and only while it is not resident: the weights are mapped
+// into the engine until it is unloaded. A deleted model stays listed until
+// the engine restarts (a rescan only adds), so its row keeps the buttons in
+// place, disabled, the star included (the delete took the mark off).
 function Buttons({
   m,
   can,
+  local,
 }: {
   m: ModelInfo;
   can: (c: Capability) => boolean;
+  local: boolean;
 }) {
   return (
     <td class="act">
+      {local && (
+        <IconButton
+          label={
+            m.deleted
+              ? "Deleted"
+              : m.loaded
+                ? "Unload before deleting"
+                : "Delete"
+          }
+          icon={<Trash />}
+          action="delete"
+          model={m.id}
+          cls="trash danger"
+          disabled={m.loaded || m.deleted}
+        />
+      )}
       {m.favorite ? (
         <IconButton
           label="Daily driver"
@@ -87,10 +120,11 @@ function Buttons({
         />
       ) : (
         <IconButton
-          label="Mark as daily driver"
+          label={m.deleted ? "Deleted" : "Mark as daily driver"}
           glyph={ICON.star}
           action="favorite"
           model={m.id}
+          disabled={m.deleted}
         />
       )}
       {m.loaded
@@ -105,10 +139,11 @@ function Buttons({
           )
         : can("load") && (
             <IconButton
-              label="Load"
+              label={m.deleted ? "Deleted, gone at the next restart" : "Load"}
               glyph={ICON.play}
               action="load"
               model={m.id}
+              disabled={m.deleted}
             />
           )}
     </td>
@@ -118,6 +153,8 @@ function Buttons({
 export function Models({ snap }: { snap: Snapshot | null }) {
   const models = orderModels(snap?.models ?? []);
   const can = (c: Capability) => snap?.engine.capabilities.includes(c) ?? false;
+  // the files are this host's, so a remote engine's models are not deletable
+  const local = snap?.engine.local ?? false;
   // rows sit on top: a running one is the row that changes
   const rows = visibleDownloads(downloads.value, models);
   // the list is empty while the engine is unreachable (the sampler drops
@@ -143,7 +180,10 @@ export function Models({ snap }: { snap: Snapshot | null }) {
               facts.push(`${Math.round(m.contextLength / 1024)}K ctx`);
             }
             return (
-              <tr key={m.id} class={m.loaded ? "ready" : undefined}>
+              <tr
+                key={m.id}
+                class={m.loaded ? "ready" : m.deleted ? "deleted" : undefined}
+              >
                 <td class="name" title={m.id}>
                   <div>
                     <span class={`dot ${dotFor(m.state)}`} />
@@ -162,8 +202,17 @@ export function Models({ snap }: { snap: Snapshot | null }) {
                   </div>
                 </td>
                 <td class="meta">{facts.join(" · ")}</td>
-                <td class={`state ${m.state}`}>{m.state}</td>
-                <Buttons m={m} can={can} />
+                <td
+                  class={`state ${m.state}`}
+                  title={
+                    m.deleted
+                      ? "Its files are gone. The engine drops it at the next restart."
+                      : undefined
+                  }
+                >
+                  {m.state}
+                </td>
+                <Buttons m={m} can={can} local={local} />
               </tr>
             );
           })}
