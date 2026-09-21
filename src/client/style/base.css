@@ -9,13 +9,7 @@
     margin: 0;
     background: var(--bg);
     color: var(--fg);
-    font:
-      15px / 1.6 ui-sans-serif,
-      system-ui,
-      -apple-system,
-      "SF Pro Text",
-      Inter,
-      sans-serif;
+    font: 15px / 1.6 var(--sans);
   }
 
   button {
