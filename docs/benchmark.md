@@ -63,8 +63,9 @@ Each figure is the median of the three repetitions.
 | Warm prefill | the same on the later turns, over the tokens that were not cached; a turn that prefilled under 256 tokens is left out |
 | Decode | generated tokens per second over the whole session, reasoning included |
 
-A phone keeps Prefill and Decode, and under the model the preset in place
-of the date.
+A card too narrow for every column (a phone, or a tablet beside the
+rail) keeps Prefill and Decode, and under the model the preset in place of
+the date.
 
 The top of the runs card is a search: what is typed narrows the runs to
 the models whose id holds it, in any case, so `35B` finds every 35B model.

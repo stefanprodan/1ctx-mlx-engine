@@ -12,7 +12,18 @@ import { RequestBar } from "../../src/client/monitor/RequestBar.tsx";
 import { Runtime } from "../../src/client/monitor/Runtime.tsx";
 import { Tiles } from "../../src/client/monitor/Tiles.tsx";
 import { PLACEHOLDER, type Tile } from "../../src/client/monitor/tiles.ts";
-import { Requests, requests } from "../../src/client/requests/Requests.tsx";
+import {
+  requestGroups,
+  requestTag,
+  requestWhy,
+} from "../../src/client/requests/list.ts";
+import {
+  Requests,
+  requestOutcome,
+  requestQuery,
+  requests,
+} from "../../src/client/requests/Requests.tsx";
+import { GridDetail } from "../../src/client/shell/Grid.tsx";
 import {
   busy,
   connection,
@@ -75,7 +86,7 @@ describe("request components", () => {
     expect(html).toContain('<span class="cur-total">3s · decoding</span>');
   });
 
-  test("requests renders its table, row details and blank line", () => {
+  test("requests renders its grid, the search and the blank line", () => {
     connection.value = "live";
     busy.value = null;
     event.value = {
@@ -86,29 +97,80 @@ describe("request components", () => {
       ms: 120,
       detail: "deleted 1 request",
     };
+    requestQuery.value = "";
+    requestOutcome.value = null;
     requests.value = [];
     const empty = render(<Requests />);
     expect(empty).toContain('<span class="pill live">live</span>');
     expect(empty).toContain('<section class="card" id="requests-live">');
-    expect(empty).toContain('<table id="requests" hidden>');
-    expect(empty).toContain('<th class="when">Finished</th>');
-    expect(empty).toContain('<th class="model">Model</th>');
-    expect(empty).toContain('<th class="num wide">Prefill</th>');
+    expect(empty).toContain('<section class="card grid-card">');
+    expect(empty).toContain('<div class="grid-find" hidden>');
+    expect(empty).toContain('<table id="requests" class="grid" hidden>');
+    expect(empty).toContain('<th class="grid-name">Model</th>');
+    expect(empty).toContain('<th class="fig ttft grid-wide">TTFT</th>');
+    expect(empty).toContain('<th class="fig prefill">Prefill</th>');
+    expect(empty).toContain('<th class="fig decode">Decode</th>');
     expect(empty).toContain('<p class="blank">No requests yet.</p>');
     // the action line belongs to the monitor
     expect(empty).not.toContain('class="event');
 
-    requests.value = [last];
+    requests.value = [
+      last,
+      { ...last, finishedAt: last.finishedAt + 1, cancelled: true },
+    ];
     const filled = render(<Requests />);
-    expect(filled).toContain('<table id="requests">');
-    expect(filled).toContain('<td class="when"><span class="chev"></span>');
-    expect(filled).toContain('<td class="model" title="org/model">model</td>');
-    expect(filled).toContain('<td class="num cached">75%</td>');
-    expect(filled).toContain('<td class="num wide">1.0 s');
-    expect(filled).toContain('<tr class="detail" hidden>');
-    expect(filled).toContain('<div class="dgrid">');
-    expect(filled).toContain('<span class="k">Outcome</span>');
-    expect(filled).toContain('<p class="blank" hidden>No requests yet.</p>');
+    expect(filled).toContain('<div class="grid-find">');
+    expect(filled).toContain('placeholder="Search models"');
+    expect(filled).toContain(
+      '<nav class="grid-filters" aria-label="Outcome"><button type="button" class="on" aria-pressed="true">All</button>',
+    );
+    expect(filled).toContain('<table id="requests" class="grid">');
+    expect(filled).toContain(
+      '<span class="name" title="org/model">model</span>',
+    );
+    expect(filled).toContain(" · 1.0K tok · 75% cached");
+    expect(filled).toContain('<span class="note"> · cancelled</span>');
+    expect(filled).toContain('<td class="num fig ttft grid-wide">1200 ms</td>');
+    expect(filled).toContain('<td class="num fig prefill">250</td>');
+    expect(filled).toContain('<td class="num fig decode">20.0</td>');
+    expect(filled).toContain('<tr class="flagged">');
+    expect(filled).not.toContain('class="detail"');
+    expect(filled).toContain('<p class="blank" hidden>');
+
+    requestOutcome.value = "cancelled";
+    requestQuery.value = "other";
+    expect(render(<Requests />)).toContain(
+      '<p class="blank">No cancelled requests match other.</p>',
+    );
+    requestOutcome.value = null;
+    requestQuery.value = "";
+  });
+
+  test("an opened request shows the runs' panel", () => {
+    const html = render(
+      <table>
+        <tbody>
+          <GridDetail
+            span={4}
+            name="org/model"
+            tag={requestTag({ ...last, count: 2 })}
+            why={requestWhy({ ...last, cancelled: true })}
+            groups={requestGroups(last, () => "10:00:00")}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(html).toContain(
+      '<tr class="detail"><td colspan="4"><div class="dpanel">',
+    );
+    expect(html).toContain(
+      '<div class="dhead"><span class="dmodel">org/model</span><span class="dquant">2 requests in the same second</span></div>',
+    );
+    expect(html).toContain('<p class="dwhy">Cancelled by the client</p>');
+    expect(html).toContain("<h3>Timing</h3>");
+    expect(html).toContain(
+      '<div class="drow"><dt>Cached</dt><dd>750<span class="dim"> tok</span><span class="dim"> 75%</span></dd></div>',
+    );
   });
 
   test("tiles keep the CSS structure, the bars and the warn part", () => {

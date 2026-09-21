@@ -1,119 +1,6 @@
 @layer tokens, base, pages;
 
 @layer pages {
-  /* the search, the band over the runs table, as 1ctx draws a list's: no
-     box of its own, the glass where a row's chevron is and lit while it
-     has the focus, the text where the model is, the presets at the end */
-  .runs-find {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 44px;
-    padding: 0 8px;
-    border-bottom: 1px solid var(--line);
-  }
-  .runs-find[hidden] {
-    display: none;
-  }
-  .runs-q {
-    display: grid;
-    flex: 1;
-    grid-template-columns: 18px minmax(0, 1fr) auto;
-    align-items: center;
-    height: 100%;
-    min-width: 0;
-    color: var(--faint);
-    cursor: text;
-  }
-  .runs-q:focus-within {
-    color: var(--dim);
-  }
-  .runs-q > svg {
-    width: 14px;
-    height: 14px;
-  }
-  /* 1ctx's small segments in a card's head */
-  .runs-presets {
-    display: flex;
-    flex: none;
-    gap: 2px;
-    padding: 2px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-  }
-  .runs-presets button {
-    height: 24px;
-    padding: 0 8px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--faint);
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .runs-presets button:hover,
-  .runs-presets button.on {
-    color: var(--fg);
-  }
-  .runs-presets button.on {
-    background: #2a2c2f;
-  }
-  .runs-presets button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-  }
-  .runs-find input {
-    min-width: 0;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    outline: none;
-    background: transparent;
-    color: var(--fg);
-    font: inherit;
-    font-size: 14px;
-  }
-  .runs-find input::placeholder {
-    color: var(--faint);
-    opacity: 1;
-  }
-  .runs-q input::-webkit-search-cancel-button {
-    display: none;
-  }
-  .runs-clear {
-    display: inline-flex;
-    padding: 6px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--faint);
-    cursor: pointer;
-  }
-  .runs-clear[hidden] {
-    display: none;
-  }
-  .runs-clear svg {
-    width: 12px;
-    height: 12px;
-  }
-  .runs-clear:hover {
-    color: var(--fg);
-  }
-  .runs-clear:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-  }
-  @media (max-width: 600px) {
-    /* the rows' own inset on a phone */
-    .runs-find {
-      padding: 0 4px;
-    }
-    /* under 16px, Safari on iOS zooms the page into a field on focus */
-    .runs-find input {
-      font-size: 16px;
-    }
-  }
-
   /* the run card: one line of controls, or the run's progress */
   .bench-run {
     padding: 16px;
@@ -145,21 +32,10 @@
     color: var(--amber);
   }
 
-  /* the runs: the requests table's cells, plus a tick and the deltas */
-  /* fixed: every column keeps its width and the model cell takes what is
-     left, so a long name ellipsizes instead of pushing the figures out */
-  #benchmarks {
-    table-layout: fixed;
-    width: 100%;
-  }
-  #benchmarks td.pick,
-  #benchmarks th.pick {
-    width: 40px;
-    padding-left: 16px;
-  }
+  /* the runs: the grid, plus a tick to compare, the preset and the deltas */
   /* drawn here: Safari on iOS paints a native checkbox as a black box on a
      dark page */
-  #benchmarks td.pick input {
+  #benchmarks td.grid-end input {
     appearance: none;
     display: grid;
     place-content: center;
@@ -171,11 +47,11 @@
     background: var(--inset);
     cursor: pointer;
   }
-  #benchmarks td.pick input:checked {
+  #benchmarks td.grid-end input:checked {
     background: var(--accent);
     border-color: var(--accent);
   }
-  #benchmarks td.pick input:checked::after {
+  #benchmarks td.grid-end input:checked::after {
     content: "";
     width: 8px;
     height: 4px;
@@ -183,64 +59,17 @@
     border-bottom: 2px solid #0d1a2c;
     transform: translateY(-1px) rotate(-45deg);
   }
-  #benchmarks td.pick input:disabled {
+  #benchmarks td.grid-end input:disabled {
     opacity: 0.35;
     cursor: default;
   }
-  #benchmarks td.pick input:focus-visible {
+  #benchmarks td.grid-end input:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
-  /* a run: the model, and under it one quiet line of when and what */
-  #benchmarks th.run {
-    text-align: left;
-    padding-left: 26px;
-  }
-  #benchmarks td.run {
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-  .run-cell {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
-    align-items: center;
-    row-gap: 3px;
-  }
-  /* over both lines, so it sits level with the checkbox */
-  #benchmarks td.run .chev {
-    grid-row: 1 / span 2;
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    margin-left: 2px;
-    border-right: 1.5px solid var(--faint);
-    border-bottom: 1.5px solid var(--faint);
-    transform: rotate(-45deg);
-    transition: transform 0.12s;
-  }
-  #benchmarks tr.open td.run .chev {
-    transform: rotate(45deg);
-    border-color: var(--accent);
-  }
-  #benchmarks td.run .name {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--val);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  #benchmarks td.run .meta {
-    grid-column: 2;
-    font-size: 12px;
-    color: var(--faint);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
   /* the preset is what a run is compared on: a pill, like the page's
      others, so a 20K and a 60K row read apart at a glance */
-  #benchmarks td.run .preset {
+  #benchmarks .grid-cell .preset {
     display: inline-block;
     margin-left: 8px;
     padding: 0 7px;
@@ -252,23 +81,9 @@
     letter-spacing: 0.02em;
     color: var(--accent);
   }
-  #benchmarks td.run .note {
-    color: var(--amber);
-  }
   /* in progress is no warning: the accent, as a running row on the Monitor */
-  #benchmarks td.run .note.running {
+  #benchmarks .grid-cell .note.running {
     color: var(--accent);
-  }
-  /* the figures are what the page is for: the tiles' bold mono values */
-  #benchmarks th.fig {
-    width: 15%;
-  }
-  #benchmarks td.fig {
-    font-family: var(--mono);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--val);
-    vertical-align: middle;
   }
   #benchmarks td.fig .delta {
     display: block;
@@ -284,83 +99,7 @@
   #benchmarks td.fig .delta.worse {
     color: var(--amber);
   }
-  #benchmarks tbody tr:not(.detail) {
-    cursor: pointer;
-  }
 
-  /* the opened row: the model on top, then every figure in groups of
-     label and value lines, the same shape at every width */
-  .dpanel {
-    padding: 14px 16px 16px;
-    background: var(--inset);
-    border: 1px solid var(--line-2);
-    border-radius: 8px;
-  }
-  .dhead {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    min-width: 0;
-  }
-  .dmodel {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--val);
-    overflow-wrap: anywhere;
-  }
-  .dquant {
-    flex: none;
-    font-size: 12px;
-    color: var(--faint);
-  }
-  .dwhy {
-    margin: 8px 0 0;
-    font-size: 12.5px;
-    color: var(--amber);
-  }
-  .dgroups {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px 32px;
-    margin-top: 16px;
-  }
-  .dpanel h3 {
-    margin: 0 0 6px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--line-2);
-    font-size: 10px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--cap);
-  }
-  .dgroup dl {
-    margin: 0;
-  }
-  .drow {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    padding: 3px 0;
-    font-size: 12.5px;
-  }
-  .drow dt {
-    flex: none;
-    color: var(--faint);
-  }
-  .drow dd {
-    margin: 0;
-    min-width: 0;
-    text-align: right;
-    color: var(--val);
-    font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
-  }
-  .drow .dim {
-    font-size: 11.5px;
-    color: var(--faint);
-  }
   .dargs {
     margin-top: 18px;
   }
@@ -397,45 +136,36 @@
     margin-top: 12px;
     justify-content: flex-end;
   }
-  @media (max-width: 860px) {
+  /* the card's width, not the window's: the turns and the runs' cells
+     live in the grid's card */
+  @container (max-width: 780px) {
     .turns .wide {
       display: none;
     }
-    .dgroups {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @container (max-width: 540px) {
+    /* the preset and the status tell two runs apart; the opened row has
+       the date */
+    #benchmarks .grid-cell .when {
+      display: none;
+    }
+    #benchmarks .grid-cell .preset {
+      margin-left: 0;
+    }
+    .turns td,
+    .turns th {
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+    .turns-head {
+      margin-left: 4px;
+    }
+    /* nearly always the ceiling; the opened row's report has it */
+    .turns .gen {
+      display: none;
     }
   }
   @media (max-width: 600px) {
-    #benchmarks td.fig,
-    #benchmarks th.fig {
-      width: 24%;
-      font-size: 13px;
-    }
-    /* a phone keeps the two rates; the opened row has the rest. The two
-       columns stay, at no width: the opened row spans every column, and a
-       column taken out with display: none comes back as an empty one that
-       takes its width from the model */
-    #benchmarks th.fig.warmPrefillTps,
-    #benchmarks td.fig.warmPrefillTps,
-    #benchmarks th.fig.coldLatencyMs,
-    #benchmarks td.fig.coldLatencyMs {
-      width: 0;
-      padding: 0;
-      overflow: hidden;
-      white-space: nowrap;
-      visibility: hidden;
-    }
-    #benchmarks th.fig {
-      font-size: 10px;
-    }
-    /* the preset and the status tell two runs apart; the opened row has
-       the date */
-    #benchmarks td.run .when {
-      display: none;
-    }
-    #benchmarks td.run .preset {
-      margin-left: 0;
-    }
     .bench-run {
       padding: 12px;
     }
@@ -450,42 +180,5 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    #benchmarks td.pick,
-    #benchmarks th.pick {
-      width: 30px;
-      padding-left: 10px;
-      padding-right: 2px;
-    }
-    #benchmarks th.run {
-      padding-left: 22px;
-    }
-    .turns td,
-    .turns th {
-      padding-left: 4px;
-      padding-right: 4px;
-    }
-    .turns-head {
-      margin-left: 4px;
-    }
-    .dpanel {
-      padding: 12px;
-    }
-    .dgroups {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 14px;
-      margin-top: 12px;
-    }
-    /* nearly always the ceiling; the opened row's report has it */
-    .turns .gen {
-      display: none;
-    }
-  }
-
-  /* last: the most specific selectors on these cells */
-  #benchmarks tr.open td {
-    border-bottom: 0;
-  }
-  #benchmarks tbody tr:not(.detail):hover td {
-    background: rgba(255, 255, 255, 0.02);
   }
 }

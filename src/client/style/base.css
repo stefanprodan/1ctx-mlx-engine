@@ -254,7 +254,7 @@
     background: var(--red);
   }
 
-  /* models, requests */
+  /* the models table and the scorecard; a grid has its own card */
   .card.models,
   .card.requests {
     padding: 4px 16px;

@@ -297,7 +297,11 @@ src/client/
                      crumb), shell.ts (narrow, folded and drawer signals),
                      Footer.tsx, Pill.tsx, Confirm.tsx (the dialog with a
                      promise API), Select.tsx (the one select, a button and
-                     a listbox, never a native one), shell.css, rail.css
+                     a listbox, never a native one), Grid.tsx (the one
+                     design of a list of figures, the Requests history and
+                     the benchmark runs: the card, its search and filters,
+                     the rows, the opened row's groups, grid.css), shell.css,
+                     rail.css
   monitor/           Monitor.tsx (the page: range, series and tile memory
                      signals), Tiles.tsx, Charts.tsx (uPlot in a ref),
                      Models.tsx, Runtime.tsx, RangePicker.tsx, RequestBar.tsx,
@@ -306,7 +310,9 @@ src/client/
                      tiles.ts (seed/apply and the eight tiles), range.ts,
                      series.ts, request.ts, download.ts (the row copy);
                      actions.ts (runAction, confirmText, engine facts)
-  requests/          Requests.tsx, Row.tsx, requests.css
+  requests/          Requests.tsx (the page, on the grid), requests.css;
+                     the pure, tested list.ts (the search, the figures, the
+                     opened row's groups)
   benchmark/         Benchmark.tsx (the page), Run.tsx (the card: what to
                      run, or how far it is), Scorecard.tsx (a model per
                      row at a preset, scorecard.css), Runs.tsx (the

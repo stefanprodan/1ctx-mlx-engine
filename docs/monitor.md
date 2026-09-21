@@ -75,15 +75,19 @@ the bar and the tiles describe the engine as a whole.
 ## Requests
 
 The Requests page moves the live bar over and lists the last 50 finished or
-cancelled requests under it: when it finished, the model (the engine does
-not say which one served it, so it is the resident model, the favorite
-when several are resident), prompt and cached tokens, generated tokens,
-prefill and decode time, time to first token and the total. A cancelled
-request shows its finish time in amber. Each row opens on a click (the
-chevron in front of the time) to a panel with every field, including the
-full model id, the start time and the outcome; a phone hides most columns
-and the panel is where they are. The bin in the History head deletes the
-stored requests and the last request in the bar.
+cancelled requests under it, in the same grid as the benchmark runs. A row
+is the model (the engine does not say which one served it, so it is the
+resident model, the favorite when several are resident) over a faint line
+with the finish time, the prompt size and its cached share, then the time
+to first token and the prefill and decode rates in tok/s. A cancelled
+request says so in amber on that line. The search at the top of the card
+narrows the rows to the models whose id contains what is typed, and All,
+Completed and Cancelled pick by outcome. A row opens on a click to the
+full model id and its figures in three groups: timing (start, finish,
+time to first token, total), prefill (prompt, cached, time, rate) and
+decode (generated, time, rate). A card too narrow for every column keeps
+the two rates; the opened row has the rest. The bin in the History head
+deletes the stored requests and the last request in the bar.
 
 ## Engine
 
