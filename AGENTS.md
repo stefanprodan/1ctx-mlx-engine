@@ -272,12 +272,16 @@ src/server/
   web/deps.ts        WebDeps: what the routes are handed
 
 src/client/
-  index.html         the shell: head, the rail, page head, page, footer and
-                     dialog roots, the script tag; Bun bundles the CSS and
+  index.html         the shell: head, the rail, page head, page and dialog
+                     roots, the script tag; Bun bundles the CSS and
                      main.tsx from it
-  main.tsx           entry: renders the shell and the page's root, opens
-                     the store
-  store.ts           PAGES (the rail's rows and the crumbs), the WebSocket
+  main.tsx           entry: renders the shell and the view that follows
+                     the page signal (the Overview's footer with it),
+                     starts the Overview's tracking, opens the store,
+                     reads the runs and requests once
+  store.ts           PAGES (the rail's rows and the crumbs), the page
+                     signal and go(): the rail swaps pages in place, a
+                     modified click stays a browser link; the WebSocket
                      client and its signals (connection,
                      snapshot, sample, models, event, busy, downloads,
                      benchmark, engineMode); listen() for the code that renders by

@@ -59,9 +59,13 @@ export const requests = signal<LastRequest[]>([]);
 export const requestQuery = signal("");
 export const requestOutcome = signal<Outcome | null>(null);
 
-function fetchRequests() {
+// an answer that a later read, or a clear, has overtaken is dropped
+let reads = 0;
+export function fetchRequests() {
+  const read = ++reads;
   void api<LastRequest[]>("/api/requests")
     .then((list) => {
+      if (read !== reads) return;
       requests.value = list;
     })
     .catch(() => {});
@@ -87,7 +91,6 @@ export function Requests() {
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
-    document.title = "1ctx-mlx-engine · requests";
     // connect() runs after render, but an exceptionally fast first message
     // can still beat an effect scheduled after paint.
     if (snapshot.value) fetchRequests();
@@ -102,6 +105,7 @@ export function Requests() {
         (message.data.action === "requestsClear" ||
           message.data.action === "historyClear")
       ) {
+        reads++;
         requests.value = [];
         setOpen(new Set());
       }

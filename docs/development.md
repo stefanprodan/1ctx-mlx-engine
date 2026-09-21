@@ -50,7 +50,10 @@ stopped during a reload.
 The page is bundled by Bun from `src/client/index.html`: once at startup in
 the compiled binary, on demand when `ONECTX_MLX_DEV=1` is set, which
 `make dev` and `make preview` do; then a CSS edit hot-reloads and an edit
-to the client's TypeScript reloads the page. The client is Preact with
+to the client's TypeScript reloads the page. Every path serves the same
+bundle, and the rail swaps pages in place (`history.pushState`) without a
+new document, so a page opens with the data the tab already holds. The
+client is Preact with
 signals (`src/client/main.tsx`, `store.ts`, `shell/`, `monitor/`,
 `requests/`, `engine/`), bundled like uPlot so the binary still has no runtime
 dependencies. Logic lives in plain `.ts` modules that take data and

@@ -103,6 +103,14 @@ export function DownloadDialog() {
   const dlg = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const isOpen = open.value;
+  // the page can go while the dialog is open (back, forward): it must not
+  // come back open with the Overview
+  useEffect(
+    () => () => {
+      open.value = false;
+    },
+    [],
+  );
   useEffect(() => {
     const d = dlg.current;
     if (!d) return;

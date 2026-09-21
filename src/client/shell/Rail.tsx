@@ -15,7 +15,7 @@ import { Fragment } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { GitHub, Icon, type IconName, Logo } from "../icons.tsx";
 import { restartBlocked, runAction } from "../monitor/actions.ts";
-import { busy, PAGES, type Page, type Section } from "../store.ts";
+import { busy, follow, PAGES, type Page, type Section } from "../store.ts";
 import {
   closeDrawer,
   drawerOpen,
@@ -199,13 +199,22 @@ export function Rail({ page }: { page: Page }) {
     if (drawer || refocus) hide.current?.focus();
     refocus = false;
   }, [drawer]);
-  // a link on a phone closes the drawer, the one to the page shown too
-  const follow = drawer ? closeDrawer : undefined;
+  // a link swaps the page in place, and on a phone closes the drawer,
+  // the one to the page shown too
+  const open = (href: string) => (e: MouseEvent) => {
+    if (drawer) closeDrawer();
+    follow(e, href);
+  };
   return (
     <aside class={`rail${drawer ? " rail-drawer" : ""}`}>
       <div class="rail-top">
         <div class="rail-head">
-          <a class="rail-logo" href="/" aria-label="Overview" onClick={follow}>
+          <a
+            class="rail-logo"
+            href="/"
+            aria-label="Overview"
+            onClick={open("/")}
+          >
             <Logo height={26} />
             <span class="rail-word">MLX</span>
           </a>
@@ -237,7 +246,7 @@ export function Rail({ page }: { page: Page }) {
                   href={p.href}
                   class={`rail-item${p.page === page ? " rail-item-on" : ""}`}
                   aria-current={current(p.page === page)}
-                  onClick={follow}
+                  onClick={open(p.href)}
                 >
                   <Icon name={ICON[p.page]} />
                   <span>{p.label}</span>
@@ -259,7 +268,7 @@ export function Rail({ page }: { page: Page }) {
                     href={p.href}
                     class={`rail-sub${p.page === page ? " rail-sub-on" : ""}`}
                     aria-current={current(p.page === page)}
-                    onClick={follow}
+                    onClick={open(p.href)}
                   >
                     <Icon name={ICON[p.page]} size={14} />
                     <span>{p.label}</span>
@@ -286,6 +295,7 @@ export function Strip({ page }: { page: Page }) {
       title={p.label}
       aria-label={p.label}
       aria-current={current(p.page === page)}
+      onClick={(e) => follow(e, p.href)}
     >
       <Icon name={ICON[p.page]} />
     </a>

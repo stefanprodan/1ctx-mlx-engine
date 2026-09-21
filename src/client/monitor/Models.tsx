@@ -12,7 +12,7 @@ import type { Capability, ModelInfo } from "../../shared/models.ts";
 import type { Snapshot } from "../../shared/socket.ts";
 import { orderModels, sizeText } from "../format.ts";
 import { Trash } from "../icons.tsx";
-import { absent, busy, downloads } from "../store.ts";
+import { absent, busy, downloads, follow } from "../store.ts";
 import { runAction } from "./actions.ts";
 import { DownloadRow } from "./Download.tsx";
 import { visibleDownloads } from "./download.ts";
@@ -221,7 +221,10 @@ export function Models({ snap }: { snap: Snapshot | null }) {
       {absent.value ? (
         // a bare host: the one sentence says what to do about it
         <p class="blank" hidden={!blank}>
-          mlx-serve is not installed. <a href="/engine">Install</a>
+          mlx-serve is not installed.{" "}
+          <a href="/engine" onClick={(e) => follow(e, "/engine")}>
+            Install
+          </a>
         </p>
       ) : (
         <p class="blank" hidden={!blank}>
