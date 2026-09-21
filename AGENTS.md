@@ -313,7 +313,8 @@ src/client/
   requests/          Requests.tsx (the page, on the grid), requests.css;
                      the pure, tested list.ts (the search, the figures, the
                      opened row's groups)
-  benchmark/         Benchmark.tsx (the page), Run.tsx (the card: what to
+  benchmark/         Benchmark.tsx (the two pages, Run and Scorecard, and
+                     the runs' fetch they share), Run.tsx (the card: what to
                      run, or how far it is), Scorecard.tsx (a model per
                      row at a preset, scorecard.css), Runs.tsx (the
                      search, the table, the deltas, the opened row),

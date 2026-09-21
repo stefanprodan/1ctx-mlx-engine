@@ -41,6 +41,7 @@ behind them. A single binary, no dependencies.
 
 - Replay a scripted agent session against a model from empty caches:
   prefill, decode, cache hit rate and peak memory, run against run.
+- A scorecard of the models, ranked by their newest run at a preset.
 
 ## Install
 

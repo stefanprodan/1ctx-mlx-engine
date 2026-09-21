@@ -140,7 +140,9 @@ const PATHS = {
   grid: "M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z",
   swap: "M2.5 5.5h10M10 3l2.5 2.5L10 8M13.5 10.5h-10M6 8l-2.5 2.5L6 13",
   chip: "M5 3h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM6.5 6.5h3v3h-3zM6.5 1v2M9.5 1v2M6.5 13v2M9.5 13v2M1 6.5h2M1 9.5h2M13 6.5h2M13 9.5h2",
-  gauge: "M2.5 12a5.5 5.5 0 1 1 11 0M8 12l2.8-3.3",
+  gauge: "M4.1 12.9A5.5 5.5 0 1 1 11.9 12.9M8 9l2.5-2.5",
+  play: "M4.5 3.5v9L12 8z",
+  bars: "M3 13.5V9M8 13.5V3M13 13.5V6.5",
 } as const;
 
 export type IconName = keyof typeof PATHS;

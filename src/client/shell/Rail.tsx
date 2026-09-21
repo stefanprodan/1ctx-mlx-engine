@@ -2,18 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // 1ctx's rail, as the engine needs it: the logo with the button that
-// folds it, every page as a row (Overview and Requests under Monitor),
-// and the user row at the bottom with its menu. Folded on a wide window
-// it is a strip with the pages as icons. Below 720 it is a full screen
+// folds it, every page as a row (Overview and Requests under Monitor,
+// Run and Scorecard under Benchmark), and the user row at the bottom
+// with its menu. Folded on a wide window it is a strip with the pages as
+// icons. Below 720 it is a full screen
 // opened by a button that floats over the page; while it is open the
 // page under it is inert, and the focus comes back to that button when
 // it closes.
 
 import { useSignal } from "@preact/signals";
+import { Fragment } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { GitHub, Icon, type IconName, Logo } from "../icons.tsx";
 import { restartBlocked, runAction } from "../monitor/actions.ts";
-import { busy, PAGES, type Page } from "../store.ts";
+import { busy, PAGES, type Page, type Section } from "../store.ts";
 import {
   closeDrawer,
   drawerOpen,
@@ -30,8 +32,28 @@ const ICON: Record<Page, IconName> = {
   monitor: "grid",
   requests: "swap",
   engine: "chip",
-  benchmark: "gauge",
+  run: "play",
+  scorecard: "bars",
 };
+
+const SECTION_ICON: Record<Section, IconName> = {
+  Monitor: "pulse",
+  Benchmark: "gauge",
+};
+
+type Entry = (typeof PAGES)[number];
+
+// the pages as the rail and the strip group them: a section's pages
+// together, a page of no section alone
+function groups(): Entry[][] {
+  const out: Entry[][] = [];
+  for (const p of PAGES) {
+    const last = out.at(-1);
+    if (last && p.section && last[0]!.section === p.section) last.push(p);
+    else out.push([p]);
+  }
+  return out;
+}
 
 const SOURCE = "https://github.com/stefanprodan/1ctx-mlx-engine";
 
@@ -172,7 +194,6 @@ export function Rail({ page }: { page: Page }) {
   }, [drawer]);
   // a link on a phone closes the drawer, the one to the page shown too
   const follow = drawer ? closeDrawer : undefined;
-  const inMonitor = PAGES.some((p) => p.section && p.page === page);
   return (
     <aside class={`rail${drawer ? " rail-drawer" : ""}`}>
       <div class="rail-top">
@@ -199,35 +220,47 @@ export function Rail({ page }: { page: Page }) {
           </button>
         </div>
         <nav class="rail-nav">
-          <div class={`rail-item rail-label${inMonitor ? " rail-in" : ""}`}>
-            <Icon name="pulse" />
-            <span>Monitor</span>
-          </div>
-          {PAGES.map((p) =>
-            p.section ? (
-              <a
-                key={p.page}
-                href={p.href}
-                class={`rail-sub${p.page === page ? " rail-sub-on" : ""}`}
-                aria-current={current(p.page === page)}
-                onClick={follow}
-              >
-                <Icon name={ICON[p.page]} size={14} />
-                <span>{p.label}</span>
-              </a>
-            ) : (
-              <a
-                key={p.page}
-                href={p.href}
-                class={`rail-item${p.page === page ? " rail-item-on" : ""}`}
-                aria-current={current(p.page === page)}
-                onClick={follow}
-              >
-                <Icon name={ICON[p.page]} />
-                <span>{p.label}</span>
-              </a>
-            ),
-          )}
+          {groups().map((group) => {
+            const section = group[0]!.section;
+            if (!section) {
+              const p = group[0]!;
+              return (
+                <a
+                  key={p.page}
+                  href={p.href}
+                  class={`rail-item${p.page === page ? " rail-item-on" : ""}`}
+                  aria-current={current(p.page === page)}
+                  onClick={follow}
+                >
+                  <Icon name={ICON[p.page]} />
+                  <span>{p.label}</span>
+                </a>
+              );
+            }
+            // a section names its pages and is no page itself: lit while
+            // one of them is on screen
+            const inside = group.some((p) => p.page === page);
+            return (
+              <Fragment key={section}>
+                <div class={`rail-item rail-label${inside ? " rail-in" : ""}`}>
+                  <Icon name={SECTION_ICON[section]} />
+                  <span>{section}</span>
+                </div>
+                {group.map((p) => (
+                  <a
+                    key={p.page}
+                    href={p.href}
+                    class={`rail-sub${p.page === page ? " rail-sub-on" : ""}`}
+                    aria-current={current(p.page === page)}
+                    onClick={follow}
+                  >
+                    <Icon name={ICON[p.page]} size={14} />
+                    <span>{p.label}</span>
+                  </a>
+                ))}
+              </Fragment>
+            );
+          })}
         </nav>
       </div>
       <User />
@@ -236,10 +269,9 @@ export function Rail({ page }: { page: Page }) {
 }
 
 // the folded rail: the button that brings it back, then the pages as
-// icons, Monitor's above a rule and the rest below, as the rail groups
-// them
+// icons, a rule between the groups the rail draws
 export function Strip({ page }: { page: Page }) {
-  const link = (p: (typeof PAGES)[number]) => (
+  const link = (p: Entry) => (
     <a
       key={p.page}
       href={p.href}
@@ -271,9 +303,12 @@ export function Strip({ page }: { page: Page }) {
         <Icon name="sidebar" />
       </button>
       <nav class="strip-nav">
-        {PAGES.filter((p) => p.section).map(link)}
-        <span class="strip-rule" />
-        {PAGES.filter((p) => !p.section).map(link)}
+        {groups().map((group, i) => (
+          <Fragment key={group[0]!.page}>
+            {i > 0 && <span class="strip-rule" />}
+            {group.map(link)}
+          </Fragment>
+        ))}
       </nav>
     </aside>
   );

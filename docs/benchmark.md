@@ -1,10 +1,11 @@
 # Benchmark
 
-The fourth page answers one question: on this machine, is the engine
-faster or slower at an agent's work than it was, or than with another
-quantization of the same model? It replays a scripted agent session from
-empty caches, keeps what the engine measured, and puts two runs side by
-side.
+The two pages under Benchmark in the rail answer one question: on this
+machine, is the engine faster or slower at an agent's work than it was, or
+than with another quantization of the same model? Run (`/benchmark`)
+replays a scripted agent session from empty caches, keeps what the engine
+measured, and puts two runs side by side. The Scorecard
+(`/benchmark/scorecard`) ranks the models by their newest run.
 
 It measures the engine, never the model. No answer is checked for being
 right, the number of turns is fixed, and what the model replies is thrown
@@ -121,8 +122,8 @@ only left out of the first and last turn rates.
 
 ## The scorecard
 
-At the top of the page, one row per model at a preset, so the fastest
-model reads without going through the runs. It opens on `40K`, like the run
+A page of its own, one row per model at a preset, so the fastest model
+reads without going through the runs. It opens on `40K`, like the run
 card, and 20K, 40K and 60K switch it.
 
 Only the models the engine lists are in it: a model deleted from the

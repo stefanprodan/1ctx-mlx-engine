@@ -20,16 +20,37 @@ import {
 import type { Snapshot } from "../../src/shared/socket.ts";
 
 describe("shell", () => {
-  test("the rail lights the page on screen, Monitor over its two", () => {
+  test("the rail lights the page on screen, a section over its pages", () => {
     const overview = render(<Rail page="monitor" />);
     expect(overview).toContain(
       '<a href="/" class="rail-sub rail-sub-on" aria-current="page">',
     );
     expect(overview).toContain('<a href="/requests" class="rail-sub">');
     expect(overview).toContain('<a href="/engine" class="rail-item">');
-    expect(overview).toContain('<a href="/benchmark" class="rail-item">');
+    expect(overview).toContain('<a href="/benchmark" class="rail-sub">');
+    expect(overview).toContain(
+      '<a href="/benchmark/scorecard" class="rail-sub">',
+    );
+    // Monitor lit, Benchmark not
     expect(overview).toContain(
       '<div class="rail-item rail-label rail-in"><svg',
+    );
+    expect(overview).toContain("<span>Monitor</span>");
+    expect(overview.match(/rail-label/g)).toHaveLength(2);
+    expect(overview.match(/rail-in/g)).toHaveLength(1);
+    // the order: Monitor's two, Engine, Benchmark's two
+    const hrefs = [...overview.matchAll(/<a href="([^"]+)" class="rail-/g)].map(
+      (m) => m[1],
+    );
+    expect(hrefs).toEqual([
+      "/",
+      "/requests",
+      "/engine",
+      "/benchmark",
+      "/benchmark/scorecard",
+    ]);
+    expect(overview.indexOf("<span>Benchmark</span>")).toBeLessThan(
+      overview.indexOf('href="/benchmark"'),
     );
     expect(overview).toContain('<span class="rail-word">MLX</span>');
     expect(overview).toContain('aria-label="Hide the menu"');
@@ -49,10 +70,18 @@ describe("shell", () => {
     expect(engine).toContain(
       '<a href="/engine" class="rail-item rail-item-on" aria-current="page">',
     );
-    expect(engine).toContain('<div class="rail-item rail-label"><svg');
+    expect(engine).not.toContain("rail-in");
     expect(engine.match(/aria-current/g)).toHaveLength(1);
-    expect(render(<Rail page="benchmark" />)).toContain(
-      '<a href="/benchmark" class="rail-item rail-item-on" aria-current="page">',
+    const runs = render(<Rail page="run" />);
+    expect(runs).toContain(
+      '<a href="/benchmark" class="rail-sub rail-sub-on" aria-current="page">',
+    );
+    expect(runs.match(/rail-in/g)).toHaveLength(1);
+    expect(runs.indexOf("rail-in")).toBeGreaterThan(
+      runs.indexOf("<span>Engine</span>"),
+    );
+    expect(render(<Rail page="scorecard" />)).toContain(
+      '<a href="/benchmark/scorecard" class="rail-sub rail-sub-on" aria-current="page">',
     );
   });
 
@@ -66,21 +95,24 @@ describe("shell", () => {
       "/ Overview",
       "/requests Requests",
       "/engine Engine",
-      "/benchmark Benchmark",
+      "/benchmark Run",
+      "/benchmark/scorecard Scorecard",
     ]);
     expect(html).toContain(
       '<a href="/requests" class="strip-icon strip-icon-on" title="Requests" aria-label="Requests" aria-current="page">',
     );
-    // Monitor's pages above the rule, the rest below
-    expect(html.indexOf('href="/requests"')).toBeLessThan(
-      html.indexOf("strip-rule"),
-    );
-    expect(html.indexOf("strip-rule")).toBeLessThan(
-      html.indexOf('href="/engine"'),
+    // a rule between the groups: Monitor's, Engine, Benchmark's
+    expect(html.match(/strip-rule/g)).toHaveLength(2);
+    const at = (s: string) => html.indexOf(s);
+    expect(at('href="/requests"')).toBeLessThan(at("strip-rule"));
+    expect(at("strip-rule")).toBeLessThan(at('href="/engine"'));
+    expect(at('href="/engine"')).toBeLessThan(html.lastIndexOf("strip-rule"));
+    expect(html.lastIndexOf("strip-rule")).toBeLessThan(
+      at('href="/benchmark"'),
     );
   });
 
-  test("the head names the page under 1ctx, and Monitor for its two", () => {
+  test("the head names the page under 1ctx and its section", () => {
     const crumb = (page: Page) =>
       render(<Head page={page} />)
         .replace(/<[^>]+>/g, " ")
@@ -89,7 +121,8 @@ describe("shell", () => {
     expect(crumb("monitor")).toBe("1ctx / Monitor / Overview");
     expect(crumb("requests")).toBe("1ctx / Monitor / Requests");
     expect(crumb("engine")).toBe("1ctx / Engine");
-    expect(crumb("benchmark")).toBe("1ctx / Benchmark");
+    expect(crumb("run")).toBe("1ctx / Benchmark / Run");
+    expect(crumb("scorecard")).toBe("1ctx / Benchmark / Scorecard");
     expect(render(<Head page="engine" />)).toContain(
       '<span class="crumb-page">Engine</span>',
     );

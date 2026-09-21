@@ -27,6 +27,8 @@ describe("store", () => {
     expect(pageOf("/")).toBe("monitor");
     expect(pageOf("/requests")).toBe("requests");
     expect(pageOf("/engine")).toBe("engine");
+    expect(pageOf("/benchmark")).toBe("run");
+    expect(pageOf("/benchmark/scorecard")).toBe("scorecard");
     expect(pageOf("/requests/")).toBe("monitor");
   });
 

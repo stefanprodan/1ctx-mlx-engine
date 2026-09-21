@@ -1,7 +1,8 @@
 # Monitor and Requests
 
 The rail on the left lists every page: Overview (`/`) and Requests
-(`/requests`) under Monitor, then Engine and Benchmark. The button at its
+(`/requests`) under Monitor, then Engine, then Run (`/benchmark`) and
+Scorecard (`/benchmark/scorecard`) under Benchmark. The button at its
 top folds it to a strip of the same pages as icons, and the page
 remembers that choice. On a phone the rail opens full screen from the
 button at the top left. The head over each page names it and stays put
@@ -95,8 +96,8 @@ The third page manages the engine itself: see [engine.md](engine.md).
 
 ## Benchmark
 
-The fourth page measures the engine on a scripted agent session: see
-[benchmark.md](benchmark.md).
+Run measures the engine on a scripted agent session, and the Scorecard
+ranks the models it measured: see [benchmark.md](benchmark.md).
 
 ## Memory numbers
 
