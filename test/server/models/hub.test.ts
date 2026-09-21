@@ -141,8 +141,8 @@ describe("fetchRepo", () => {
   test("maps the Hub's refusals", async () => {
     for (const [status, expected, text] of [
       [404, 404, "org/name not found"],
-      [401, 403, "org/name is gated or private; add hf.key"],
-      [403, 403, "org/name is gated or private; add hf.key"],
+      [401, 403, "org/name is gated or private, add hf.key"],
+      [403, 403, "org/name is gated or private, add hf.key"],
       [500, 502, "huggingface.co: HTTP 500"],
     ] as const) {
       await withHub(

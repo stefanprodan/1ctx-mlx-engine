@@ -13,7 +13,7 @@
 // before its model-load step, like /v1/models; verified in src/server.zig)
 // so the new checkpoint shows in the list without an engine restart.
 
-import { mkdir, rm, rmdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import type { Download } from "../../shared/downloads.ts";
 import type { Engine } from "../engine/types.ts";
@@ -32,6 +32,7 @@ import {
   parseRepoId,
   resolveUrl,
 } from "./hub.ts";
+import { pruneEmpty } from "./remove.ts";
 import type { DownloadFile, DownloadStore } from "./store.ts";
 import { fetchFile, hashOf, sizeOf } from "./transfer.ts";
 
@@ -48,6 +49,8 @@ export type DownloaderDeps = {
   token: string | null;
   engine: Engine;
   refreshModels: () => Promise<unknown>;
+  // the repo's files are on disk again, after a delete of the same model
+  restored?: (repo: string) => void;
   log: Log;
   // why nothing may start now (a benchmark is measuring), null when it may
   blocked?: () => string | null;
@@ -74,12 +77,19 @@ type Active = {
   writtenAt: number;
 };
 
+// Hub ids differ in case only as spellings of one repo, and APFS is case
+// insensitive by default, so they are one directory too.
+const repoKey = (repo: string) => repo.toLowerCase();
+
 export class Downloader {
   private active: Active | null = null;
   private readonly queue: number[] = [];
   private stopping = false;
-  // repos whose listing is being fetched: a second start of one is a 409
+  // repos whose listing is being fetched: a second start of one is a 409.
+  // Keyed by repoKey, like deleting.
   private readonly starting = new Set<string>();
+  // repos a model delete is removing: a start of one is a 409 until it ends
+  private readonly deleting = new Set<string>();
   private readonly listeners = new Set<(download: Download) => void>();
   private readonly now: () => number;
   private readonly retryDelayMs: number;
@@ -136,9 +146,12 @@ export class Downloader {
     }
     const blocked = this.deps.blocked?.();
     if (blocked) throw new DownloadError(409, blocked);
+    if (this.deleting.has(repoKey(repo))) {
+      throw new DownloadError(409, `${repo} is being deleted`);
+    }
     const open = this.deps.store.findOpen(repo);
     if (
-      this.starting.has(repo) ||
+      this.starting.has(repoKey(repo)) ||
       open?.status === "queued" ||
       open?.status === "running"
     ) {
@@ -152,7 +165,7 @@ export class Downloader {
       return download;
     }
     let listing: Awaited<ReturnType<typeof fetchRepo>>;
-    this.starting.add(repo);
+    this.starting.add(repoKey(repo));
     try {
       listing = await fetchRepo(
         repo,
@@ -165,7 +178,7 @@ export class Downloader {
         throw new DownloadError(err.status, err.message);
       throw new DownloadError(502, describe(err));
     } finally {
-      this.starting.delete(repo);
+      this.starting.delete(repoKey(repo));
     }
     // again: a benchmark can have taken the lock while the Hub answered
     const since = this.deps.blocked?.();
@@ -233,6 +246,32 @@ export class Downloader {
     this.deps.log(`download ${download.repo}: deleted`);
   }
 
+  // Why the repo's files must stay for now, null when they may go: a model
+  // delete cannot pull the ground from under a download in flight.
+  blocking(repo: string): string | null {
+    if (this.starting.has(repoKey(repo))) return `${repo} is downloading`;
+    const open = this.deps.store.findOpen(repo);
+    return open?.status === "queued" || open?.status === "running"
+      ? `${repo} is downloading`
+      : null;
+  }
+
+  // A model delete of the repo is running: no start until the release.
+  hold(repo: string): () => void {
+    const key = repoKey(repo);
+    this.deleting.add(key);
+    return () => this.deleting.delete(key);
+  }
+
+  // The repo's files are going (a model delete removes them), so its records
+  // go with them: a resume would otherwise write half a model back. Returns
+  // how many records went.
+  forget(repo: string): number {
+    const removed = this.deps.store.removeRepo(repo);
+    if (removed > 0) this.deps.log(`download ${repo}: forgotten`);
+    return removed;
+  }
+
   // The process is leaving: the running download keeps its status so the next
   // process resumes it.
   shutdown() {
@@ -275,6 +314,7 @@ export class Downloader {
       this.deps.log(`download ${download.repo}: done`);
       this.active = null;
       this.publish(done);
+      this.deps.restored?.(download.repo);
       await this.announce(download.repo);
     } catch (err) {
       this.deps.store.progress(id, active.bytesDone, null);
@@ -432,19 +472,4 @@ export function destOf(dir: string, path: string): string | null {
   const dest = resolve(dir, path);
   const root = resolve(dir);
   return dest.startsWith(root + sep) ? dest : null;
-}
-
-// Removes the model directory and its owner directory when empty, up to
-// the model root, so a removed partial download leaves nothing behind.
-async function pruneEmpty(dir: string, root: string) {
-  let current = resolve(dir);
-  const top = resolve(root);
-  while (current.startsWith(top + sep)) {
-    try {
-      await rmdir(current);
-    } catch {
-      return;
-    }
-    current = dirname(current);
-  }
 }

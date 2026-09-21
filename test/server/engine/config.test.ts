@@ -180,7 +180,7 @@ describe("managed engine configuration", () => {
     expect(found).toContainEqual({
       field: "host",
       message:
-        "1ctx-mlx-engine reaches mlx-serve at studio.local; a loopback-only " +
+        "1ctx-mlx-engine reaches mlx-serve at studio.local. A loopback-only " +
         "listener would hide it.",
     });
   });

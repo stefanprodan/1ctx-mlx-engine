@@ -105,7 +105,7 @@ export class DownloadStore {
   findOpen(repo: string): Download | null {
     const row = this.db
       .query(
-        `SELECT ${COLUMNS} FROM downloads WHERE repo = $repo AND status <> 'done'
+        `SELECT ${COLUMNS} FROM downloads WHERE repo = $repo COLLATE NOCASE AND status <> 'done'
          ORDER BY id DESC LIMIT 1`,
       )
       .get({ repo }) as DownloadRow | null;
@@ -242,5 +242,24 @@ export class DownloadStore {
       .query("DELETE FROM downloads WHERE id = $id")
       .run({ id });
     return result.changes > 0;
+  }
+
+  // Every record of a repo, however it ended: the model it downloaded has
+  // been deleted, so there is nothing left to resume or to show. The rows
+  // are counted first: a cascade into download_files counts as a change too.
+  removeRepo(repo: string): number {
+    return this.db.transaction(() => {
+      const row = this.db
+        .query(
+          "SELECT count(*) AS n FROM downloads WHERE repo = $repo COLLATE NOCASE",
+        )
+        .get({ repo }) as { n: number };
+      if (row.n > 0) {
+        this.db
+          .query("DELETE FROM downloads WHERE repo = $repo COLLATE NOCASE")
+          .run({ repo });
+      }
+      return row.n;
+    })();
   }
 }

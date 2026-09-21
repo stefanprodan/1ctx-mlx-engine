@@ -145,7 +145,7 @@ export async function fetchRepo(
   if (res.status === 401 || res.status === 403) {
     throw new HubError(
       403,
-      `${repo} is gated or private${token ? "" : "; add hf.key to the secrets directory"}`,
+      `${repo} is gated or private${token ? "" : ", add hf.key to the secrets directory"}`,
     );
   }
   if (res.status === 404) throw new HubError(404, `${repo} not found`);

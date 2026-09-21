@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The control actions: load, unload and set-default go through the engine
-// adapter; free (a launchd restart of the service) and disk clear (delete
-// the SSD cache tier contents) are the program's only spawns and deletions,
-// and both run only when the engine is on this host; history clear wipes
+// adapter; free (a launchd restart of the service), disk clear (delete the
+// SSD cache tier contents) and delete (remove a model from the model
+// directory) are the program's only spawns and deletions, and all three run
+// only when the engine is on this host; history clear wipes
 // 1ctx-mlx-engine's own sample database and touches no engine, as does favorite
 // (the daily-driver mark on one model). Every action is an
 // explicit user request from the UI, is checked against the engine's
@@ -18,9 +19,11 @@ import {
   type ActionName,
   isActionName,
 } from "../shared/actions.ts";
+import type { Capability } from "../shared/models.ts";
 import type { Engine } from "./engine/types.ts";
 import { ExclusiveLock, LockBusyError } from "./lib/lock.ts";
 import type { Log } from "./lib/log.ts";
+import { removeModel } from "./models/remove.ts";
 import type { History } from "./monitor/history.ts";
 import type { Sampler } from "./monitor/sampler.ts";
 
@@ -36,6 +39,34 @@ export class ActionError extends Error {
 
 export type SpawnResult = { code: number; stderr: string };
 
+// What a delete needs of the downloader: a hold that refuses a new start of
+// the repo while the delete runs, whether its files are in flight, and the
+// records to forget.
+export type DownloadRecords = {
+  hold(repo: string): () => void;
+  blocking(repo: string): string | null;
+  forget(repo: string): number;
+};
+
+// The engine capability an action needs, null when the engine takes no part
+// in it: those work on 1ctx-mlx-engine's own database, or on the model
+// directory it downloads into.
+const CAPABILITY: Record<ActionName, Capability | null> = {
+  load: "load",
+  unload: "unload",
+  default: "default",
+  delete: null,
+  free: "restart",
+  diskClear: "diskClear",
+  historyClear: null,
+  requestsClear: null,
+  favorite: null,
+};
+
+// The actions that touch this host's files or services, and so need the
+// engine to run here.
+const LOCAL_ONLY: ActionName[] = ["free", "diskClear", "delete"];
+
 export type ActionDeps = {
   engine: Engine;
   sampler: Sampler;
@@ -46,6 +77,11 @@ export type ActionDeps = {
   // launchd domain owner; the service runs in the user's gui domain
   uid?: number;
   now?: () => number;
+  // where this program's downloads land; a delete touches nothing else
+  modelDir?: string | null;
+  // the downloader, for the records a deleted model leaves behind; a getter
+  // because the downloader is built after the actions
+  downloads?: () => DownloadRecords | null;
   // injectable for tests: the process spawn and the directory wipe
   spawn?: (cmd: string[]) => Promise<SpawnResult>;
   clearDir?: (root: string) => Promise<number>;
@@ -109,16 +145,11 @@ export class Actions {
     if (!isActionName(name)) {
       throw new ActionError(404, `unknown action: ${name}`);
     }
-    const capability = name === "free" ? "restart" : name;
-    if (
-      capability !== "historyClear" &&
-      capability !== "requestsClear" &&
-      capability !== "favorite" &&
-      !this.deps.engine.capabilities().has(capability)
-    ) {
+    const capability = CAPABILITY[name];
+    if (capability && !this.deps.engine.capabilities().has(capability)) {
       throw new ActionError(403, `${this.deps.engine.id} cannot ${name}`);
     }
-    if ((name === "free" || name === "diskClear") && !this.deps.local) {
+    if (LOCAL_ONLY.includes(name) && !this.deps.local) {
       throw new ActionError(
         403,
         `${name} only works when the engine runs on this host`,
@@ -188,6 +219,14 @@ export class Actions {
     if (name === "unload" && !known.loaded) {
       throw new ActionError(400, `${id} is not loaded`);
     }
+    // the weights are mapped while the model is resident; unload first
+    if (name === "delete" && known.loaded) {
+      throw new ActionError(400, `${id} is loaded`);
+    }
+    // the engine still lists a deleted model until it restarts
+    if (name !== "unload" && known.deleted) {
+      throw new ActionError(400, `${id} is deleted`);
+    }
     return id;
   }
 
@@ -211,14 +250,16 @@ export class Actions {
         const next = rest.find((m) => m.favorite) ?? rest[0];
         if (!next) return "unloaded";
         await this.deps.engine.load(next.id, true);
-        return `unloaded; ${next.id} is the default`;
+        return `unloaded, ${next.id} is the default`;
       }
       case "default":
         await this.deps.engine.load(model!, true);
         return "loaded as default";
+      case "delete":
+        return this.deleteModel(model!);
       case "favorite": {
         const fav = this.deps.history.toggleFavorite(model!);
-        this.deps.sampler.stampFavorite();
+        this.deps.sampler.stampModels();
         return fav === model ? "daily driver" : "no daily driver";
       }
       case "free":
@@ -240,6 +281,44 @@ export class Actions {
         this.deps.sampler.forgetLastRequest();
         return `removed ${n} request${n === 1 ? "" : "s"}`;
       }
+    }
+  }
+
+  // Full cleanup for one model: the download records that would otherwise
+  // resume the weights back into the gap, its checkpoint under this
+  // program's model directory, then the deleted mark on the row. Records go
+  // first: files without records are a model that still works, records
+  // without files would write half a model back. No rescan: mlx-serve's
+  // only adds, so the engine lists the model until it restarts. A download
+  // in flight for the same repo refuses the delete, and none may start
+  // while it runs. The SSD cache tier is keyed by prompt fingerprint, not by
+  // model, so nothing there can be attributed to one model and it is left
+  // alone.
+  private async deleteModel(id: string): Promise<string> {
+    const root = this.deps.modelDir ?? null;
+    if (!root) throw new ActionError(403, "no model directory");
+    const records = this.deps.downloads?.() ?? null;
+    const release = records?.hold(id) ?? (() => {});
+    try {
+      const blocking = records?.blocking(id) ?? null;
+      if (blocking) throw new ActionError(409, blocking);
+      // the list checked above can be 5 s old, and a client may have loaded
+      // the model straight through the engine since: ask again
+      const known = (await this.deps.sampler.refreshModels()).find(
+        (m) => m.id === id,
+      );
+      if (known?.loaded) throw new ActionError(400, `${id} is loaded`);
+      const bytes = known?.bytesOnDisk ?? 0;
+      records?.forget(id);
+      if (!(await removeModel(root, id))) {
+        throw new ActionError(404, `${id} is not in ${root}`);
+      }
+      this.deps.sampler.markDeleted(id);
+      return bytes > 0
+        ? `deleted ${(bytes / 1024 ** 3).toFixed(1)} GB`
+        : "deleted";
+    } finally {
+      release();
     }
   }
 

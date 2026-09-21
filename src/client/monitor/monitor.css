@@ -223,6 +223,15 @@
   td.state.cancelled {
     color: var(--amber);
   }
+  td.state.deleted {
+    color: var(--amber);
+  }
+  /* the files are gone, the engine lists it until it restarts */
+  tr.deleted td.name .model,
+  tr.deleted td.meta {
+    color: var(--faint);
+    text-decoration: line-through;
+  }
   /* a download row: the bar under the id shows the share that arrived */
   tr.download td.name .bar {
     display: block;

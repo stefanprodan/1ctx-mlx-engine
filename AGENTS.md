@@ -118,8 +118,11 @@ Deploy when asked, then say what is now running there.
 3. **No spawns on the monitor path.** Host numbers come from FFI, directory
    sizes from recursive stat. The program's spawn paths call `launchctl`
    with argument vectors and never a shell: the local-only "free" action
-   and explicit service commands. Disk clear is a filesystem delete. The
-   cache path comes from the adapter's allow-list, never from the request.
+   and explicit service commands. Disk clear and model delete are
+   filesystem deletes, both local-only. The cache path comes from the
+   adapter's allow-list, never from the request. A delete's path is built
+   from `--model-dir` and an id the engine lists, checked against the root,
+   and refused when the owner or model dir is a symlink.
 4. **Fail fast on the engine.** Sampler requests time out in 3 s and a
    failed read produces a sample with `engineUp: false`; a hung engine
    never stalls the loop.
@@ -159,9 +162,9 @@ src/server/
   cli.ts             pure CLI parsing for foreground and service commands;
                      VERSION from package.json in development and injected
                      at build time
-  actions.ts         load, unload, default, free, diskClear (local-only),
-                     historyClear, requestsClear, favorite; one at a time,
-                     logged, last 50
+  actions.ts         load, unload, default, free, diskClear, delete (the
+                     last three local-only), historyClear, requestsClear,
+                     favorite; one at a time, logged, last 50
   lib/log.ts         levelled callable logger, repeat collapsing, appending
                      file sink and stopped launchd-log rotation
   lib/lock.ts        the one lock the actions and the manager share
@@ -213,6 +216,8 @@ src/server/
   models/transfer.ts one file of a download: Range resume into
                      <file>.1ctx-part, sha256 while writing, retries
   models/error.ts    DownloadError, the status a route answers with
+  models/remove.ts   pure path work and the delete of a model's checkpoint:
+                     the id is checked against --model-dir, never followed
   service/plist.ts   pure LaunchAgent XML rendering
   service/launchd.ts injected launchctl verbs, status parse, atomic write and
                      the ordered staged reload sequence

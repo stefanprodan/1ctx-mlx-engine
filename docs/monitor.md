@@ -30,9 +30,17 @@ link in the header still opens the Monitor.
 - **Models** (or "No models found." and "Engine unreachable." as one line when
   there are none): every model the engine lists, the daily driver first and
   the rest by id so nothing moves on a load, with its state, size and
-  context, and the buttons: load, unload, make default, plus the
-  daily-driver star (1ctx-mlx-engine's own mark). A failed action is reported
-  under the table; a success shows in the list or the uptime. Unload, the daily-driver toggle and a load into an empty
+  context, and the buttons: load, unload, make default, delete, plus the
+  daily-driver star (1ctx-mlx-engine's own mark). Delete asks first and then
+  removes the model from the model directory, along with the records of its
+  downloads; it is there for an engine on this host and is disabled while
+  the model is resident, because the weights are mapped until it is
+  unloaded. The engine keeps listing a deleted model until it restarts, so
+  the row stays, struck through and marked deleted, with load, delete and
+  the star disabled (a deleted daily driver loses its star); downloading
+  the model again clears the mark. A failed action is reported under the
+  table; a success shows in the list or the uptime. Unload, the
+  daily-driver toggle and a load into an empty
   engine run at once; loading next to a resident model asks first and
   shows the estimated engine memory after the load (its footprint now
   plus the model's weights); the rest ask for confirmation. The Download

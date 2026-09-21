@@ -29,6 +29,8 @@ export type ModelInfo = {
   isDefault?: boolean;
   // 1ctx-mlx-engine's own mark: the one model the user calls their daily driver
   favorite?: boolean;
+  // its files were deleted here and the engine lists it until it restarts
+  deleted?: boolean;
 };
 
 // The engine's cache budgets, per resident model (mlx-serve applies both to

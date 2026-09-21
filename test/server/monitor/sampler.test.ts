@@ -475,7 +475,7 @@ describe("Sampler", () => {
     await s.tick(); // the first tick lists the models, so the favorite sticks
     const second = "stefanprodan/Ornith-1.5-35B-A3B-BigBang-oQ4e-mtp";
     expect(history.toggleFavorite(second)).toBe(second);
-    s.stampFavorite();
+    s.stampModels();
     for (let i = 0; i < 3; i++) {
       c.advance(1000);
       await s.tick();

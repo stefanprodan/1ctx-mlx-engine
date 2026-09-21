@@ -62,7 +62,9 @@ export const HELP = `\x1b[1m1ctx-mlx-engine\x1b[0m - monitor and control an LLM 
   GET /api/history?range=1h    series for 1h, 6h, 24h or 7d
   WS  /ws                      snapshot on connect, then one sample per second
   POST /api/actions/<name>     load, unload, default (body {"model"}), free,
-                               diskClear (the last two only for a local engine),
+                               diskClear, delete (body {"model"}; these three
+                               only for a local engine, delete removes the
+                               model's files and its download records),
                                historyClear (wipes the sample database),
                                requestsClear (wipes the stored requests),
                                favorite (toggles the daily-driver star)
