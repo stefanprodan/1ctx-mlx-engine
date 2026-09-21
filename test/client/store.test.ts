@@ -3,6 +3,7 @@
 
 import { describe, expect, test } from "bun:test";
 import {
+  followsInPlace,
   landsOnEngine,
   modelsKeyOf,
   pageOf,
@@ -23,6 +24,22 @@ const model = (over: Partial<ModelInfo> = {}): ModelInfo => ({
 });
 
 describe("store", () => {
+  test("a plain left click follows in place, a modified one does not", () => {
+    const click = {
+      button: 0,
+      metaKey: false,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+    };
+    expect(followsInPlace(click)).toBe(true);
+    expect(followsInPlace({ ...click, button: 1 })).toBe(false);
+    expect(followsInPlace({ ...click, metaKey: true })).toBe(false);
+    expect(followsInPlace({ ...click, ctrlKey: true })).toBe(false);
+    expect(followsInPlace({ ...click, shiftKey: true })).toBe(false);
+    expect(followsInPlace({ ...click, altKey: true })).toBe(false);
+  });
+
   test("pageOf names the view from the path", () => {
     expect(pageOf("/")).toBe("monitor");
     expect(pageOf("/requests")).toBe("requests");

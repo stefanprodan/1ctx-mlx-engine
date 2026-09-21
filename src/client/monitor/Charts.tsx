@@ -3,12 +3,15 @@
 //
 // One sparkline per chart, uPlot in a ref. The plot is created once, on
 // mount, with the cursor stamp and a ResizeObserver, and destroyed on
-// unmount; a second effect feeds it the series. The head chip shows the
+// unmount; a second effect feeds it the series. Both are layout effects:
+// the Overview opens on the series the tab already holds, and a plain
+// effect runs after the first paint, which would show an empty chart for
+// a frame. The head chip shows the
 // latest value, or the value under the cursor, which is shared across
 // charts through uPlot's sync key.
 
 import { useSignal } from "@preact/signals";
-import { useEffect, useRef } from "preact/hooks";
+import { useLayoutEffect, useRef } from "preact/hooks";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { whole } from "./range.ts";
@@ -75,12 +78,12 @@ export function Spark({ label, color, unit, t, values }: SparkProps) {
   // without being rebuilt
   const raw = useRef(values);
   raw.current = values;
-  const chip = useSignal(chipValue([], null, whole));
+  const chip = useSignal(chipValue(values, null, whole));
   const show = (idx: number | null) => {
     chip.value = chipValue(raw.current, idx, whole);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = plotEl.current!;
     const c = css(color);
     // time label that rides the cursor bar
@@ -142,7 +145,7 @@ export function Spark({ label, color, unit, t, values }: SparkProps) {
     };
   }, [color]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const u = plot.current;
     if (!u) return;
     u.setData([secs(t), values]);

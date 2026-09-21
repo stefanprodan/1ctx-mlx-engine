@@ -7,7 +7,7 @@
 // be wrong). The tiles read the sample, the loaded series (their totals are
 // over the range) and the memory a tab keeps of per-request values.
 
-import { signal } from "@preact/signals";
+import { effect, signal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import type { Range, Series } from "../../shared/history.ts";
 import type { Sample } from "../../shared/sample.ts";
@@ -68,6 +68,40 @@ function onSample(s: Sample) {
   memory.value = apply(memory.value, s);
 }
 
+// The tiles learn a request from two consecutive samples, so the tab
+// listens from its start, whichever page it opened on and while another
+// page is shown: a gap would merge the requests in it into one, and the
+// Overview would open on an empty chart until the hour arrives.
+export function trackMonitor() {
+  let connected = false;
+  void loadRange("1h");
+  // the next sample is not the successor of the last one; peek, since an
+  // effect that reads the signal it writes throws, and it would throw
+  // inside the socket's close handler, before the reconnect is scheduled
+  effect(() => {
+    if (connection.value === "reconnecting") {
+      memory.value = disconnect(memory.peek());
+    }
+  });
+  listen((msg) => {
+    if (msg.type === "snapshot") {
+      // the snapshot's sample teaches the tab like a live one; after a
+      // reconnect the series has a hole: fetch it again
+      if (msg.data.sample) memory.value = apply(memory.value, msg.data.sample);
+      if (connected) void loadRange(range.value);
+      connected = true;
+    } else if (msg.type === "sample") {
+      onSample(msg.data);
+    } else if (msg.type === "event") {
+      if (msg.data.action === "historyClear" && msg.data.ok) {
+        // every tab forgets what it learned from the wiped series
+        memory.value = initialTiles;
+        void loadRange(range.value);
+      }
+    }
+  });
+}
+
 function ActivityPill({ s }: { s: Sample | null }) {
   // engine-wide: the phase only; the request bar carries the details
   if (absent.value) return <span class="pill err">not installed</span>;
@@ -85,35 +119,10 @@ export function Monitor() {
   const ser = series.value;
   const mem = memory.value;
 
+  // back on the page: the hour is current, a longer range is reread
   useEffect(() => {
-    let connected = false;
-    void loadRange("1h");
-    return listen((msg) => {
-      if (msg.type === "snapshot") {
-        // the snapshot's sample teaches the tab like a live one; after a
-        // reconnect the series has a hole: fetch it again
-        if (msg.data.sample)
-          memory.value = apply(memory.value, msg.data.sample);
-        if (connected) void loadRange(range.value);
-        connected = true;
-      } else if (msg.type === "sample") {
-        onSample(msg.data);
-      } else if (msg.type === "event") {
-        if (msg.data.action === "historyClear" && msg.data.ok) {
-          // every tab forgets what it learned from the wiped series
-          memory.value = initialTiles;
-          void loadRange(range.value);
-        }
-      }
-    });
+    if (range.value !== "1h") void loadRange(range.value);
   }, []);
-
-  // the next sample is not the successor of the last one
-  useEffect(() => {
-    if (connection.value === "reconnecting") {
-      memory.value = disconnect(memory.value);
-    }
-  }, [connection.value]);
 
   // longer ranges are bucket averages: refresh them by the minute
   useEffect(() => {

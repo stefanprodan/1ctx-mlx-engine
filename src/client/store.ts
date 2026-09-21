@@ -4,8 +4,8 @@
 // The one WebSocket every page shares and the signals fed by it. A
 // snapshot arrives on connect and a sample every second; the socket comes
 // back two seconds after a close. Components read the signals; code that
-// handles messages by hand subscribes with listen(). Nothing here touches
-// the DOM.
+// handles messages by hand subscribes with listen(). The page on screen
+// lives here too, with go(), which moves the history and the scroll.
 
 import { computed, signal } from "@preact/signals";
 import type { ActionEvent, ActionName } from "../shared/actions.ts";
@@ -55,6 +55,37 @@ export const PAGES: readonly {
     section: "Benchmark",
   },
 ];
+
+// The page on screen. The rail swaps it in place instead of loading
+// another document: a load paints every page empty before its data
+// arrives, and the data it would wait for is already here. Set from the
+// path at start, then by go() and the history's back and forward.
+export const page = signal<Page>("monitor");
+let landed = false;
+export function go(href: string, replace = false) {
+  // a page the tab chose itself: the bare-host landing no longer applies
+  landed = true;
+  if (href !== location.pathname) {
+    if (replace) history.replaceState(null, "", href);
+    else history.pushState(null, "", href);
+    scrollTo(0, 0);
+  }
+  page.value = pageOf(href);
+}
+// a plain click follows in place; a modified or middle click keeps what
+// the browser does with a link (a new tab, a new window)
+export const followsInPlace = (e: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+export function follow(e: MouseEvent, href: string) {
+  if (e.defaultPrevented || !followsInPlace(e)) return;
+  e.preventDefault();
+  go(href);
+}
 
 export const connection = signal<Connection>("connecting");
 export const connected = computed(() => connection.value === "live");
@@ -134,7 +165,6 @@ export const landsOnEngine = (
   origin: string,
   mode: EngineMode | null,
 ) => mode === "absent" && pathname === "/" && !referrer.startsWith(origin);
-let landed = false;
 function land(snap: Snapshot) {
   if (landed) return;
   landed = true;
@@ -146,7 +176,7 @@ function land(snap: Snapshot) {
       snap.engine.mode,
     )
   ) {
-    location.replace("/engine");
+    go("/engine", true);
   }
 }
 
