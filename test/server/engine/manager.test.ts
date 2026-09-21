@@ -219,6 +219,16 @@ async function harness(options: HarnessOptions = {}) {
   const manager = new EngineManager(deps);
   // a second manager over the same store: 1ctx-mlx-engine after a restart
   const restarted = () => new EngineManager(deps);
+  // one over an empty database: the same home, engine and launchd
+  const wiped = () => {
+    const fresh = new History(":memory:");
+    const freshStore = new EngineStore(fresh.db);
+    return {
+      history: fresh,
+      store: freshStore,
+      manager: new EngineManager({ ...deps, store: freshStore }),
+    };
+  };
   const config = DEFAULTS(pinned, "http://127.0.0.1:11234");
   const settled = async () => {
     for (let attempt = 0; attempt < 2_000; attempt++) {
@@ -237,6 +247,7 @@ async function harness(options: HarnessOptions = {}) {
     lock,
     manager,
     restarted,
+    wiped,
     config,
     tag,
     served,
@@ -732,6 +743,56 @@ describe("EngineManager upgrade and configuration", () => {
     expect(value.store.journal()).toBeNull();
     expect(await readFile(value.path, "utf8")).toBe(old);
     expect(value.manager.state().active?.tag).toBe("v26.9.5");
+    value.history.close();
+  });
+});
+
+describe("EngineManager adopting its own engine", () => {
+  test("a wiped database takes back our LaunchAgent and its config", async () => {
+    const value = await installed();
+    const after = value.wiped();
+    expect(after.store.managed()).toBeFalse();
+    await after.manager.reconcile();
+    expect(after.store.managed()).toBeTrue();
+    expect(after.store.installs().active).toMatchObject({
+      tag: "v26.9.5",
+      version: "26.9.5",
+      mlx: "0.32.2",
+    });
+    expect(after.store.config().applied).toEqual(value.config);
+    expect(after.manager.state().mode).toBe("managed");
+    // a second start has nothing left to adopt
+    await after.manager.reconcile();
+    expect(after.store.managed()).toBeTrue();
+    after.history.close();
+    value.history.close();
+  });
+
+  test("a program outside our versions directory is not ours", async () => {
+    const value = await harness();
+    await Bun.write(
+      value.path,
+      renderPlist({
+        label: MANAGED_LABEL,
+        programArguments: ["/opt/homebrew/bin/mlx-serve", "--serve"],
+      }),
+    );
+    await value.manager.reconcile();
+    expect(value.store.managed()).toBeFalse();
+    expect(value.store.config().applied).toBeNull();
+    value.history.close();
+  });
+
+  test("a build that is not on disk is not adopted", async () => {
+    const value = await installed();
+    const gone = join(value.engineRoot, "versions", "v26.9.6", "mlx-serve");
+    const xml = await readFile(value.path, "utf8");
+    const current = join(value.engineRoot, "versions", "v26.9.5", "mlx-serve");
+    await writeFile(value.path, xml.replace(current, gone));
+    const after = value.wiped();
+    await after.manager.reconcile();
+    expect(after.store.managed()).toBeFalse();
+    after.history.close();
     value.history.close();
   });
 });

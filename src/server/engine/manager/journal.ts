@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { EnginePageState, InstallRecord } from "../../../shared/engine.ts";
 import { describeError } from "../../lib/fetch.ts";
 import type { EngineJournal } from "../store.ts";
+import { adopt } from "./adopt.ts";
 import {
   launchdDeps,
   MANAGED_LABEL,
@@ -20,6 +21,12 @@ export async function reconcile(
   context: ManagerContext,
 ): Promise<EnginePageState> {
   const journal = context.deps.store.journal();
+  if (!journal && context.deps.local && !context.deps.store.managed()) {
+    // our own LaunchAgent, with a database that no longer says so
+    await adopt(context).catch((error) =>
+      context.deps.log.warn(`engine: adopt failed: ${describeError(error)}`),
+    );
+  }
   if (!journal || !context.deps.local) {
     // launchd's view is cached, and the cache starts empty: read it once
     // here, or a job that is stopped or crash-looping reads as nothing

@@ -19,7 +19,7 @@ CPU. The pill in the head is the service state:
 | Pill | Meaning |
 |---|---|
 | `not installed` | nothing answers on the port; Install is beside the latest release |
-| `unmanaged` | an mlx-serve that 1ctx-mlx-engine did not install answers on the port. It is shown, never touched; stop it before installing |
+| `unmanaged` | an mlx-serve that 1ctx-mlx-engine did not install answers on the port. It is shown, never touched; stop it before installing. One it did install is taken back at the next start even when its database was wiped: the LaunchAgent under 1ctx-mlx-engine's label, running a build from its engine directory, with the configuration read from the plist |
 | `up 3d 04h` | the managed job is serving |
 | `stopped` | the job is unloaded until Start or the next login |
 | `crashed, exit 1` | launchd keeps restarting it; the launchd log says why |
