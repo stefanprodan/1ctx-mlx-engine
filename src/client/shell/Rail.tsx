@@ -44,13 +44,20 @@ const SECTION_ICON: Record<Section, IconName> = {
 type Entry = (typeof PAGES)[number];
 
 // the pages as the rail and the strip group them: a section's pages
-// together, a page of no section alone
+// together where its first one is, wherever the others sit in PAGES, a
+// page of no section alone
 function groups(): Entry[][] {
   const out: Entry[][] = [];
+  const bySection = new Map<Section, Entry[]>();
   for (const p of PAGES) {
-    const last = out.at(-1);
-    if (last && p.section && last[0]!.section === p.section) last.push(p);
-    else out.push([p]);
+    const group = p.section ? bySection.get(p.section) : undefined;
+    if (group) {
+      group.push(p);
+      continue;
+    }
+    const fresh = [p];
+    if (p.section) bySection.set(p.section, fresh);
+    out.push(fresh);
   }
   return out;
 }
@@ -104,7 +111,7 @@ export function UserMenu({ close }: { close: () => void }) {
         title={blocked || undefined}
         onClick={() => {
           close();
-          // the dialog is in the page, which is inert under the drawer
+          // the dialog opens over the page the restart is about
           closeDrawer();
           void runAction("free", null);
         }}

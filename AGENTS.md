@@ -272,9 +272,9 @@ src/server/
   web/deps.ts        WebDeps: what the routes are handed
 
 src/client/
-  index.html         the shell: head, the rail, page head, page and footer
-                     roots, the script tag; Bun bundles the CSS and main.tsx
-                     from it
+  index.html         the shell: head, the rail, page head, page, footer and
+                     dialog roots, the script tag; Bun bundles the CSS and
+                     main.tsx from it
   main.tsx           entry: renders the shell and the page's root, opens
                      the store
   store.ts           PAGES (the rail's rows and the crumbs), the WebSocket

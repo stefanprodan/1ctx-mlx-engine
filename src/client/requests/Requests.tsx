@@ -9,7 +9,6 @@ import { api } from "../api.ts";
 import { Trash } from "../icons.tsx";
 import { runAction } from "../monitor/actions.ts";
 import { RequestBar } from "../monitor/RequestBar.tsx";
-import { Confirm } from "../shell/Confirm.tsx";
 import {
   GridCard,
   type GridColumn,
@@ -223,7 +222,6 @@ export function Requests() {
             : noRequestsCopy(query, outcome)}
         </GridNote>
       </GridCard>
-      <Confirm />
     </>
   );
 }

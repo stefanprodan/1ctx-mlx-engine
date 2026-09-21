@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The page's entry, bundled by Bun from index.html. The rail, the page
-// head, the footer and the page are Preact roots. The socket opens last,
+// head, the footer, the page and the confirm dialog are Preact roots. The socket opens last,
 // once every subscriber is in place.
 
 import { effect } from "@preact/signals";
@@ -11,6 +11,7 @@ import { BenchmarkRun, BenchmarkScorecard } from "./benchmark/Benchmark.tsx";
 import { Engine } from "./engine/Engine.tsx";
 import { Monitor } from "./monitor/Monitor.tsx";
 import { Requests } from "./requests/Requests.tsx";
+import { Confirm } from "./shell/Confirm.tsx";
 import { Footer } from "./shell/Footer.tsx";
 import { Head } from "./shell/Head.tsx";
 import { Side } from "./shell/Rail.tsx";
@@ -28,6 +29,9 @@ effect(() => {
 render(<Side page={page} />, $("rail"));
 render(<Head page={page} />, $("head"));
 render(<Footer />, $("foot"));
+// one dialog for every page and the rail's menu, outside #main so the
+// drawer's inert never reaches it
+render(<Confirm />, $("dialogs"));
 if (page === "requests") {
   document.title = "1ctx-mlx-engine · requests";
   $("view-monitor").hidden = true;

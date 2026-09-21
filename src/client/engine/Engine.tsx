@@ -7,7 +7,6 @@
 // moves without an operation, so the page asks again every few seconds.
 
 import { useEffect } from "preact/hooks";
-import { Confirm } from "../shell/Confirm.tsx";
 import { listen, sample, snapshot } from "../store.ts";
 import { Build } from "./Build.tsx";
 import { Config, ConfigHead } from "./Config.tsx";
@@ -65,7 +64,6 @@ export function Engine() {
       />
       <ConfigHead engine={e} />
       <Config engine={e} />
-      <Confirm />
     </>
   );
 }

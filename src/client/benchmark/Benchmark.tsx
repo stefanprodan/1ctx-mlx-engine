@@ -7,7 +7,6 @@
 
 import { computed, effect } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import { Confirm } from "../shell/Confirm.tsx";
 import { Pill } from "../shell/Pill.tsx";
 import { benchmark, benchmarksChanged, listen } from "../store.ts";
 import { Run } from "./Run.tsx";
@@ -66,7 +65,6 @@ export function BenchmarkRun() {
         <span class="hint">{hint}</span>
       </div>
       <Runs />
-      <Confirm />
     </>
   );
 }
