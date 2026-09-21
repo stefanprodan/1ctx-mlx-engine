@@ -96,6 +96,7 @@ export class BenchmarkRunner {
   private controller: AbortController | null = null;
   private settled: Promise<void> = Promise.resolve();
   private readonly listeners = new Set<(p: BenchmarkProgress) => void>();
+  private readonly removals = new Set<(id: number) => void>();
   private readonly now: () => number;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly tag: () => string;
@@ -115,6 +116,13 @@ export class BenchmarkRunner {
   onProgress(fn: (p: BenchmarkProgress) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  // a run deleted, so that every tab reads the list again, not only the one
+  // that deleted it
+  onRemove(fn: (id: number) => void): () => void {
+    this.removals.add(fn);
+    return () => this.removals.delete(fn);
   }
 
   active(): BenchmarkProgress | null {
@@ -143,6 +151,7 @@ export class BenchmarkRunner {
     if (!this.deps.store.remove(id)) {
       throw new BenchmarkError(404, "Benchmark not found");
     }
+    for (const fn of this.removals) fn(id);
   }
 
   cancel(id: number) {

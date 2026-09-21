@@ -3,6 +3,8 @@
 
 import { describe, expect, test } from "bun:test";
 import { render } from "preact-render-to-string";
+import { Scorecard } from "../../src/client/benchmark/Scorecard.tsx";
+import { runs, scorePreset } from "../../src/client/benchmark/state.ts";
 import { Turns } from "../../src/client/benchmark/Turns.tsx";
 import { Event } from "../../src/client/monitor/Event.tsx";
 import { Models } from "../../src/client/monitor/Models.tsx";
@@ -383,5 +385,18 @@ describe("Turns", () => {
     expect(html).toContain(">tools<");
     expect(html).not.toContain("tool_calls");
     expect(html).not.toContain(">length<");
+  });
+});
+
+describe("Scorecard", () => {
+  test("it opens on 40K and keeps its head when nothing finished there", () => {
+    runs.value = [];
+    const html = render(<Scorecard />);
+    expect(html).toMatch(/<button type="button" class="active">40K</);
+    expect(html).toContain("No models with a run at 40K.");
+    // unsaid until the runs have been read
+    expect(html).toContain('class="blank unknown"');
+    expect(html).toMatch(/<table id="scorecard" hidden/);
+    scorePreset.value = "40K";
   });
 });

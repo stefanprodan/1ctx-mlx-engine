@@ -73,3 +73,30 @@ export const Lock = () => (
     />
   </svg>
 );
+
+// the search row of the runs table
+export const Search = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M11 18a7 7 0 1 0 0-14a7 7 0 0 0 0 14m9 2l-4-4"
+    />
+  </svg>
+);
+
+// clears the runs search, whether or not it has the focus
+export const Close = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-width="2"
+      d="M6 6l12 12M18 6L6 18"
+    />
+  </svg>
+);

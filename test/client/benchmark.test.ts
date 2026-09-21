@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   COLUMNS,
   comparable,
@@ -9,6 +9,8 @@ import {
   deltaCopy,
   detailGroups,
   finishText,
+  matching,
+  noMatchCopy,
   progressCopy,
   report,
   statusCopy,
@@ -17,7 +19,12 @@ import {
   value,
   versus,
 } from "../../src/client/benchmark/report.ts";
-import type { Benchmark, Figure } from "../../src/shared/benchmark.ts";
+import { scorecard } from "../../src/client/benchmark/scorecard.ts";
+import type {
+  Benchmark,
+  BenchmarkPreset,
+  Figure,
+} from "../../src/shared/benchmark.ts";
 
 const fig = (median: number | null, spreadPct: number | null = 1): Figure => ({
   median,
@@ -86,6 +93,26 @@ test("the delta is against the baseline and says which way is better", () => {
   expect(deltaCopy(12, cold)).toEqual({ text: "+12%", tone: "worse" });
   expect(deltaCopy(0.4, decode)).toEqual({ text: "same", tone: "same" });
   expect(deltaCopy(null, decode)).toBeNull();
+});
+
+test("a search finds any part of the model id, in any case, at a preset", () => {
+  const runs = [
+    run({ id: 1, model: "stefanprodan/Ornith-1.5-35B-A3B-oQ4e" }),
+    run({ id: 2, model: "mlx-community/LFM2.5-8B-A1B-4bit", preset: "20K" }),
+    run({ id: 3, model: "mlx-community/Qwen3-35b-4bit", preset: "60K" }),
+  ];
+  const ids = (q: string, p: BenchmarkPreset | null = null) =>
+    matching(runs, q, p).map((b) => b.id);
+  expect(ids("35B")).toEqual([1, 3]);
+  expect(ids(" mlx-community ")).toEqual([2, 3]);
+  expect(ids("70B")).toEqual([]);
+  expect(ids("  ")).toEqual([1, 2, 3]);
+  expect(ids("", "40K")).toEqual([1]);
+  expect(ids("35B", "60K")).toEqual([3]);
+  expect(ids("35B", "20K")).toEqual([]);
+  expect(noMatchCopy("35B", null)).toBe("No runs match 35B.");
+  expect(noMatchCopy(" 35B ", "20K")).toBe("No 20K runs match 35B.");
+  expect(noMatchCopy("", "60K")).toBe("No 60K runs.");
 });
 
 test("runs compare only over the same generated session", () => {
@@ -248,4 +275,124 @@ test("the report is what gets pasted into an issue", () => {
     "  1    1   15010       5       24300        256       2700   limit",
   );
   expect(report(run({ summary: null }), [])).toContain("decode              –");
+});
+
+describe("scorecard", () => {
+  const scored = (
+    id: number,
+    model: string,
+    decode: number,
+    latency: number,
+    over: Partial<Benchmark> = {},
+  ) => {
+    const base = run();
+    return run({
+      id,
+      model,
+      summary: {
+        ...base.summary!,
+        decodeTps: fig(decode),
+        coldLatencyMs: fig(latency),
+      },
+      ...over,
+    });
+  };
+
+  // every model the runs below name is one the engine lists
+  const all = new Set([
+    "org/fast",
+    "org/slow",
+    "org/other",
+    "org/a",
+    "org/b",
+    "org/Model-4bit",
+  ]);
+
+  test("one row per model, its newest finished run, ranked by decode", () => {
+    // newest first, as the route answers
+    const rows = scorecard(
+      [
+        scored(9, "org/slow", 40, 9000, { status: "cancelled" }),
+        scored(8, "org/fast", 120, 5000),
+        scored(7, "org/slow", 50, 10000),
+        scored(6, "org/fast", 90, 6000),
+        scored(5, "org/other", 200, 1000, { preset: "20K" }),
+      ],
+      "40K",
+      all,
+    );
+    expect(rows.map((r) => r.run.id)).toEqual([8, 7]);
+    const [fast, slow] = rows;
+    const cell = (row: typeof fast, key: string) =>
+      row!.cells.find((c) => c.key === key)!;
+    expect(cell(fast, "decodeTps")).toMatchObject({ best: true, share: 1 });
+    expect(cell(slow, "decodeTps").share).toBeCloseTo(50 / 120, 6);
+    // a lower latency is the better one
+    expect(cell(fast, "coldLatencyMs").best).toBe(true);
+    expect(cell(slow, "coldLatencyMs").share).toBeCloseTo(0.5, 6);
+    // a tie is best twice
+    expect(cell(slow, "coldPrefillTps").best).toBe(true);
+  });
+
+  test("a run of an older session is left out", () => {
+    const rows = scorecard(
+      [
+        scored(3, "org/a", 60, 5000, { schema: 2 }),
+        scored(2, "org/b", 90, 5000, { schema: 1 }),
+      ],
+      "40K",
+      all,
+    );
+    expect(rows.map((r) => r.run.model)).toEqual(["org/a"]);
+    // the newest session is the newest finished run's, whatever its preset
+    // or model: a 40K of the older one stays out
+    const other = scorecard(
+      [
+        scored(4, "org/gone", 60, 5000, { schema: 2, preset: "20K" }),
+        scored(2, "org/b", 90, 5000, { schema: 1 }),
+      ],
+      "40K",
+      all,
+    );
+    expect(other).toEqual([]);
+  });
+
+  test("equal rates share a place, no rate has none", () => {
+    const rows = scorecard(
+      [
+        scored(4, "org/a", 90, 5000),
+        scored(3, "org/b", 90, 6000),
+        scored(2, "org/fast", 60, 5000),
+        run({
+          id: 1,
+          model: "org/slow",
+          summary: { ...run().summary!, decodeTps: fig(null) },
+        }),
+      ],
+      "40K",
+      all,
+    );
+    expect(rows.map((r) => r.rank)).toEqual([1, 1, 3, null]);
+    expect(rows.at(-1)!.run.model).toBe("org/slow");
+  });
+
+  test("one run is best at nothing, a missing figure has no bar", () => {
+    const [row] = scorecard(
+      [run({ summary: { ...run().summary!, decodeTps: fig(null) } })],
+      "40K",
+      all,
+    );
+    expect(row!.cells.every((c) => !c.best)).toBe(true);
+    expect(row!.cells.find((c) => c.key === "decodeTps")!.share).toBeNull();
+    expect(scorecard([], "40K", all)).toEqual([]);
+  });
+
+  test("a model the engine does not list is left out", () => {
+    const rows = scorecard(
+      [scored(2, "org/gone", 90, 5000), scored(1, "org/here", 60, 5000)],
+      "40K",
+      new Set(["org/here"]),
+    );
+    expect(rows.map((r) => r.run.model)).toEqual(["org/here"]);
+  });
 });

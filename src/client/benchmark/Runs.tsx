@@ -3,8 +3,8 @@
 
 import { Fragment } from "preact";
 import { useState } from "preact/hooks";
-import type { Benchmark } from "../../shared/benchmark.ts";
-import { Copy, Trash } from "../icons.tsx";
+import { BENCHMARK_PRESETS, type Benchmark } from "../../shared/benchmark.ts";
+import { Close, Copy, Search, Trash } from "../icons.tsx";
 import { busy } from "../store.ts";
 import {
   COLUMNS,
@@ -12,7 +12,9 @@ import {
   delta,
   deltaCopy,
   detailGroups,
+  matching,
   modelName,
+  noMatchCopy,
   report,
   statusCopy,
   statusDetail,
@@ -24,6 +26,8 @@ import {
   fetchDetail,
   picked,
   removeRun,
+  runPreset,
+  runQuery,
   runs,
   togglePick,
 } from "./state.ts";
@@ -190,10 +194,14 @@ function Detail({ run }: { run: Benchmark }) {
 }
 
 export function Runs() {
-  const list = runs.value;
+  const all = runs.value;
+  const query = runQuery.value.trim();
+  const preset = runPreset.value;
+  const list = matching(all, query, preset);
   const [open, setOpen] = useState<number | null>(null);
   const [first, second] = picked.value;
-  const baseline = list.find((b) => b.id === first) ?? null;
+  // the baseline stays one when a search hides its row
+  const baseline = all.find((b) => b.id === first) ?? null;
 
   const toggle = (id: number) => {
     setOpen((current) => (current === id ? null : id));
@@ -203,7 +211,56 @@ export function Runs() {
 
   return (
     <section class="card requests">
-      <table id="benchmarks" hidden={list.length === 0}>
+      {/* the card's head band, as 1ctx draws a list's search: shown while
+          a search hides every row, with the table's head, so it stays */}
+      <div class="runs-find" hidden={all.length === 0}>
+        <label class="runs-q">
+          <Search />
+          <input
+            type="search"
+            name="run-search"
+            placeholder="Search models"
+            aria-label="Search models"
+            autocomplete="off"
+            spellcheck={false}
+            value={runQuery.value}
+            onInput={(e) => {
+              runQuery.value = e.currentTarget.value;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") runQuery.value = "";
+            }}
+          />
+          {/* ours, not the native one, which shows only with the focus */}
+          <button
+            type="button"
+            class="runs-clear"
+            aria-label="Clear search"
+            hidden={query === ""}
+            onClick={() => {
+              runQuery.value = "";
+            }}
+          >
+            <Close />
+          </button>
+        </label>
+        <nav class="runs-presets" aria-label="Preset">
+          {[null, ...BENCHMARK_PRESETS].map((p) => (
+            <button
+              type="button"
+              key={p ?? "all"}
+              class={p === preset ? "on" : undefined}
+              aria-pressed={p === preset}
+              onClick={() => {
+                runPreset.value = p;
+              }}
+            >
+              {p ?? "All"}
+            </button>
+          ))}
+        </nav>
+      </div>
+      <table id="benchmarks" hidden={all.length === 0}>
         <thead>
           <tr>
             <th class="run">Model</th>
@@ -234,7 +291,7 @@ export function Runs() {
         </tbody>
       </table>
       <p class="blank" hidden={list.length > 0}>
-        No runs yet.
+        {all.length === 0 ? "No runs yet." : noMatchCopy(query, preset)}
       </p>
     </section>
   );

@@ -266,6 +266,21 @@ test("cancel aborts the request in flight and keeps what was measured", async ()
   expect(() => t.runner.cancel(started.id)).toThrow("not running");
 });
 
+test("a delete is told to every listener, a refused one to none", async () => {
+  const t = setup();
+  const removed: number[] = [];
+  const stop = t.runner.onRemove((id) => removed.push(id));
+  t.state.hangAt = 1;
+  const started = t.runner.start(body);
+  expect(() => t.runner.remove(started.id)).toThrow("still running");
+  t.runner.cancel(started.id);
+  await t.runner.idle();
+  t.runner.remove(started.id);
+  expect(() => t.runner.remove(started.id)).toThrow("not found");
+  expect(removed).toEqual([started.id]);
+  stop();
+});
+
 test("a failed turn fails the run and says where", async () => {
   const t = setup();
   t.state.failAt = 3;

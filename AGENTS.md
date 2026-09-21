@@ -300,10 +300,13 @@ src/client/
                      actions.ts (runAction, confirmText, engine facts)
   requests/          Requests.tsx, Row.tsx, requests.css
   benchmark/         Benchmark.tsx (the page), Run.tsx (the card: what to
-                     run, or how far it is), Runs.tsx (the table, the
-                     deltas, the opened row), Turns.tsx, benchmark.css;
-                     state.ts (the signals and the calls); the pure, tested
+                     run, or how far it is), Scorecard.tsx (a model per
+                     row at a preset, scorecard.css), Runs.tsx (the
+                     search, the table, the deltas, the opened row),
+                     Turns.tsx, benchmark.css; state.ts
+                     (the signals and the calls); the pure, tested
                      report.ts (the cells, the deltas, the text report)
+                     and scorecard.ts (the rows, the bars, the best)
   engine/            Engine.tsx (the page), Self.tsx, Service.tsx (the
                      mlx-serve head), Build.tsx (facts and the one row that
                      is a release, an operation or a failure), Progress.tsx,

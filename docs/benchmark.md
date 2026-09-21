@@ -66,6 +66,11 @@ Each figure is the median of the three repetitions.
 A phone keeps Prefill and Decode, and under the model the preset in place
 of the date.
 
+The top of the runs card is a search: what is typed narrows the runs to
+the models whose id holds it, in any case, so `35B` finds every 35B model.
+Escape clears it. Beside it, All, 20K, 40K and 60K narrow the runs to a
+preset.
+
 A row opens to every figure the run has, the ones a phone leaves out of
 the row included, under the model and why the run is suspect, if it is:
 
@@ -112,6 +117,26 @@ A turn that stops at a tool call before its 256 tokens is what models do in
 a tool session and no reason for suspicion: prefill is untouched, the decode
 rate is over the tokens that were generated, and a turn under 64 tokens is
 only left out of the first and last turn rates.
+
+## The scorecard
+
+At the top of the page, one row per model at a preset, so the fastest
+model reads without going through the runs. It opens on `40K`, like the run
+card, and 20K, 40K and 60K switch it.
+
+Only the models the engine lists are in it: a model deleted from the
+model directory leaves the scorecard, its runs stay in the table. A
+model's row is its newest finished run at that preset; a cancelled,
+failed or interrupted run is left out, a suspect one is kept and says so.
+Only runs of the newest version of the session count: an older one was
+over other work. The models differ in script id, since each is sized with
+its own tokenizer, and still compare here: they were asked for the same
+work in their own tokens.
+
+The rows are ranked by decode. The columns are the runs table's, and under
+each figure a bar says how close it comes to the best of its column (for
+the latency, the best over this one); the best is green. With a single
+model nothing is marked best. A phone keeps Prefill and Decode.
 
 ## Comparing
 

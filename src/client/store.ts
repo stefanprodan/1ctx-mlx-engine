@@ -57,9 +57,10 @@ export const engineMode = signal<EngineMode | null>(null);
 export const absent = computed(() => engineMode.value === "absent");
 // The benchmark in progress: the snapshot's, then every benchmark message.
 // The last message of a run carries its final status and clears this; the
-// count tells the Benchmark page to read the finished runs again.
+// count tells the Benchmark page to read the finished runs again, as a
+// deleted run does.
 export const benchmark = signal<BenchmarkProgress | null>(null);
-export const benchmarksEnded = signal(0);
+export const benchmarksChanged = signal(0);
 export function applyBenchmark(progress: BenchmarkProgress) {
   if (progress.benchmark.status === "running") {
     benchmark.value = progress;
@@ -67,7 +68,7 @@ export function applyBenchmark(progress: BenchmarkProgress) {
     return;
   }
   benchmark.value = null;
-  benchmarksEnded.value++;
+  benchmarksChanged.value++;
   void refreshSnapshot();
 }
 // The downloads, newest first: the snapshot's list, then every download
@@ -187,6 +188,8 @@ export function connect() {
       applyDownload(msg.data);
     } else if (msg.type === "benchmark") {
       applyBenchmark(msg.data);
+    } else if (msg.type === "benchmarkRemoved") {
+      benchmarksChanged.value++;
     } else if (msg.type === "engine") {
       engineMode.value = msg.data.engine.mode;
     }

@@ -204,6 +204,9 @@ export function serve(
   const unsubscribeBenchmarks = deps.benchmarks.onProgress((progress) =>
     publish({ type: "benchmark", data: progress }),
   );
+  const unsubscribeRemovals = deps.benchmarks.onRemove((id) =>
+    publish({ type: "benchmarkRemoved", data: { id } }),
+  );
   return {
     server,
     publishEngine(state: EnginePageState) {
@@ -214,6 +217,7 @@ export function serve(
       unsubscribeEvents();
       unsubscribeDownloads();
       unsubscribeBenchmarks();
+      unsubscribeRemovals();
       server.stop(true);
     },
   };
