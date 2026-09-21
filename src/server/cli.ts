@@ -53,8 +53,10 @@ export const HELP = `\x1b[1m1ctx-mlx-engine\x1b[0m - monitor and control an LLM 
                        anonymous when the file is missing; read at start
 
 \x1b[1mAPI:\x1b[0m
-  GET /                        the dashboard
-  GET /requests                finished and in-flight engine requests
+  GET /, /requests, /models, /server, /benchmark, /benchmark/scorecard
+                               the pages
+  GET /api/models              every model the engine lists, with its details
+  GET /api/requests            the last 50 finished requests
   GET|POST /api/downloads          list downloads or start one (body {"repo"})
   GET|DELETE /api/downloads/<id>   read or forget a download
   POST /api/downloads/<id>/cancel  stop a download; its parts are kept
@@ -68,6 +70,8 @@ export const HELP = `\x1b[1m1ctx-mlx-engine\x1b[0m - monitor and control an LLM 
                                historyClear (wipes the sample database),
                                requestsClear (wipes the stored requests),
                                favorite (toggles the daily-driver star)
+  /api/engine, /api/benchmarks the Server and Benchmark pages' routes, see
+                               docs/api.md
 
 \x1b[1mExamples:\x1b[0m
   1ctx-mlx-engine --engine http://127.0.0.1:11234 --once
