@@ -8,40 +8,33 @@
 
 [![test](https://github.com/stefanprodan/1ctx-mlx-engine/actions/workflows/test.yml/badge.svg)](https://github.com/stefanprodan/1ctx-mlx-engine/actions/workflows/test.yml)
 
-1ctx-mlx-engine installs, runs and watches an MLX inference engine
-([mlx-serve](https://github.com/ddalcu/mlx-serve)) on an Apple Silicon Mac:
-one page for the engine's install and configuration, the request in
-flight, the throughput, the caches and the memory, with a week of history
-behind them. A single binary, no dependencies.
+1ctx-mlx-engine is a web dashboard for running local LLMs with MLX on an
+Apple Silicon Mac. It installs and upgrades
+[mlx-serve](https://github.com/ddalcu/mlx-serve), downloads models from
+Hugging Face, and shows you what the engine is doing.
 
-## Features
+You see the current request, token speed, memory use, how much of each
+prompt the engine could reuse, and recent history in one place, from any
+browser on your network. It is a single binary with no runtime
+dependencies.
 
-**Monitor**
+## What you get
 
-- Live throughput, time to first token and cache efficiency, with charts
-  across 1h, 6h, 24h and 7d.
-- The memory split: inference engine footprint, weights, the RAM prefix cache
-  and the SSD tier against their budgets.
-- The request in flight as a live bar: prefill, cached, decode.
-- A models table to load, unload, set default and favorite; restart the
-  engine and clear its SSD cache.
-- A runtime panel: engine pid, RSS, CPU and GPU next to the host's chip,
-  memory and disk.
-
-**Requests**
-
-- The last 50 requests with tokens, cached share, rates, time to first
-  token and duration.
-
-**Engine**
-
-- Install, upgrade, roll back and configure mlx-serve as a LaunchAgent.
-
-**Benchmark**
-
-- Replay a scripted agent session against a model from empty caches:
-  prefill, decode, cache hit rate and peak memory, run against run.
-- A scorecard of the models, ranked by their newest run at a preset.
+- **Overview:** Watch requests as they run. See prompt and generation
+  speed, memory use, how much of each prompt the engine could reuse, and
+  charts for the last hour through the last seven days.
+- **Requests:** Look through the last 50 requests, including tokens,
+  speed, time to the first token, duration, and cancelled requests.
+- **Models:** Download models from Hugging Face, follow their progress,
+  and pause or resume downloads. See each model's size, context window,
+  and details, then load, unload, favorite, or delete it.
+- **Server:** Install, update, roll back, configure, start, and stop
+  mlx-serve from the browser.
+- **Run:** Measure a model with the same scripted agent session each
+  time. See the time to the first answer, prompt speed, generation speed,
+  prompt reuse, and peak memory.
+- **Scorecard:** Rank models by their latest run and compare how they
+  perform on this Mac at 20K, 40K, or 60K context.
 
 ## Install
 
@@ -76,12 +69,16 @@ remove `~/.1ctx-mlx-engine`. The models are not in it and stay.
 
 ## Docs
 
-- [Monitor and Requests](docs/monitor.md)
-- [Models](docs/models.md)
-- [Server](docs/engine.md)
-- [Benchmark](docs/benchmark.md)
-- [API](docs/api.md)
-- [Development](docs/development.md)
+- [Monitor and Requests](docs/monitor.md): live activity, history, and
+  request details.
+- [Models](docs/models.md): downloads, model details, and model controls.
+- [Server](docs/engine.md): install, update, configure, and troubleshoot
+  mlx-serve.
+- [Benchmark](docs/benchmark.md): run tests, read results, and compare
+  models.
+- [API](docs/api.md): HTTP and WebSocket endpoints.
+- [Development](docs/development.md): build, test, and work on the
+  project.
 
 ## License
 
