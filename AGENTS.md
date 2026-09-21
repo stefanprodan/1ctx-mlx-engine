@@ -140,7 +140,12 @@ Deploy when asked, then say what is now running there.
    writes a journal row first, which `reconcile()` finishes or rolls back
    at the next start. `launchctl print` runs after an operation, never
    from `snapshot()`. 1ctx-mlx-engine manages only an engine it installed (the
-   `managed` marker); it never adopts or imports another agent's plist.
+   `managed` marker). When the marker is gone (a wiped database), the
+   start adopts the engine back, and only when it is provably ours: the
+   plist under our own label, its program inside our versions directory,
+   the binary there, and its `--version` naming that directory's tag; the
+   config is read back from the plist's arguments. It never adopts or
+   imports another agent's plist.
 
 ## Layout
 
@@ -251,8 +256,10 @@ src/server/
                      the lock, state), stage.ts (download, hash, unpack),
                      swap.ts (the port preflight, the staged reload, the
                      four-fact verification, the log tail), journal.ts
-                     (reconcile, restore, prune), poll.ts (the release
-                     poll), self.ts (1ctx-mlx-engine's own section), context.ts
+                     (reconcile, restore, prune), adopt.ts (our own
+                     LaunchAgent back after a wiped database), poll.ts
+                     (the release poll), self.ts (1ctx-mlx-engine's own
+                     section), context.ts
   web/index.ts       Bun.serve: the page, /api/snapshot, /api/history,
                      /api/requests, POST /api/actions/<name>, /ws;
                      development mode from ONECTX_MLX_DEV=1; handle() separate

@@ -3,6 +3,7 @@
 
 import { describe, expect, test } from "bun:test";
 import {
+  argsToConfig,
   configToArgs,
   DEFAULTS,
   limitsFromArgs,
@@ -295,5 +296,46 @@ describe("launch configuration", () => {
         "50GB",
       ]),
     );
+  });
+});
+
+describe("reading a config back from its arguments", () => {
+  const back = (value: EngineConfig) =>
+    argsToConfig(configToArgs(value, "/tmp/engine.log"), config());
+
+  test("the defaults and a config with every field come back as they were", () => {
+    expect(back(config())).toEqual(config());
+    const full = config({
+      host: "0.0.0.0",
+      port: 11240,
+      modelDirs: [PINNED, "/Volumes/ssd/models"],
+      prefixCacheMem: "16GB",
+      prefixCacheDisk: "50GB",
+      prefixCacheEntries: 64,
+      maxResidentModels: 2,
+      maxResidentMem: "auto",
+      ctxSize: 65536,
+      idleEvictSeconds: 3600,
+      temp: 1,
+      topP: 0.95,
+      topK: 40,
+      kvQuant: "8",
+      mtp: true,
+      pld: false,
+      noVision: true,
+      logLevel: "debug",
+      extraArgs: ["--reasoning-budget 2048", '--chat-template "a b\\\\c"'],
+    });
+    expect(back(full)).toEqual(full);
+  });
+
+  test("a value that does not parse, or a key flag, reads as nothing", () => {
+    const defaults = config();
+    expect(argsToConfig(["--port", "abc"], defaults)).toBeNull();
+    expect(argsToConfig(["--kv-quant", "3"], defaults)).toBeNull();
+    expect(argsToConfig(["--host", "10.0.0.1"], defaults)).toBeNull();
+    expect(argsToConfig(["--api-key", "secret"], defaults)).toBeNull();
+    // the form with = reads the same
+    expect(argsToConfig(["--port=11240"], defaults)?.port).toBe(11240);
   });
 });

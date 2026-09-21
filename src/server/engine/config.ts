@@ -306,6 +306,137 @@ export function validateConfig(
   return issues;
 }
 
+// the inverse of splitArgLine for one token
+const quoteArg = (token: string) =>
+  token !== "" && !/[\s'"\\]/.test(token)
+    ? token
+    : `"${token.replace(/(["\\])/g, "\\$1")}"`;
+
+const HOSTS = new Set<string>(["127.0.0.1", "0.0.0.0"]);
+const KV_QUANTS = new Set<string>(["off", "4", "8", "turbo2", "turbo4"]);
+const LOG_LEVELS = new Set<string>(["debug", "info", "warn", "error"]);
+
+// configToArgs read backwards, for adopting our own LaunchAgent when its
+// config is not in the database (a wiped one): the arguments after the
+// program, onto the defaults. A flag that is not typed goes to the extra
+// arguments with the values that follow it. Null when a typed value does
+// not parse, or for a key flag, which this program never writes.
+export function argsToConfig(
+  args: string[],
+  defaults: EngineConfig,
+): EngineConfig | null {
+  const config: EngineConfig = {
+    ...defaults,
+    modelDirs: [],
+    extraArgs: [],
+  };
+  const int = (v: string | undefined) =>
+    v !== undefined && /^\d+$/.test(v) ? Number(v) : null;
+  const float = (v: string | undefined) =>
+    v !== undefined && v !== "" && Number.isFinite(Number(v))
+      ? Number(v)
+      : null;
+  for (let i = 0; i < args.length; i++) {
+    const [name, inline] = args[i]!.split(/=(.*)/s) as [string, string?];
+    const takes = () => inline ?? args[++i];
+    switch (name) {
+      case "--serve":
+      case "--metrics":
+        break;
+      case "--log-file":
+        takes(); // where it goes is this program's to say
+        break;
+      case "--host": {
+        const v = takes();
+        if (v === undefined || !HOSTS.has(v)) return null;
+        config.host = v as EngineConfig["host"];
+        break;
+      }
+      case "--port": {
+        const v = int(takes());
+        if (v === null) return null;
+        config.port = v;
+        break;
+      }
+      case "--model-dir": {
+        const v = takes();
+        if (!v) return null;
+        config.modelDirs.push(v);
+        break;
+      }
+      case "--prefix-cache-mem":
+      case "--prefix-cache-disk":
+      case "--max-resident-mem": {
+        const v = takes();
+        if (!v) return null;
+        if (name === "--prefix-cache-mem") config.prefixCacheMem = v;
+        else if (name === "--prefix-cache-disk") config.prefixCacheDisk = v;
+        else config.maxResidentMem = v;
+        break;
+      }
+      case "--prefix-cache-entries":
+      case "--max-resident-models":
+      case "--ctx-size":
+      case "--idle-evict-secs":
+      case "--top-k": {
+        const v = int(takes());
+        if (v === null) return null;
+        if (name === "--prefix-cache-entries") config.prefixCacheEntries = v;
+        else if (name === "--max-resident-models") config.maxResidentModels = v;
+        else if (name === "--ctx-size") config.ctxSize = v;
+        else if (name === "--idle-evict-secs") config.idleEvictSeconds = v;
+        else config.topK = v;
+        break;
+      }
+      case "--temp":
+      case "--top-p": {
+        const v = float(takes());
+        if (v === null) return null;
+        if (name === "--temp") config.temp = v;
+        else config.topP = v;
+        break;
+      }
+      case "--kv-quant": {
+        const v = takes();
+        if (v === undefined || !KV_QUANTS.has(v)) return null;
+        config.kvQuant = v as EngineConfig["kvQuant"];
+        break;
+      }
+      case "--log-level": {
+        const v = takes();
+        if (v === undefined || !LOG_LEVELS.has(v)) return null;
+        config.logLevel = v as EngineConfig["logLevel"];
+        break;
+      }
+      case "--mtp":
+        config.mtp = true;
+        break;
+      case "--pld":
+        config.pld = true;
+        break;
+      case "--no-pld":
+        config.pld = false;
+        break;
+      case "--no-vision":
+        config.noVision = true;
+        break;
+      case "--api-key":
+      case "--api-key-env":
+        return null;
+      default: {
+        // one extra line: the flag and the values that follow it
+        const line = [args[i]!];
+        while (i + 1 < args.length && !args[i + 1]!.startsWith("--")) {
+          line.push(args[++i]!);
+        }
+        config.extraArgs.push(line.map(quoteArg).join(" "));
+      }
+    }
+  }
+  if (config.modelDirs.length === 0) config.modelDirs = defaults.modelDirs;
+  return config;
+}
+
 // The <string> children of the ProgramArguments array in a launchd plist.
 // The plist is our own XML file, so a scan for the array after the key is
 // enough; a binary plist yields no arguments.
