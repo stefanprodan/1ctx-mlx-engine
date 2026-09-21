@@ -11,6 +11,7 @@ import chatFixture from "../../fixtures/chat-timings.json";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
 import propsFixture from "../../fixtures/props.json";
+import { testServer } from "../serve.ts";
 
 describe("parseMetrics", () => {
   const m = parseMetrics(metricsFixture);
@@ -107,14 +108,11 @@ describe("the adapter over HTTP", () => {
   // a stand-in engine, so the client and its routes are exercised, not
   // just the parsers
   function serve(routes: Record<string, unknown>) {
-    return Bun.serve({
-      port: 0,
-      fetch(req) {
-        const body = routes[new URL(req.url).pathname];
-        return body === undefined
-          ? new Response("nope", { status: 404 })
-          : Response.json(body);
-      },
+    return testServer((req) => {
+      const body = routes[new URL(req.url).pathname];
+      return body === undefined
+        ? new Response("nope", { status: 404 })
+        : Response.json(body);
     });
   }
 

@@ -25,6 +25,7 @@ import { History } from "../../../src/server/monitor/history.ts";
 import type { LaunchdInfo } from "../../../src/server/service/launchd.ts";
 import { plistPath, renderPlist } from "../../../src/server/service/plist.ts";
 import type { EngineConfig } from "../../../src/shared/engine.ts";
+import { testServer } from "../serve.ts";
 
 const servers: Bun.Server<unknown>[] = [];
 const roots: string[] = [];
@@ -35,7 +36,8 @@ const log: Log = Object.assign(() => {}, {
 });
 
 afterEach(async () => {
-  for (const server of servers.splice(0)) server.stop(true);
+  // awaited: an old server must be gone before the next test binds a port
+  await Promise.all(servers.splice(0).map((server) => server.stop(true)));
   await Promise.all(
     roots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   );
@@ -65,15 +67,12 @@ function assetServer(
   inspect?: (request: Request) => void,
 ): { url: string; hits: () => number } {
   let count = 0;
-  const server = Bun.serve({
-    port: 0,
-    fetch(request) {
-      count++;
-      inspect?.(request);
-      return new Response(new Blob([bytes as BlobPart]), {
-        headers: { "content-length": String(bytes.length) },
-      });
-    },
+  const server = testServer((request) => {
+    count++;
+    inspect?.(request);
+    return new Response(new Blob([bytes as BlobPart]), {
+      headers: { "content-length": String(bytes.length) },
+    });
   });
   servers.push(server);
   return {
@@ -253,7 +252,7 @@ async function installed(options: HarnessOptions = {}) {
 
 describe("the port probe", () => {
   test("a port that accepts is in use, a closed one is free", async () => {
-    const server = Bun.serve({ port: 0, fetch: () => new Response("ok") });
+    const server = testServer(() => new Response("ok"));
     const port = server.port as number;
     expect(await defaultPortProbe("127.0.0.1", port)).toBeTrue();
     // the wide bind is probed through loopback
@@ -346,12 +345,9 @@ describe("EngineManager install", () => {
     const target = assetServer(bytes, (request) => {
       authorization = request.headers.get("authorization");
     });
-    const redirect = Bun.serve({
-      port: 0,
-      fetch(request) {
-        expect(request.headers.get("authorization")).toBe("Bearer secret");
-        return Response.redirect(target.url, 302);
-      },
+    const redirect = testServer((request) => {
+      expect(request.headers.get("authorization")).toBe("Bearer secret");
+      return Response.redirect(target.url, 302);
     });
     servers.push(redirect);
     const value = await installed({
@@ -398,14 +394,12 @@ describe("EngineManager install", () => {
 
   test("cancels a stalled download before the swap", async () => {
     const bytes = await archive();
-    const stalled = Bun.serve({
-      port: 0,
-      fetch() {
-        return new Response(new ReadableStream({ start() {} }), {
+    const stalled = testServer(
+      () =>
+        new Response(new ReadableStream({ start() {} }), {
           headers: { "content-length": String(bytes.length) },
-        });
-      },
-    });
+        }),
+    );
     servers.push(stalled);
     const value = await harness({
       bytes,
