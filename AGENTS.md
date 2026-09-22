@@ -431,10 +431,9 @@ tab.
   `com.ddalcu.mlx-serve`; "free" is a `launchctl kickstart -k` because a
   fresh process has no default model and so nothing to cold-load.
 - `--prefix-cache-mem` and `--prefix-cache-disk` are per resident model
-  (verified 2026-09-07 in `scheduler.zig` at 0897f01). The adapter reads
-  them from the plist's ProgramArguments, and `/props` reports what the
-  running process actually uses (`settings.prefix_cache`, the two agreed on
-  2026-09-20); the tiles multiply the budget by the resident model count
+  (`scheduler.zig` at 0897f01). The adapter reads them from the plist's
+  ProgramArguments, and `/props` reports what the running process actually
+  uses (`settings.prefix_cache`); the tiles multiply the budget by the resident model count
   (hot) and the tier dir count (SSD).
 - The hot cache evicts per workload since 26.9.2, keyed by
   `prompt_cache_key`, so one client's batch evicts its own entries first.
