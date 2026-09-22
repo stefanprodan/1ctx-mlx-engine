@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   type EngineState,
+  isDevVersion,
   type Release,
   releaseUrl,
   updatesOf,
@@ -56,5 +57,18 @@ describe("updatesOf", () => {
       engine: null,
       self: "1.2.0",
     });
+  });
+});
+
+describe("isDevVersion", () => {
+  test("a build from source and a deployed one with its commit", () => {
+    expect(isDevVersion("v0.0.0-dev")).toBe(true);
+    expect(isDevVersion("v0.0.0-dev+1a2b3c4")).toBe(true);
+    expect(isDevVersion("v0.0.0-dev+1a2b3c4.dirty5d6e7f")).toBe(true);
+  });
+
+  test("a release is not, nor a look-alike", () => {
+    expect(isDevVersion("v0.2.0")).toBe(false);
+    expect(isDevVersion("v0.0.0-devel")).toBe(false);
   });
 });

@@ -6,7 +6,7 @@
 // by the manager's lock and never by where mlx-serve is.
 
 import {
-  DEV_VERSION,
+  isDevVersion,
   releaseUrl,
   SELF_REPO,
   type SelfState,
@@ -89,7 +89,7 @@ export function Self({ self }: { self: SelfState | null }) {
           <dt>Version</dt>
           <dd class={self ? undefined : "none"}>
             {self?.version ?? DASH}
-            {self?.version === DEV_VERSION && <small>dev build</small>}
+            {self && isDevVersion(self.version) && <small>dev build</small>}
           </dd>
         </dl>
         <dl>

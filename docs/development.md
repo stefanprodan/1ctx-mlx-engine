@@ -17,7 +17,9 @@ make install-bin                                  # build and install to ~/.loca
 
 `package.json` stays at `0.0.0-dev`. A normal source or binary build reports
 `v0.0.0-dev`; `make build VERSION=v1.2.3` uses Bun's build-time definition
-to embed `v1.2.3` without editing the package file.
+to embed `v1.2.3` without editing the package file. `make deploy-studio`
+appends the commit, `v0.0.0-dev+1a2b3c4`, with `.dirty` and a hash of the
+diff when the checkout has changes; the page still calls it a dev build.
 
 A pushed semantic-version tag such as `v1.2.3` runs the release workflow.
 It validates the tag, runs lint and tests, builds a native Darwin ARM64

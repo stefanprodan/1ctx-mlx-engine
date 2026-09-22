@@ -12,7 +12,18 @@ cd "$(dirname "$0")/.."
 HOST=$STUDIO_SSH
 ssh_() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "$@"; }
 
-make build
+# The commit rides on the dev version, so the Studio's page names what it
+# runs; a dirty tree names its diff too, so two deploys from one commit
+# are two versions.
+sha=$(git rev-parse --short HEAD)
+dirty=$(git status --porcelain)
+[ -z "$dirty" ] || sha=$sha.dirty$(git diff HEAD | shasum | cut -c1-6)
+version=v$(bun -e 'console.log(require("./package.json").version)')+$sha
+VERSION=$version make build
+[ "$(bin/1ctx-mlx-engine --version)" = "$version" ] || {
+  echo "the binary does not report $version" >&2
+  exit 1
+}
 # Upload beside the live binary and rename: an interrupted copy must not
 # leave launchd restarting a truncated executable.
 # a Studio that starts fresh has no directory yet
