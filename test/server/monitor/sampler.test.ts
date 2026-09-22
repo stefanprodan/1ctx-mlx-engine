@@ -9,16 +9,13 @@ import type {
   EngineMetrics,
 } from "../../../src/server/engine/types.ts";
 import type { HostProbes } from "../../../src/server/host/types.ts";
-import type { Log } from "../../../src/server/lib/log.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import { Sampler } from "../../../src/server/monitor/sampler.ts";
 import { handle, isRange, snapshot } from "../../../src/server/web/index.ts";
 import type { Capability, ModelInfo } from "../../../src/shared/models.ts";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
-
-const testLog = (write: (line: string) => void): Log =>
-  Object.assign(write, { warn: write, error: write });
+import { testLog } from "../log.ts";
 
 // A scripted engine: each metrics() call pops the next body (a function of
 // the fixture), or throws when the script says the engine is down.
@@ -87,7 +84,7 @@ const idle = () => {};
 // The /props read resolves on its own microtask, so tests that assert the
 // whole log ignore the line it writes; the tests above own that behavior.
 const loop = (lines: string[]) =>
-  lines.filter((l) => !l.startsWith("engine version"));
+  lines.filter((l) => !l.includes('msg="engine version"'));
 
 describe("Sampler", () => {
   test("first tick fetches models and has no rates; second has a window", async () => {
@@ -151,14 +148,16 @@ describe("Sampler", () => {
     const c = clock();
     const s = new Sampler(engine, history, {
       now: c.now,
-      log: (l) => lines.push(l),
+      log: testLog((l) => lines.push(l)),
     });
     await s.tick();
     c.advance(1000);
     const b = await s.tick();
     expect(b?.epoch).toBe(1);
     expect(b?.windowMs).toBeNull();
-    expect(loop(lines)).toEqual(["engine counters reset: epoch 0 -> 1"]);
+    expect(loop(lines)).toEqual([
+      'level=INFO msg="engine counters reset" epoch=1 previous=0',
+    ]);
     c.advance(1000);
     const d = await s.tick();
     expect(d?.epoch).toBe(1);
@@ -173,7 +172,7 @@ describe("Sampler", () => {
     const c = clock();
     const s = new Sampler(engine, history, {
       now: c.now,
-      log: (l) => lines.push(l),
+      log: testLog((l) => lines.push(l)),
     });
     const lines: string[] = [];
     await s.tick();
@@ -185,7 +184,7 @@ describe("Sampler", () => {
       hotBytes: 16 * 1024 ** 3,
       diskBytes: 50 * 1024 ** 3,
     });
-    expect(lines).toContain("engine version 26.9.1");
+    expect(lines).toContain('level=INFO msg="engine version" version=26.9.1');
     // the same process is not asked twice
     c.advance(1000);
     await s.tick();
@@ -500,7 +499,7 @@ describe("Sampler", () => {
     const c = clock();
     const s = new Sampler(engine, history, {
       now: c.now,
-      log: (l) => lines.push(l),
+      log: testLog((l) => lines.push(l)),
     });
     await s.tick();
     c.advance(1000);
@@ -511,7 +510,9 @@ describe("Sampler", () => {
     expect(back?.windowMs).toBeNull();
     // the new process's phase clock starts at this reading
     expect(back?.phaseSince).toBe(c.now());
-    expect(loop(lines)).toEqual(["engine counters reset: epoch 0 -> 1"]);
+    expect(loop(lines)).toEqual([
+      'level=INFO msg="engine counters reset" epoch=1 previous=0',
+    ]);
     c.advance(1000);
     expect((await s.tick())?.epoch).toBe(1);
     history.close();
@@ -523,7 +524,7 @@ describe("Sampler", () => {
     const lines: string[] = [];
     const s = new Sampler(engine, history, {
       now: clock().now,
-      log: (l) => lines.push(l),
+      log: testLog((l) => lines.push(l)),
     });
     const seen: number[] = [];
     s.onSample(() => {
@@ -532,7 +533,11 @@ describe("Sampler", () => {
     s.onSample((x) => seen.push(x.t));
     expect((await s.tick())?.engineUp).toBe(true);
     expect(seen).toHaveLength(1);
-    expect(loop(lines)).toEqual(["sample listener failed: boom"]);
+    expect(loop(lines)).toEqual([
+      expect.stringContaining(
+        'level=ERROR msg="listener failed" error_type=Error error=boom',
+      ),
+    ]);
     history.close();
   });
 });
@@ -719,7 +724,7 @@ describe("Sampler host probes", () => {
       now: c.now,
       probes,
       local: true,
-      log: (l) => lines.push(l),
+      log: testLog((l) => lines.push(l)),
     });
     const a = (await s.tick())!;
     expect(a.enginePid).toBe(42);
@@ -728,7 +733,9 @@ describe("Sampler host probes", () => {
     expect(a.engineStartedAt).toBe(500_000);
     expect(a.engineCpuPct).toBeNull(); // one reading, no rate yet
     expect(probes.scans).toBe(1);
-    expect(loop(lines)).toEqual(["engine pid none -> 42"]);
+    expect(loop(lines)).toEqual([
+      'level=INFO msg="engine pid" pid=42 previous=none',
+    ]);
     c.advance(1000);
     const a2 = (await s.tick())!;
     expect(a2.engineCpuPct).toBeCloseTo(25, 5);
@@ -746,7 +753,9 @@ describe("Sampler host probes", () => {
     expect(d.enginePid).toBe(77);
     expect(d.engineCpuPct).toBeNull(); // new pid, new window
     expect(d.mem.procFootprint).toBe(770);
-    expect(lines.at(-1)).toBe("engine pid none -> 77");
+    expect(lines.at(-1)).toBe(
+      'level=INFO msg="engine pid" pid=77 previous=none',
+    );
     history.close();
   });
 

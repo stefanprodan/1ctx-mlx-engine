@@ -22,7 +22,7 @@ import {
 import type { Capability } from "../shared/models.ts";
 import type { Engine } from "./engine/types.ts";
 import { ExclusiveLock, LockBusyError } from "./lib/lock.ts";
-import type { Log } from "./lib/log.ts";
+import { errorFields, type Log } from "./lib/log.ts";
 import { removeModel } from "./models/remove.ts";
 import type { History } from "./monitor/history.ts";
 import type { Sampler } from "./monitor/sampler.ts";
@@ -161,12 +161,14 @@ export class Actions {
         const started = this.now();
         let ok = true;
         let detail = "";
+        let failure: unknown = null;
         // a refusal keeps its own status; an adapter, spawn or file failure is 502
         let status = 502;
         try {
           detail = await this.perform(name, model);
         } catch (err) {
           ok = false;
+          failure = err;
           detail = err instanceof Error ? err.message : String(err);
           if (err instanceof ActionError) status = err.status;
         }
@@ -184,9 +186,17 @@ export class Actions {
         };
         this.events.push(event);
         if (this.events.length > EVENTS_KEPT) this.events.shift();
-        this.deps.log(
-          `action ${name}${model ? ` ${model}` : ""}: ${ok ? "ok" : "failed"} in ${event.ms} ms${detail ? ` (${detail})` : ""}`,
-        );
+        const fields = {
+          action: name,
+          model: model ?? undefined,
+          duration: event.ms,
+        };
+        if (ok) this.deps.log.info("action", { ...fields, detail });
+        else
+          this.deps.log.warn("action failed", {
+            ...fields,
+            ...errorFields(failure, !(failure instanceof ActionError)),
+          });
         for (const fn of this.listeners) fn(event);
         if (!ok) throw new ActionError(status, detail);
         return event;

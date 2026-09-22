@@ -179,8 +179,8 @@ src/server/
   actions.ts         load, unload, default, free, diskClear, delete (the
                      last three local-only), historyClear, requestsClear,
                      favorite; one at a time, logged, last 50
-  lib/log.ts         levelled callable logger, repeat collapsing, appending
-                     file sink and stopped launchd-log rotation
+  lib/log.ts         slog text lines per area, repeat collapsing, the
+                     appending file sink and stopped launchd-log rotation
   lib/lock.ts        the one lock the actions and the manager share
   lib/secrets.ts     the key files in ~/.1ctx-mlx-engine/secrets
                      (.preview/secrets from source); loadKey and secretsDir, read once at
@@ -456,6 +456,20 @@ tab.
   element; order CSS rules accordingly.
 - **Types** are checked by `bun tsc --noEmit` as part of `make lint`. The
   browser client shares the tsconfig (lib includes DOM).
+- **A log line is slog text,** the format 1ctx writes: one event through
+  the `info`, `warn` and `error` methods of the `Log` that `app.ts` hands
+  each area (`app`, `sampler`, `actions`, `downloads`, `engine`,
+  `benchmark`). Fields are flat and follow UTC `time`, `level`, `msg`
+  and `area`; `duration` is whole milliseconds. Messages are fixed
+  lowercase phrases, the values go in fields: ids, repos, model ids,
+  tags, counts, statuses, closed words, durations, startup paths and
+  error fields. Never a token, a prompt or a model's output.
+  `errorFields()` keeps an error's first line, its URLs without query or
+  credentials, cut at 200 characters after the Hub and GitHub tokens
+  are scrubbed from it, and its source frames as `stack`; the build
+  passes `--sourcemap` so a binary's frames name source files. The same
+  event again within 10 s is written once more with `repeated=N`. A test
+  collects lines with `testLog()` from `test/server/log.ts`.
 - **Comments explain why, not what.** The engine caveats above are
   load-bearing where they appear in code; keep them.
 - **Development builds report `v0.0.0-dev`.** `package.json` stays at

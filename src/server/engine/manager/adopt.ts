@@ -10,6 +10,7 @@
 
 import { access, readFile, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
+import { errorFields } from "../../lib/log.ts";
 import { argsToConfig, DEFAULTS, parseLaunchdArgs } from "../config.ts";
 import { isSafeTag } from "../release.ts";
 import { type ManagerContext, plist, versionDir } from "./context.ts";
@@ -54,14 +55,16 @@ export async function adopt(context: ManagerContext): Promise<boolean> {
     ),
   );
   if (!config) {
-    context.deps.log.warn(`engine: ${path} has arguments it cannot read`);
+    context.deps.log.warn("adopt skipped", { reason: "unreadable arguments" });
     return false;
   }
   // the binary states its version, as it did at install
   const installed = await record(context, tag).catch((error) => {
-    context.deps.log.warn(
-      `engine: not adopting ${tag}: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    context.deps.log.warn("adopt skipped", {
+      tag,
+      reason: "version check failed",
+      ...errorFields(error, false),
+    });
     return null;
   });
   if (!installed) return false;
@@ -72,6 +75,6 @@ export async function adopt(context: ManagerContext): Promise<boolean> {
   store.setInstalls({ ...installed, installedAt: since }, null);
   store.setApplied(config);
   store.setManaged(true);
-  context.deps.log(`engine: adopted ${tag} from its LaunchAgent`);
+  context.deps.log.info("adopted", { tag });
   return true;
 }

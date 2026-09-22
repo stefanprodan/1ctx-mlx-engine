@@ -14,7 +14,7 @@ import type { Engine, EngineCounters, Reading } from "../engine/types.ts";
 import { cacheDirSizes } from "../host/disk.ts";
 import { NULL_PROBES } from "../host/index.ts";
 import type { HostProbes, HostSnapshot } from "../host/types.ts";
-import type { Log } from "../lib/log.ts";
+import { errorFields, type Log, silent } from "../lib/log.ts";
 import type { History } from "./history.ts";
 import {
   attributeModel,
@@ -44,7 +44,7 @@ const DISK_EVERY_TICKS = 30;
 
 export type SamplerOptions = {
   now?: () => number;
-  log?: (line: string) => void;
+  log?: Log;
   probes?: HostProbes;
   // engine runs on this host: probe its pid and size its cache dirs
   local?: boolean;
@@ -54,8 +54,6 @@ export type SamplerOptions = {
 
 // A reading that is only a counter baseline (t=0, no gauges or histograms):
 // the epoch check compares the next real reading against it, nothing else.
-const describe = (err: unknown) =>
-  err instanceof Error ? err.message : String(err);
 
 function baseline(counters: EngineCounters): Reading {
   return {
@@ -136,7 +134,7 @@ export class Sampler {
     opts: SamplerOptions = {},
   ) {
     this.now = opts.now ?? Date.now;
-    this.log = (opts.log ?? (() => {})) as Log;
+    this.log = opts.log ?? silent;
     this.probes = opts.probes ?? NULL_PROBES;
     this.local = opts.local ?? false;
     this.modelOnDisk = opts.modelOnDisk ?? (() => false);
@@ -250,7 +248,7 @@ export class Sampler {
         if (!p?.version && !p?.limits) return;
         if (p.limits) this.limits = p.limits;
         if (p.version && p.version !== this.version) {
-          this.log(`engine version ${p.version}`);
+          this.log.info("engine version", { version: p.version });
         }
         this.version = p.version ?? this.version;
         // the answer outlives this engine process, so the next start has
@@ -294,7 +292,9 @@ export class Sampler {
     // a tick that throws (a history write failing, say) is logged, not an
     // unhandled rejection that ends the process
     const tick = () =>
-      this.tick().catch((err) => this.log(`tick failed: ${describe(err)}`));
+      this.tick().catch((err) =>
+        this.log.error("tick failed", errorFields(err)),
+      );
     void tick();
     this.timer = setInterval(tick, TICK_MS);
   }
@@ -315,7 +315,10 @@ export class Sampler {
         if (this.pid === null || !this.probes.pidMatches(this.pid, names)) {
           const found = this.probes.findPid(names);
           if (found !== this.pid) {
-            this.log(`engine pid ${this.pid ?? "none"} -> ${found ?? "none"}`);
+            this.log.info("engine pid", {
+              pid: found ?? "none",
+              previous: this.pid ?? "none",
+            });
           }
           this.pid = found;
         }
@@ -401,9 +404,10 @@ export class Sampler {
         this.live = rates.live;
         const reset = rates.epoch !== this.epoch;
         if (reset) {
-          this.log(
-            `engine counters reset: epoch ${this.epoch} -> ${rates.epoch}`,
-          );
+          this.log.info("engine counters reset", {
+            epoch: rates.epoch,
+            previous: this.epoch,
+          });
           this.epoch = rates.epoch;
           // a new process: whatever phase it is in began now
           this.phase = "idle";
@@ -485,7 +489,7 @@ export class Sampler {
           fn(sample);
         } catch (err) {
           // one bad listener must not take the loop down
-          this.log(`sample listener failed: ${describe(err)}`);
+          this.log.error("listener failed", errorFields(err));
         }
       }
       return sample;

@@ -25,7 +25,7 @@ import type { ModelInfo } from "../../shared/models.ts";
 import type { Sample } from "../../shared/sample.ts";
 import type { Engine } from "../engine/types.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
-import type { Log } from "../lib/log.ts";
+import { errorFields, type Log } from "../lib/log.ts";
 import { scriptHash } from "./hash.ts";
 import { looksBroken, notEnglish } from "./output.ts";
 import {
@@ -110,7 +110,7 @@ export class BenchmarkRunner {
     this.repetitions = deps.repetitions ?? REPETITIONS;
     this.maxTokens = deps.maxTokens ?? MAX_TOKENS;
     const n = deps.store.interruptRunning(this.now());
-    if (n > 0) deps.log(`benchmark: ${n} unfinished run marked interrupted`);
+    if (n > 0) deps.log.warn("runs interrupted", { count: n });
   }
 
   onProgress(fn: (p: BenchmarkProgress) => void): () => void {
@@ -211,7 +211,7 @@ export class BenchmarkRunner {
     // synchronously, so a second start or an action sees it at once
     this.settled = this.deps.lock
       .run(LOCK_LABEL, () => this.run(known.contextLength))
-      .catch((err) => this.deps.log(`benchmark: ${describe(err)}`));
+      .catch((err) => this.deps.log.error("run failed", errorFields(err)));
     // every tab shows the run and turns its buttons off before the fit ends
     this.publish(this.progress);
     return benchmark;
@@ -234,7 +234,9 @@ export class BenchmarkRunner {
     let brokenOutput = false;
     let foreignOutput = false;
     const target = targetsOf(preset, window, this.maxTokens).first;
-    this.deps.log(`benchmark ${model} (${preset}): started`);
+    const run = { id: progress.benchmark.id, model, preset };
+    this.deps.log.info("run start", run);
+    let failure: unknown = null;
     try {
       // The route's idle check reads the sampler's last second; a request
       // that began since would die in the restart below.
@@ -298,16 +300,16 @@ export class BenchmarkRunner {
             signal,
           );
           // the text is read here and dropped: a run keeps timings only
-          const where = `benchmark ${model} (${preset}): turn ${rep}.${turn}`;
+          const where = { ...run, repetition: rep, turn };
           const output = [prose, tools].filter((s) => s !== "").join("\n");
           if (!brokenOutput && looksBroken(output, timings.predictedN)) {
             brokenOutput = true;
-            this.deps.log(`${where} output looks broken`);
+            this.deps.log.warn("output looks broken", where);
           }
           // the language is the prose's: a tool call's arguments are data
           if (!foreignOutput && notEnglish(prose)) {
             foreignOutput = true;
-            this.deps.log(`${where} did not answer in English`);
+            this.deps.log.warn("output not in english", where);
           }
           const measured: BenchmarkTurn = { ...timings, repetition: rep, turn };
           this.deps.store.addTurn(progress.benchmark.id, measured);
@@ -332,6 +334,7 @@ export class BenchmarkRunner {
       if (signal.aborted || err instanceof Cancelled) {
         this.end(progress, "cancelled", null);
       } else {
+        failure = err;
         this.end(progress, "failed", describe(err));
       }
     } finally {
@@ -353,10 +356,16 @@ export class BenchmarkRunner {
       // a write that fails must not leave a run that never ends in memory
       try {
         this.deps.store.finish(b);
-        this.deps.log(
-          `benchmark ${model} (${preset}): ${b.status}` +
-            (b.error ? ` (${b.error})` : ""),
-        );
+        const fields = {
+          ...run,
+          status: b.status,
+          turns: progress.done.length,
+          suspect: b.suspect.length > 0 ? b.suspect.join(",") : undefined,
+          duration: (b.finishedAt ?? this.now()) - b.startedAt,
+          ...(failure === null ? {} : errorFields(failure)),
+        };
+        if (b.status === "failed") this.deps.log.warn("run end", fields);
+        else this.deps.log.info("run end", fields);
       } finally {
         this.progress = null;
         this.controller = null;

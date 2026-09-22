@@ -20,20 +20,17 @@ import {
 } from "../../../src/server/engine/manager/index.ts";
 import { EngineStore } from "../../../src/server/engine/store.ts";
 import { ExclusiveLock } from "../../../src/server/lib/lock.ts";
-import type { Log } from "../../../src/server/lib/log.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import type { LaunchdInfo } from "../../../src/server/service/launchd.ts";
 import { plistPath, renderPlist } from "../../../src/server/service/plist.ts";
 import type { EngineConfig } from "../../../src/shared/engine.ts";
+import { testLog } from "../log.ts";
 import { testServer } from "../serve.ts";
 
 const servers: Bun.Server<unknown>[] = [];
 const roots: string[] = [];
 
-const log: Log = Object.assign(() => {}, {
-  warn: () => {},
-  error: () => {},
-});
+const log = testLog();
 
 afterEach(async () => {
   // awaited: an old server must be gone before the next test binds a port

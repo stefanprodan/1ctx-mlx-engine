@@ -4,7 +4,7 @@
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { EnginePageState, InstallRecord } from "../../../shared/engine.ts";
-import { describeError } from "../../lib/fetch.ts";
+import { errorFields } from "../../lib/log.ts";
 import type { EngineJournal } from "../store.ts";
 import { adopt } from "./adopt.ts";
 import {
@@ -24,7 +24,7 @@ export async function reconcile(
   if (!journal && context.deps.local && !context.deps.store.managed()) {
     // our own LaunchAgent, with a database that no longer says so
     await adopt(context).catch((error) =>
-      context.deps.log.warn(`engine: adopt failed: ${describeError(error)}`),
+      context.deps.log.warn("adopt failed", errorFields(error)),
     );
   }
   if (!journal || !context.deps.local) {
@@ -37,9 +37,11 @@ export async function reconcile(
     }
     return context.pageState();
   }
-  context.deps.log.warn(
-    `engine ${journal.op}: reconciling ${journal.step} for ${journal.tag ?? "configuration"}`,
-  );
+  context.deps.log.warn("reconcile start", {
+    op: journal.op,
+    step: journal.step,
+    tag: journal.tag ?? undefined,
+  });
   const installs = context.deps.store.installs();
   const target = journal.tag ? versionDir(context, journal.tag) : null;
   const active = installs.active;
@@ -61,9 +63,10 @@ export async function reconcile(
       reconcileJournal(context, journal, target, active),
     );
   } catch (error) {
-    context.deps.log.error(
-      `engine ${journal.op}: reconcile failed: ${describeError(error)}`,
-    );
+    context.deps.log.error("reconcile failed", {
+      op: journal.op,
+      ...errorFields(error),
+    });
   } finally {
     context.operation = null;
   }
@@ -79,7 +82,7 @@ export async function reconcileJournal(
 ) {
   if (journal.op === "uninstall") {
     await removeEverything(context);
-    context.deps.log("engine uninstall: reconciled forward");
+    context.deps.log.info("reconciled", { op: "uninstall", way: "forward" });
     return;
   }
   {
@@ -104,7 +107,7 @@ export async function reconcileJournal(
       }
       context.deps.store.setManaged(true);
       context.deps.store.setJournal(null);
-      context.deps.log(`engine ${journal.op}: reconciled forward`);
+      context.deps.log.info("reconciled", { op: journal.op, way: "forward" });
     } else {
       const restored = await restoreJournal(context, journal, active);
       if (!restored) {
@@ -119,7 +122,7 @@ export async function reconcileJournal(
       }
       context.deps.store.setPending(null);
       context.deps.store.setJournal(null);
-      context.deps.log(`engine ${journal.op}: reconciled by rollback`);
+      context.deps.log.info("reconciled", { op: journal.op, way: "rollback" });
     }
     await prune(context);
   }

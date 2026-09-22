@@ -74,8 +74,8 @@ in `scripts/staging.env` instead; any other value is taken as its URL.
 The model downloader reads a Hugging Face token from
 `~/.1ctx-mlx-engine/secrets/hf.key` when installed and from
 `.preview/secrets/hf.key` when run from source. It buys gated repositories
-and the Hub's higher rate limits. The file holds the bare token; the start
-log says `hf key: <path>` or `hf key: none`. It is read once at start, so a
+and the Hub's higher rate limits. The file holds the bare token; the
+`startup` line in the log says `hf_key=true` or `hf_key=false`. It is read once at start, so a
 change needs a restart.
 
 Downloads land in `--model-dir`, `~/models` by default, for

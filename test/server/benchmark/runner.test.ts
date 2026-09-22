@@ -15,10 +15,10 @@ import {
 } from "../../../src/server/engine/mlxserve.ts";
 import type { ChatAnswer } from "../../../src/server/engine/types.ts";
 import { ExclusiveLock } from "../../../src/server/lib/lock.ts";
-import type { Log } from "../../../src/server/lib/log.ts";
 import type { Sample } from "../../../src/shared/sample.ts";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
+import { testLog } from "../log.ts";
 
 const ORNITH = "stefanprodan/Ornith-1.5-35B-A3B-BigBang-oQ4e-mtp";
 
@@ -112,10 +112,7 @@ function setup(over: Partial<RunnerDeps> = {}) {
   const lock = new ExclusiveLock();
   const store = new BenchmarkStore(new Database(":memory:"));
   const lines: string[] = [];
-  const log: Log = Object.assign((l: string) => void lines.push(l), {
-    warn: (l: string) => void lines.push(l),
-    error: (l: string) => void lines.push(l),
-  });
+  const log = testLog((l) => lines.push(l));
   const samples = new Set<(s: Sample) => void>();
   let n = 0;
   const runner = new BenchmarkRunner({
@@ -338,9 +335,11 @@ test("a model that loops makes the run suspect, once, and says where", async () 
   expect(benchmark.suspect).toEqual(["output looks broken"]);
   // the figures stand: the engine did its work
   expect(benchmark.summary?.decodeTps.median).not.toBeNull();
-  const flagged = t.lines.filter((l) => l.includes("output looks broken"));
+  const flagged = t.lines.filter((l) =>
+    l.includes('msg="output looks broken"'),
+  );
   expect(flagged).toEqual([
-    `benchmark ${body.model} (${body.preset}): turn 1.1 output looks broken`,
+    `level=WARN msg="output looks broken" id=${started.id} model=${body.model} preset=${body.preset} repetition=1 turn=1`,
   ]);
   // the text is read, never kept
   expect(JSON.stringify(turns)).not.toContain("image tag");
@@ -354,8 +353,8 @@ test("a model that answers in Chinese makes the run suspect", async () => {
   const { benchmark } = t.runner.detail(started.id);
   expect(benchmark.status).toBe("done");
   expect(benchmark.suspect).toEqual(["did not answer in English"]);
-  expect(t.lines.filter((l) => l.includes("in English"))).toEqual([
-    `benchmark ${body.model} (${body.preset}): turn 1.1 did not answer in English`,
+  expect(t.lines.filter((l) => l.includes("not in english"))).toEqual([
+    `level=WARN msg="output not in english" id=${started.id} model=${body.model} preset=${body.preset} repetition=1 turn=1`,
   ]);
 });
 

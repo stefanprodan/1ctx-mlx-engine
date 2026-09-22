@@ -188,7 +188,7 @@ back is one it has to discover.
 | Database | `~/.1ctx-mlx-engine/engine.db` (WAL mode, so `-shm` and `-wal` files sit next to it) |
 | Log | `~/.1ctx-mlx-engine/1ctx-mlx-engine.log`, opened and rotated by 1ctx-mlx-engine at 8 MB to one `.1`; launchd stdout/stderr goes to the crash catcher `~/.1ctx-mlx-engine/launchd.log`, rotated during a reload |
 | Working dir | `~/.1ctx-mlx-engine` |
-| Secrets | `~/.1ctx-mlx-engine/secrets/` (mode 700, files mode 600): `hf.key`, a Hugging Face token for gated repos and faster downloads, written from the shell's `HF_TOKEN` on 2026-09-09 and carried over from the old data directory at the cut-over; the boot log's `hf key:` line names the file found, or `none`. `hf.key` is the only key file; the `exa.key`, `firecrawl.key` and `openrouter.key` left from the chat were deleted on 2026-09-20 |
+| Secrets | `~/.1ctx-mlx-engine/secrets/` (mode 700, files mode 600): `hf.key`, a Hugging Face token for gated repos and faster downloads, written from the shell's `HF_TOKEN` on 2026-09-09 and carried over from the old data directory at the cut-over; the `startup` log line says `hf_key=true` or `false`. `hf.key` is the only key file; the `exa.key`, `firecrawl.key` and `openrouter.key` left from the chat were deleted on 2026-09-20 |
 
 Checks:
 

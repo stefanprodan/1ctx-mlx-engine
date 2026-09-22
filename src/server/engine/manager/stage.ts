@@ -15,10 +15,10 @@ import type { InstallRecord } from "../../../shared/engine.ts";
 import {
   abortPromise,
   DOWNLOAD_DISK_MARGIN,
-  describeError,
   fetchRedirected,
   sleepWithSignal,
 } from "../../lib/fetch.ts";
+import { errorFields } from "../../lib/log.ts";
 import {
   coreVersion,
   ENGINE_ASSET,
@@ -159,9 +159,12 @@ export async function download(
       return;
     } catch (error) {
       if (signal.aborted || attempt >= RETRIES) throw error;
-      context.deps.log.warn(
-        `engine download ${value.tag}: ${describeError(error)}; retry ${attempt} of ${RETRIES - 1}`,
-      );
+      context.deps.log.warn("download retry", {
+        tag: value.tag,
+        attempt,
+        retries: RETRIES - 1,
+        ...errorFields(error, false),
+      });
       await sleepWithSignal(context.retryDelayMs * attempt, signal);
     }
   }
