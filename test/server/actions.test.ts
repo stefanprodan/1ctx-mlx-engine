@@ -10,7 +10,6 @@ import {
 import { parseMetrics, parseModels } from "../../src/server/engine/mlxserve.ts";
 import type { Engine, EngineMetrics } from "../../src/server/engine/types.ts";
 import { ExclusiveLock } from "../../src/server/lib/lock.ts";
-import type { Log } from "../../src/server/lib/log.ts";
 import { History } from "../../src/server/monitor/history.ts";
 import { Sampler } from "../../src/server/monitor/sampler.ts";
 import { handle } from "../../src/server/web/index.ts";
@@ -18,13 +17,11 @@ import { ACTION_NAMES, type ActionEvent } from "../../src/shared/actions.ts";
 import type { Capability, ModelInfo } from "../../src/shared/models.ts";
 import metricsFixture from "../fixtures/metrics.json";
 import modelsFixture from "../fixtures/models.json";
+import { testLog } from "./log.ts";
 
 const QWEN = "Jundot/Qwen3.8-27B-oQ4e-mtp";
 const APODEX = "stefanprodan/Apodex-1.1-mini-oQ4e-mtp";
 const ORNITH = "stefanprodan/Ornith-1.5-35B-A3B-BigBang-oQ4e-mtp";
-
-const testLog = (write: (line: string) => void): Log =>
-  Object.assign(write, { warn: write, error: write });
 
 // An engine whose load/unload mutate its model list, as mlx-serve does.
 class ControlEngine implements Engine {
@@ -184,7 +181,7 @@ describe("Actions", () => {
     expect(events).toEqual([ev]);
     expect(s.actions.events).toEqual([ev]);
     expect(s.logs).toEqual([
-      `action unload ${QWEN}: ok in 0 ms (unloaded, ${ORNITH} is the default)`,
+      `level=INFO msg=action action=unload model=${QWEN} duration=0ms detail="unloaded, ${ORNITH} is the default"`,
     ]);
     s.history.close();
   });
@@ -480,7 +477,9 @@ describe("Actions", () => {
     const s = await setup();
     s.engine.failNext = "HTTP 500 out of memory";
     await rejects(s.actions.run("load", { model: APODEX }), 502, /HTTP 500/);
-    expect(s.logs[0]).toMatch(/failed in 0 ms \(HTTP 500 out of memory\)/);
+    expect(s.logs[0]).toStartWith(
+      `level=WARN msg="action failed" action=load model=${APODEX} duration=0ms error_type=Error error="HTTP 500 out of memory"`,
+    );
     s.history.close();
   });
 

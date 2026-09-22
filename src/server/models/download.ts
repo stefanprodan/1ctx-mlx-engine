@@ -23,7 +23,7 @@ import {
   DOWNLOAD_STALL_MS,
   describeError as describe,
 } from "../lib/fetch.ts";
-import type { Log } from "../lib/log.ts";
+import { errorFields, type Log } from "../lib/log.ts";
 import { DownloadError } from "./error.ts";
 import {
   fetchRepo,
@@ -137,7 +137,7 @@ export class Downloader {
     for (const download of this.deps.store.unfinished()) {
       this.deps.store.setStatus(download.id, "queued");
       this.queue.push(download.id);
-      this.deps.log(`download ${download.repo}: resuming`);
+      this.deps.log.info("download resumed", { repo: download.repo });
     }
     this.kick();
   }
@@ -195,9 +195,11 @@ export class Downloader {
       dir,
       listing.files,
     );
-    this.deps.log(
-      `download ${repo}: queued, ${listing.files.length} files, ${Math.round(download.bytesTotal / 1024 ** 2)} MB`,
-    );
+    this.deps.log.info("download queued", {
+      repo,
+      files: listing.files.length,
+      bytes: download.bytesTotal,
+    });
     this.queue.push(download.id);
     this.publish(download);
     this.kick();
@@ -248,7 +250,7 @@ export class Downloader {
     }
     await pruneEmpty(download.dir, this.deps.modelDir);
     this.deps.store.remove(id);
-    this.deps.log(`download ${download.repo}: deleted`);
+    this.deps.log.info("download deleted", { repo: download.repo });
   }
 
   // Why the repo's files must stay for now, null when they may go: a model
@@ -273,7 +275,7 @@ export class Downloader {
   // how many records went.
   forget(repo: string): number {
     const removed = this.deps.store.removeRepo(repo);
-    if (removed > 0) this.deps.log(`download ${repo}: forgotten`);
+    if (removed > 0) this.deps.log.info("download forgotten", { repo });
     return removed;
   }
 
@@ -312,11 +314,16 @@ export class Downloader {
     };
     this.active = active;
     this.publish(download);
+    const started = performance.now();
     try {
       await this.transfer(download, active);
       this.deps.store.progress(id, active.bytesDone, null);
       const done = this.deps.store.setStatus(id, "done")!;
-      this.deps.log(`download ${download.repo}: done`);
+      this.deps.log.info("download done", {
+        repo: download.repo,
+        bytes: download.bytesTotal,
+        duration: performance.now() - started,
+      });
       this.active = null;
       this.publish(done);
       this.deps.restored?.(download.repo);
@@ -327,11 +334,14 @@ export class Downloader {
         // left "running": the next process resumes it
       } else if (active.controller.signal.aborted) {
         this.publish(this.deps.store.setStatus(id, "cancelled")!);
-        this.deps.log(`download ${download.repo}: cancelled`);
+        this.deps.log.info("download cancelled", { repo: download.repo });
       } else {
         const message = describe(err);
         this.publish(this.deps.store.setStatus(id, "failed", message)!);
-        this.deps.log(`download ${download.repo}: failed: ${message}`);
+        this.deps.log.warn("download failed", {
+          repo: download.repo,
+          ...errorFields(err),
+        });
       }
     } finally {
       this.active = null;
@@ -454,7 +464,7 @@ export class Downloader {
       }
       await this.deps.refreshModels();
     } catch (err) {
-      this.deps.log(`download ${repo}: engine rescan failed: ${describe(err)}`);
+      this.deps.log.warn("rescan failed", { repo, ...errorFields(err) });
     }
   }
 
@@ -463,7 +473,7 @@ export class Downloader {
       try {
         listener(download);
       } catch (err) {
-        this.deps.log(`download listener failed: ${describe(err)}`);
+        this.deps.log.error("listener failed", errorFields(err));
       }
     }
   }

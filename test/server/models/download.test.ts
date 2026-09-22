@@ -21,17 +21,14 @@ import type {
   Engine,
   EngineMetrics,
 } from "../../../src/server/engine/types.ts";
-import type { Log } from "../../../src/server/lib/log.ts";
 import { Downloader } from "../../../src/server/models/download.ts";
 import { DownloadError } from "../../../src/server/models/error.ts";
 import { DownloadStore } from "../../../src/server/models/store.ts";
 import { History } from "../../../src/server/monitor/history.ts";
 import type { Download } from "../../../src/shared/downloads.ts";
 import type { Capability, ModelInfo } from "../../../src/shared/models.ts";
+import { testLog } from "../log.ts";
 import { testServer } from "../serve.ts";
-
-const testLog = (write: (line: string) => void): Log =>
-  Object.assign(write, { warn: write, error: write });
 
 const REPO = "org/model";
 const REV = "0123456789abcdef";
@@ -395,7 +392,7 @@ describe("Downloader", () => {
     expect(kinds).toContain("running");
     expect(kinds.at(-1)).toBe("done");
     expect(r.list()[0].id).toBe(download.id);
-    expect(logs.some((l) => l.includes("done"))).toBe(true);
+    expect(logs.some((l) => l.includes('msg="download done"'))).toBe(true);
   });
 
   test("resumes a cut file with a range request", async () => {
@@ -413,7 +410,7 @@ describe("Downloader", () => {
     expect(await fileBytes("model.safetensors")).toEqual(
       hub.files.get("model.safetensors")!,
     );
-    expect(logs.filter((l) => l.includes("retry")).length).toBe(2);
+    expect(logs.filter((l) => l.includes('msg="file retry"')).length).toBe(2);
     // the resumed bytes are counted once
     expect(done.bytesDone).toBe(done.bytesTotal);
     expect(events.every((e) => e.bytesDone <= e.bytesTotal)).toBe(true);
@@ -524,7 +521,7 @@ describe("Downloader", () => {
     second.r.resume();
     const done = await settled(second.r, download.id);
     expect(done.status).toBe("done");
-    expect(logs.some((l) => l.includes("resuming"))).toBe(true);
+    expect(logs.some((l) => l.includes('msg="download resumed"'))).toBe(true);
     const weights = hub.requests.filter((q) => q.path === "model.safetensors");
     expect(weights.map((q) => q.range)).toEqual([null, "bytes=10000-"]);
     expect(await fileBytes("model.safetensors")).toEqual(

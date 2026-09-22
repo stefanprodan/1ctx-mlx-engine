@@ -11,7 +11,7 @@
     "dev": "ONECTX_MLX_DEV=1 bun --watch src/main.ts",
     "test": "bun test",
     "lint": "bun biome check --write . && bun tsc --noEmit",
-    "build": "mkdir -p bin && bun build src/main.ts --compile --define \"process.env.ONECTX_MLX_BUILD_VERSION=\\\"${VERSION:-}\\\"\" --define \"process.env.ONECTX_MLX_BUILD_ID=\\\"$(date +%s)\\\"\" --outfile bin/1ctx-mlx-engine && rm -f .*.bun-build",
+    "build": "mkdir -p bin && bun build src/main.ts --compile --sourcemap --define \"process.env.ONECTX_MLX_BUILD_VERSION=\\\"${VERSION:-}\\\"\" --define \"process.env.ONECTX_MLX_BUILD_ID=\\\"$(date +%s)\\\"\" --outfile bin/1ctx-mlx-engine && rm -f .*.bun-build",
     "clean": "scripts/preview.sh clean && rm -rf bin .*.bun-build",
     "staging-deploy": "scripts/staging.sh deploy",
     "staging-status": "scripts/staging.sh status",

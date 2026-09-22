@@ -11,6 +11,7 @@ import type {
   ServiceState,
 } from "../../../shared/engine.ts";
 import { describeError } from "../../lib/fetch.ts";
+import { errorFields } from "../../lib/log.ts";
 import type { LaunchdInfo } from "../../service/launchd.ts";
 import type { PlistSpec } from "../../service/plist.ts";
 import { configToArgs } from "../config.ts";
@@ -147,7 +148,7 @@ export async function activate(
     context.deps.store.setManaged(true);
     context.deps.store.setJournal(null);
     await prune(context);
-    context.deps.log(`engine ${kind} ${record.tag}: active`);
+    context.deps.log.info("operation done", { op: kind, tag: record.tag });
   } catch (error) {
     // A Cancel caught before the journal row: the job was never
     // touched, so there is nothing to restore and nothing failed.
@@ -282,9 +283,10 @@ export async function activationFailure(
     }
   } catch (rollbackError) {
     restored = false;
-    context.deps.log.error(
-      `engine ${kind}: rollback failed: ${describeError(rollbackError)}`,
-    );
+    context.deps.log.error("rollback failed", {
+      op: kind,
+      ...errorFields(rollbackError),
+    });
   }
   // Only a tree this operation staged is discarded. A failed rollback
   // was heading for the previous build, which is still the backup the
@@ -306,9 +308,12 @@ export async function activationFailure(
     logTail: tail,
     at: context.now(),
   };
-  context.deps.log.error(
-    `engine ${kind}${tag ? ` ${tag}` : ""}: ${context.failure.message}; ${outcome}`,
-  );
+  context.deps.log.error("operation failed", {
+    op: kind,
+    tag: tag ?? undefined,
+    restored,
+    ...errorFields(error),
+  });
   void config;
 }
 

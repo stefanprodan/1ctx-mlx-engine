@@ -14,6 +14,7 @@ import {
 } from "../../../shared/engine.ts";
 import { describeError } from "../../lib/fetch.ts";
 import { LockBusyError } from "../../lib/lock.ts";
+import { errorFields } from "../../lib/log.ts";
 import { DEFAULTS, validateConfig } from "../config.ts";
 import { isNewer, offered } from "../release.ts";
 import {
@@ -334,6 +335,7 @@ export class EngineManager {
       totalBytes: 0,
       bytesPerSecond: 0,
     };
+    context.deps.log.info("operation start", { op: kind, tag });
     this.publish();
     const task = context.deps.lock
       .run(kind, async () => {
@@ -351,7 +353,7 @@ export class EngineManager {
             });
           }
           if (cancel) {
-            context.deps.log(`engine ${kind} ${tag}: cancelled`);
+            context.deps.log.info("operation cancelled", { op: kind, tag });
           } else if (!context.failure) {
             context.failure = {
               kind,
@@ -363,9 +365,11 @@ export class EngineManager {
               logTail: "",
               at: context.now(),
             };
-            context.deps.log.error(
-              `engine ${kind} ${tag}: failed: ${describeError(error)}`,
-            );
+            context.deps.log.error("operation failed", {
+              op: kind,
+              tag,
+              ...errorFields(error),
+            });
           }
         } finally {
           context.operation = null;
@@ -376,7 +380,10 @@ export class EngineManager {
         }
       })
       .catch((error) => {
-        context.deps.log.error(`engine ${kind}: ${describeError(error)}`);
+        context.deps.log.error("operation failed", {
+          op: kind,
+          ...errorFields(error),
+        });
       });
     context.activeTask = task;
   }
@@ -397,6 +404,10 @@ export class EngineManager {
       totalBytes: 0,
       bytesPerSecond: 0,
     };
+    context.deps.log.info("operation start", {
+      op: kind,
+      tag: tag ?? undefined,
+    });
     this.publish();
     try {
       await context.deps.lock.run(kind, operation);

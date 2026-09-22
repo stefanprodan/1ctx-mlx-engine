@@ -12,7 +12,7 @@ import {
   fetchRedirected,
   sleepWithSignal as sleep,
 } from "../lib/fetch.ts";
-import type { Log } from "../lib/log.ts";
+import { errorFields, type Log } from "../lib/log.ts";
 import { DownloadError } from "./error.ts";
 import { hubHeaders, PART_SUFFIX } from "./hub.ts";
 import type { DownloadFile } from "./store.ts";
@@ -61,9 +61,12 @@ export async function fetchFile(
     } catch (err) {
       if (signal.aborted) throw err;
       if (!(err instanceof Retryable) || attempt >= RETRIES) throw err;
-      deps.log(
-        `download ${file.path}: ${describe(err)}; retry ${attempt} of ${RETRIES - 1}`,
-      );
+      deps.log.warn("file retry", {
+        file: file.path,
+        attempt,
+        retries: RETRIES - 1,
+        ...errorFields(err, false),
+      });
       await sleep(deps.retryDelayMs * attempt, signal);
     }
   }

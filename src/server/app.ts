@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { existsSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import page from "../client/index.html";
 import type { EnginePageState } from "../shared/engine.ts";
+import { abbreviateHome } from "../shared/paths.ts";
 import { Actions } from "./actions.ts";
 import { BenchmarkRunner, LOCK_LABEL } from "./benchmark/runner.ts";
 import { BenchmarkStore } from "./benchmark/store.ts";
@@ -17,7 +19,12 @@ import { createHostProbes } from "./host/index.ts";
 import { hostInfo, macosVersion, osMajor } from "./host/info.ts";
 import { isLocalUrl } from "./host/local.ts";
 import { ExclusiveLock } from "./lib/lock.ts";
-import { createFileSink, createLog } from "./lib/log.ts";
+import {
+  createFileSink,
+  createLogs,
+  type LogFactory,
+  scrubErrors,
+} from "./lib/log.ts";
 import { DEFAULT_PORT, tailscaleAddress } from "./lib/net.ts";
 import { loadKey, secretsDir } from "./lib/secrets.ts";
 import { Downloader } from "./models/download.ts";
@@ -73,13 +80,6 @@ export async function runApp(
     if (options.listen.port !== null) port = options.listen.port;
   }
 
-  let log: ReturnType<typeof createLog>;
-  try {
-    log = createLog(createFileSink(options.logFile));
-  } catch (error) {
-    throw new AppError(error instanceof Error ? error.message : String(error));
-  }
-
   // Bad key files fail loud and plain without unrelated usage text.
   const keyDir = secretsDir();
   let hubToken: string | null;
@@ -88,11 +88,20 @@ export async function runApp(
     hubToken = loadKey(join(keyDir, "hf.key"));
     githubToken = loadKey(join(keyDir, "gh.key"));
   } catch (error) {
-    log.close?.();
     throw new AppError(error instanceof Error ? error.message : String(error));
   }
-  log(`hf key: ${hubToken === null ? "none" : join(keyDir, "hf.key")}`);
-  log(`gh key: ${githubToken === null ? "none" : join(keyDir, "gh.key")}`);
+
+  let logs: ReturnType<typeof createLogs>;
+  try {
+    logs = createLogs(createFileSink(options.logFile));
+  } catch (error) {
+    throw new AppError(error instanceof Error ? error.message : String(error));
+  }
+  // a token rides in a header, but an error that echoes one must not
+  // carry it into the log
+  const keys = [hubToken, githubToken].filter((k): k is string => k !== null);
+  const log: LogFactory = (area) => scrubErrors(logs(area), () => keys);
+  const appLog = log("app");
 
   if (options.dbPath !== ":memory:") {
     mkdirSync(dirname(options.dbPath), { recursive: true });
@@ -102,7 +111,7 @@ export async function runApp(
   const store = new EngineStore(history.db);
   engineStore = store;
   const sampler = new Sampler(engine, history, {
-    log,
+    log: log("sampler"),
     probes,
     local,
     modelOnDisk: (id) => {
@@ -141,7 +150,7 @@ export async function runApp(
     sampler,
     history,
     local,
-    log,
+    log: log("actions"),
     lock,
     modelDir: options.modelDir,
     // built below; a delete forgets what the downloader knows of the model
@@ -154,7 +163,7 @@ export async function runApp(
     engine,
     refreshModels: () => sampler.refreshModels(),
     restored: (repo) => sampler.unmarkDeleted(repo),
-    log,
+    log: log("downloads"),
     // a download moves gigabytes through the same disk and memory bus
     blocked: () =>
       lock.running() === LOCK_LABEL ? "A benchmark is running" : null,
@@ -169,7 +178,7 @@ export async function runApp(
     local,
     engineUp: () => history.latest()?.engineUp ?? false,
     health: () => engine.health(),
-    log,
+    log: log("engine"),
     version: VERSION,
     probes,
     token: githubToken,
@@ -212,7 +221,7 @@ export async function runApp(
         os: host.os,
       };
     },
-    log,
+    log: log("benchmark"),
   });
   const web = serve(
     {
@@ -249,19 +258,29 @@ export async function runApp(
   // the page should be there to say so
   void manager.reconcile();
   manager.startPolling();
-  log(
-    `1ctx-mlx-engine ${VERSION} on http://${web.server.hostname}:${web.server.port}, engine ${options.engineUrl} (${local ? "local" : "remote"}), history ${options.dbPath}, models ${options.modelDir}`,
-  );
+  const home = homedir();
+  appLog.info("startup", {
+    version: VERSION,
+    listen: `http://${web.server.hostname}:${web.server.port}`,
+    engine: options.engineUrl,
+    engine_host: local ? "local" : "remote",
+    db: abbreviateHome(options.dbPath, home),
+    models: abbreviateHome(options.modelDir, home),
+    secrets: abbreviateHome(keyDir, home),
+    hf_key: hubToken !== null,
+    gh_key: githubToken !== null,
+  });
 
-  const shutdown = () => {
+  const shutdown = (signal: string) => {
+    appLog.info("shutdown", { signal });
     manager.shutdown();
     sampler.stop();
     downloads.shutdown();
     web.stop();
     history.close();
-    log.close?.();
+    logs.close();
     process.exit(0);
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
