@@ -183,7 +183,7 @@ back is one it has to discover.
 | What | Where |
 |---|---|
 | Binary | `~/.1ctx-mlx-engine/bin/1ctx-mlx-engine` |
-| Version | a dev build (`v0.0.0-dev`) of `main`, deployed with `make deploy-studio`; the page marks it `dev build`, and `build` in `/api/snapshot` says when it was compiled |
+| Version | a dev build (`v0.0.0-dev+<commit>`) of `main`, deployed with `make deploy-studio`; the page marks it `dev build`, and `build` in `/api/snapshot` says when it was compiled |
 | launchd agent | label `com.stefanprodan.1ctx-mlx-engine`, generated plist `~/Library/LaunchAgents/com.stefanprodan.1ctx-mlx-engine.plist`; `RunAtLoad` and `KeepAlive` (5 s throttle), so it comes back on a crash and at login |
 | Arguments | `--engine http://127.0.0.1:11234 --listen 0.0.0.0:11235`, like the engine bound on every interface; the default db and the default model directory, `~/models`, which is the engine's own |
 | URL | `http://$STUDIO_HOST:11235` from the tailnet; `http://127.0.0.1:11235` on the box |

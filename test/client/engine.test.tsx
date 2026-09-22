@@ -519,6 +519,10 @@ describe("the sections", () => {
   test("1ctx-mlx-engine: only a dev build says so", () => {
     const dev = { ...pageState().self, version: "v0.0.0-dev" };
     expect(render(<Self self={dev} />)).toContain("<small>dev build</small>");
+    const deployed = { ...dev, version: "v0.0.0-dev+1a2b3c4.dirty5d6e7f" };
+    expect(render(<Self self={deployed} />)).toContain(
+      "<small>dev build</small>",
+    );
     expect(render(<Self self={pageState().self} />)).not.toContain("dev build");
   });
 

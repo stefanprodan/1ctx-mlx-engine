@@ -158,8 +158,12 @@ export const releaseUrl = (repo: string, tag: string) =>
   `https://github.com/${repo}/releases/tag/${encodeURIComponent(tag)}`;
 
 // What a build from source reports; the page labels it and the manager
-// offers it no release.
+// offers it no release. A deploy to the Studio appends the commit, as
+// build metadata: "v0.0.0-dev+1a2b3c4", ".dirty<diff hash>" after it when
+// the checkout had changes.
 export const DEV_VERSION = "v0.0.0-dev";
+export const isDevVersion = (version: string) =>
+  version === DEV_VERSION || version.startsWith(`${DEV_VERSION}+`);
 
 // 1ctx-mlx-engine's own section.
 export type SelfState = {

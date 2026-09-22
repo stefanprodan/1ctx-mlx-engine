@@ -1,7 +1,7 @@
 // Copyright 2026 Stefan Prodan.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DEV_VERSION, type SelfState } from "../../../shared/engine.ts";
+import { isDevVersion, type SelfState } from "../../../shared/engine.ts";
 import { offered } from "../release.ts";
 import { type CpuReading, type ManagerContext, SELF_REPO } from "./context.ts";
 import { publicCheck } from "./poll.ts";
@@ -50,7 +50,7 @@ export function selfOffered(
   context: ManagerContext,
   check = publicCheck(context.deps.store.releaseCheck(SELF_REPO)),
 ) {
-  return context.deps.version === DEV_VERSION
+  return isDevVersion(context.deps.version)
     ? null
     : offered(check.releases, false, context.deps.version);
 }
