@@ -17,7 +17,7 @@ make install-bin                                  # build and install to ~/.loca
 
 `package.json` stays at `0.0.0-dev`. A normal source or binary build reports
 `v0.0.0-dev`; `make build VERSION=v1.2.3` uses Bun's build-time definition
-to embed `v1.2.3` without editing the package file. `make deploy-studio`
+to embed `v1.2.3` without editing the package file. `make staging-deploy`
 appends the commit, `v0.0.0-dev+1a2b3c4`, with `.dirty` and a hash of the
 diff when the checkout has changes; the page still calls it a dev build.
 
@@ -68,8 +68,8 @@ against this machine's engine on `127.0.0.1:11234` (`make preview-stop`,
 `make preview-log`, `make preview-clean` to also wipe its db and log).
 When no engine is installed, the Server page installs one, and a small
 checkpoint such as `mlx-community/Qwen3.5-0.8B-4bit` is enough to serve
-requests. `PREVIEW_ENGINE=studio make preview` watches the engine named
-in `scripts/studio.env` instead; any other value is taken as its URL.
+requests. `PREVIEW_ENGINE=staging make preview` watches the engine named
+in `scripts/staging.env` instead; any other value is taken as its URL.
 
 The model downloader reads a Hugging Face token from
 `~/.1ctx-mlx-engine/secrets/hf.key` when installed and from

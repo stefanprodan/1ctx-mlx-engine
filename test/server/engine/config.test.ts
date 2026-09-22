@@ -52,7 +52,7 @@ describe("managed engine configuration", () => {
       logLevel: "info",
       extraArgs: [],
     });
-    expect(DEFAULTS(PINNED, "http://studio.local:12000")).toMatchObject({
+    expect(DEFAULTS(PINNED, "http://staging.local:12000")).toMatchObject({
       host: "0.0.0.0",
       port: 12000,
     });
@@ -176,12 +176,12 @@ describe("managed engine configuration", () => {
     const found = validateConfig(config(), {
       pinnedModelDir: PINNED,
       watchedPort: 11234,
-      engineHost: "studio.local",
+      engineHost: "staging.local",
     });
     expect(found).toContainEqual({
       field: "host",
       message:
-        "1ctx-mlx-engine reaches mlx-serve at studio.local. A loopback-only " +
+        "1ctx-mlx-engine reaches mlx-serve at staging.local. A loopback-only " +
         "listener would hide it.",
     });
   });

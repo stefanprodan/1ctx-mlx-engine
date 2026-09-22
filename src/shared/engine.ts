@@ -158,7 +158,7 @@ export const releaseUrl = (repo: string, tag: string) =>
   `https://github.com/${repo}/releases/tag/${encodeURIComponent(tag)}`;
 
 // What a build from source reports; the page labels it and the manager
-// offers it no release. A deploy to the Studio appends the commit, as
+// offers it no release. A deploy to staging appends the commit, as
 // build metadata: "v0.0.0-dev+1a2b3c4", ".dirty<diff hash>" after it when
 // the checkout had changes.
 export const DEV_VERSION = "v0.0.0-dev";

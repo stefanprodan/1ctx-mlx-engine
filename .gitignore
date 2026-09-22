@@ -117,7 +117,7 @@ bin/
 .*.bun-build
 .idea/
 
-# the Studio host, see scripts/studio.env.example
-scripts/studio.env
+# the staging host, see scripts/staging.env.example
+scripts/staging.env
 # the local preview's pid, db and log (make preview)
 .preview/

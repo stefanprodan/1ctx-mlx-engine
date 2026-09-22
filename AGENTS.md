@@ -27,7 +27,8 @@ make preview-clean  # stop it and wipe its db, log and pid (make clean does too)
 make lint           # biome check --write, then tsc
 make test           # bun test; both run after any code change, before finishing
 make build          # standalone binary in bin/
-make deploy-studio  # build, install and restart on the Mac Studio
+make staging-deploy # build main, install and restart on staging
+make staging-status # what the staging service says
 ```
 
 ### Seeing a change
@@ -40,9 +41,10 @@ make deploy-studio  # build, install and restart on the Mac Studio
    other host: when nothing is installed, the Engine page installs mlx-serve
    here (a real LaunchAgent, a real build under
    `~/.1ctx-mlx-engine/engine`), and `mlx-community/Qwen3.5-0.8B-4bit` (625
-   MB) is enough to serve requests. `PREVIEW_ENGINE=studio make preview`
-   watches the Studio named in `scripts/studio.env` (git-ignored) instead,
-   for real load and big models; everything that manages is disabled there.
+   MB) is enough to serve requests. `PREVIEW_ENGINE=staging make preview`
+   watches the staging host named in `scripts/staging.env` (git-ignored)
+   instead, for real load and big models; everything that manages is
+   disabled there.
 2. Edit. The preview runs with `ONECTX_MLX_DEV=1`, which turns on Bun's dev
    server: an edit to a stylesheet under `src/client/` hot-reloads in the
    open tab, an edit to a `.ts` or `.tsx` file under `src/client/` reloads
@@ -61,20 +63,22 @@ make deploy-studio  # build, install and restart on the Mac Studio
 5. Report what you verified and how. Do not commit unless asked; the user
    batches changes.
 
-### The Studio
+### Staging
 
-The Studio is the user's Mac Studio on the tailnet: it runs mlx-serve and
-its own 1ctx-mlx-engine as launchd agents. Read `docs/internal/studio.md` before
-any ssh command; it has the paths, the safe commands and the rules (never
-`GET /props`, never start processes by hand over ssh, never touch the
-user's other services). `make deploy-studio` is the only deploy path.
-Deploy when asked, then say what is now running there.
+Staging is the user's Mac Studio on the tailnet: it runs mlx-serve and
+its own 1ctx-mlx-engine as launchd agents. Read `docs/internal/staging.md`
+before any ssh command; it has the paths, the safe commands and the rules
+(never `GET /props`, never start processes by hand over ssh, never touch
+the user's other services). `make staging-deploy` is the only deploy
+path: it takes `main` only, unless `ALLOW_BRANCH=1`, and stamps the
+commit into the version. Deploy when asked, then say what is now running
+there.
 
 ### Testing without a browser
 
 - `bun src/main.ts --once` prints one sample from the local engine: exit
   0 when the engine answered, 2 when it did not, 1 on bad arguments.
-  With `--engine http://<studio>:11234` the engine is remote, so
+  With `--engine http://<staging>:11234` the engine is remote, so
   `enginePid` is null, `procRss` 0 and `disk` empty by design.
 - Parsers and rate math are pure and tested on recorded fixtures in
   `test/fixtures/`. Record new ones with `curl <engine>/metrics.json` and
@@ -357,11 +361,11 @@ test/                bun test suites: server/, client/ (pure modules and
                      and structure.test.ts are the layout rules
 docs/                user docs: monitor, models, engine, benchmark, api
                      (keep in step with src/server/web/), development;
-                     internal/studio.md is the Studio guide
+                     internal/staging.md is the staging guide
 scripts/             preview.sh, install.sh (the one install path: download,
                      verify, place the binary, `service install --restart`),
-                     deploy-studio.sh (build, copy, then the same command)
-                     and studio.env.example
+                     staging.sh (deploy: build main, copy, then the same
+                     command; status) and staging.env.example
 plans/               the development plan and milestones
 ```
 
@@ -466,7 +470,7 @@ tab.
   nothing jumps when data arrives.
 - **Docs move with the code.** A change to a page updates
   `docs/monitor.md`; a route change updates `docs/api.md`; a change to the
-  Studio setup updates `docs/internal/studio.md`, after it was run there.
+  staging setup updates `docs/internal/staging.md`, after it was run there.
 - **Commit messages are short.** Subject under 72 characters, `Area:
   what changed`. Body optional, at most three short lines saying why,
   never a list of everything in the diff; GitHub truncates the rest.

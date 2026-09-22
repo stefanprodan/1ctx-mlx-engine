@@ -3,8 +3,8 @@
 //
 // Is the engine on this machine? Decides whether the process probe and the
 // local-only actions (restart, disk clear) apply. On the MacBook dev loop the
-// engine is the Studio over the tailnet, so its pid must not be looked up
-// here even if a local mlx-serve happens to run.
+// engine can be staging's over the tailnet, so its pid must not be looked
+// up here even if a local mlx-serve happens to run.
 
 import { hostname, networkInterfaces } from "node:os";
 

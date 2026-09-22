@@ -485,7 +485,7 @@ describe("the sections", () => {
   test("remote: no config card, a dash for CPU, 1ctx-mlx-engine stays live", () => {
     const over = {
       mode: "remote" as const,
-      remoteHost: "studio.example.ts.net",
+      remoteHost: "staging.example.ts.net",
       active: null,
       previous: null,
       service: null,
@@ -498,12 +498,12 @@ describe("the sections", () => {
       <Build
         engine={e}
         s={remote}
-        url="http://studio.example.ts.net:11234"
+        url="http://staging.example.ts.net:11234"
         sampledVersion="26.9.3"
       />,
     );
     expect(build).toContain("38.2 GB <small>MEM</small> / –");
-    expect(build).toContain("This one is at studio.example.ts.net.");
+    expect(build).toContain("This one is at staging.example.ts.net.");
     expect(build).not.toContain("include pre-releases");
     expect(render(<ServiceHead engine={e} s={remote} />)).not.toContain(
       "<button",
