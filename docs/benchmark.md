@@ -140,6 +140,14 @@ each figure a bar says how close it comes to the best of its column (for
 the latency, the best over this one); the best is green. With a single
 model nothing is marked best. A phone keeps Prefill and Decode.
 
+Under the table, **Wait and decode** puts the same runs on a plane: a
+dot per model, the wait before a warm turn's answer starts across and the
+decode rate up, so the top left starts soonest and writes fastest. That is
+the trade an agent lives with, which four columns side by side do not
+show at a glance. A model keeps its colour across the presets. A hover on
+a dot, or on its line in the legend under the plane, names the model with
+both figures; two models on the same spot are both named.
+
 ## Comparing
 
 Tick two runs. The second ticked shows its change against the first under

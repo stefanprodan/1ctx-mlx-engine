@@ -62,6 +62,111 @@
   .blank.unknown {
     visibility: hidden;
   }
+
+  /* the scatter under the table: a dot per model, the grid and ticks
+     recessive, the legend under it naming each dot with its figures */
+  .scatter .plane {
+    position: relative;
+  }
+  .scatter svg {
+    display: block;
+    overflow: visible;
+  }
+  .scatter .grid {
+    stroke: var(--line-2);
+    stroke-width: 1;
+  }
+  .scatter .tick {
+    fill: var(--faint);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .scatter .corner {
+    fill: var(--brand);
+    font-size: 12px;
+  }
+  .scatter .dot {
+    stroke: var(--card);
+    stroke-width: 2;
+    transition: r 0.12s;
+  }
+  /* placed by the code once it knows its size; a narrow plane wraps a
+     row's figures under its name rather than spill past the card */
+  .scatter .tip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    pointer-events: none;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--inset);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .scatter .tip div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 6px;
+  }
+  .scatter .axes {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+    padding-left: 52px;
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .scatter .keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+    margin: 14px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--line);
+    list-style: none;
+    font-size: 13px;
+  }
+  .scatter .keys li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    padding: 2px 0;
+  }
+  .scatter .keys i,
+  .scatter .tip i {
+    align-self: center;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .scatter .keys .model,
+  .scatter .tip .model {
+    font-family: var(--mono);
+    color: var(--dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scatter .keys li.lit .model {
+    color: var(--val);
+  }
+  .scatter .keys .v,
+  .scatter .tip .v {
+    font-family: var(--mono);
+    color: var(--val);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .scatter .keys small {
+    color: var(--faint);
+    font-size: 11px;
+  }
   @media (max-width: 600px) {
     /* a phone keeps the two rates, as the runs table does */
     #scorecard th.fig,

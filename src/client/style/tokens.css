@@ -47,6 +47,15 @@
     --cap: #8a9099;
     --cap-inset: #8d9299;
     --rule: #34383c;
+    /* A model's colour in a chart, in a fixed order, validated for colour
+       blindness on --inset; 0 is the one past the last slot */
+    --series-0: #6b7075;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #9085e9;
     /* 1ctx's rail: its ground and its text, a touch brighter than the
        page's, and the separator its menus and crumbs use */
     --rail: #1a1a1c;

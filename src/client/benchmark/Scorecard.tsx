@@ -5,6 +5,8 @@ import { BENCHMARK_PRESETS } from "../../shared/benchmark.ts";
 import { Pill } from "../shell/Pill.tsx";
 import { models, snapshot } from "../store.ts";
 import { COLUMNS, modelName, statusCopy, value } from "./report.ts";
+import { Scatter } from "./Scatter.tsx";
+import { dots } from "./scatter.ts";
 import { scorecard } from "./scorecard.ts";
 import { runs, runsLoaded, scorePreset } from "./state.ts";
 import "./scorecard.css";
@@ -16,6 +18,10 @@ export function Scorecard() {
   const preset = scorePreset.value;
   const present = new Set(models.value.map((m) => m.id));
   const rows = scorecard(runs.value, preset, present);
+  const plotted = dots(
+    rows.map((r) => r.run),
+    [...present],
+  );
   return (
     <>
       <div class="shead">
@@ -92,6 +98,14 @@ export function Scorecard() {
           No models with a run at {preset}.
         </p>
       </section>
+      {plotted.length > 0 && (
+        <>
+          <div class="shead">
+            <h2>Wait and decode</h2>
+          </div>
+          <Scatter dots={plotted} />
+        </>
+      )}
     </>
   );
 }
