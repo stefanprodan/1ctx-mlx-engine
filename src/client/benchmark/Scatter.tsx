@@ -133,9 +133,7 @@ export function Scatter({ dots }: { dots: Dot[] }) {
                 cy={p.y(d.decode)}
                 r={lit.value.includes(d.id) ? 8 : 6}
                 style={{ fill: color(d.slot) }}
-              >
-                <title>{`${modelName(d.model)}: ${figures(d)}`}</title>
-              </circle>
+              />
             ))}
           </svg>
         )}
@@ -159,7 +157,6 @@ export function Scatter({ dots }: { dots: Dot[] }) {
         {dots.map((d) => (
           <li
             key={d.id}
-            title={d.model}
             class={lit.value.includes(d.id) ? "lit" : undefined}
             onPointerEnter={() => {
               lit.value = [d.id];
