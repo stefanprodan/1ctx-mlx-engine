@@ -153,7 +153,7 @@ function DownloadLine({ p }: { p: Download }) {
       <span class="dl-meta" title={line.meta || undefined}>
         {line.meta}
       </span>
-      <span class="dl-pct">{line.end}</span>
+      <span class="dl-end">{line.end}</span>
       <span class="dl-act">
         <button
           type="button"

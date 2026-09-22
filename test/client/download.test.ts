@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
+import { eta } from "../../src/client/format.ts";
 import {
   downloadDot,
   downloadMeta,
   downloadPct,
   downloadState,
-  eta,
   visibleDownloads,
 } from "../../src/client/monitor/download.ts";
 import type { Download } from "../../src/shared/downloads.ts";
@@ -36,10 +36,10 @@ function download(over: Partial<Download> = {}): Download {
 }
 
 describe("download row copy", () => {
-  test("meta: bytes, speed and the time left while running", () => {
-    expect(downloadMeta(download())).toBe(
-      "3.2 / 16.7 GB · 48 MB/s · 5 min left",
-    );
+  test("meta: bytes and speed while running", () => {
+    expect(downloadMeta(download())).toBe("3.2 / 16.7 GB · 48 MB/s");
+    // a trickle says its bytes, not 0 MB/s
+    expect(downloadMeta(download({ speedBps: 300_000 }))).toBe("3.2 / 16.7 GB");
     expect(downloadMeta(download({ speedBps: null }))).toBe("3.2 / 16.7 GB");
     expect(downloadMeta(download({ speedBps: 0 }))).toBe("3.2 / 16.7 GB");
     expect(downloadMeta(download({ status: "queued" }))).toBe("16.7 GB");
@@ -60,7 +60,10 @@ describe("download row copy", () => {
   });
 
   test("state, dot and share", () => {
-    expect(downloadState(download())).toBe("downloading");
+    // the time left stands for the word while it runs
+    expect(downloadState(download())).toBe("5 min");
+    expect(downloadState(download({ speedBps: null }))).toBe("–");
+    expect(downloadState(download({ speedBps: 300_000 }))).toBe("–");
     expect(downloadState(download({ status: "queued" }))).toBe("queued");
     expect(downloadDot(download())).toBe("loading");
     expect(downloadDot(download({ status: "failed" }))).toBe("error");

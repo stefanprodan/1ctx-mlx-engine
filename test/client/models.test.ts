@@ -6,6 +6,7 @@ import {
   blankSpec,
   capabilityTags,
   downloadLine,
+  downloadPct,
   joinRows,
   matchingModels,
   metaLine,
@@ -168,19 +169,20 @@ const download = (over: Partial<Download>): Download => ({
 });
 
 describe("downloadLine", () => {
-  test("a running one: bytes, speed, the file in flight, the percent", () => {
+  test("a running one: bytes, speed and file, the time left at the end", () => {
     expect(downloadLine(download({}))).toEqual({
       meta: "1.0 GB of 4.0 GB · 48 MB/s · file 2 of 4",
-      end: "25%",
+      end: "1 min",
     });
     // before the listing sized it
     expect(
       downloadLine(download({ bytesTotal: 0, filesTotal: 0, speedBps: null })),
-    ).toEqual({ meta: "", end: "0%" });
-    // a trickle says its bytes, not 0 MB/s
-    expect(downloadLine(download({ speedBps: 300_000 })).meta).toBe(
-      "1.0 GB of 4.0 GB · file 2 of 4",
-    );
+    ).toEqual({ meta: "", end: "–" });
+    // a trickle says its bytes, not 0 MB/s, and no time left
+    expect(downloadLine(download({ speedBps: 300_000 }))).toEqual({
+      meta: "1.0 GB of 4.0 GB · file 2 of 4",
+      end: "–",
+    });
   });
 
   test("queued says only that, a failure its error", () => {
@@ -191,13 +193,16 @@ describe("downloadLine", () => {
     expect(
       downloadLine(download({ status: "failed", error: "HTTP 404" })),
     ).toEqual({ meta: "HTTP 404", end: "failed" });
-    // a resume can count a part twice for a moment
-    expect(
-      downloadLine(download({ bytesDone: 5 * 2 ** 30, speedBps: null })).end,
-    ).toBe("100%");
     expect(downloadLine(download({ status: "cancelled" }))).toEqual({
       meta: "1.0 GB of 4.0 GB",
       end: "paused",
     });
+  });
+
+  test("the bar's share is clamped", () => {
+    expect(downloadPct(download({}))).toBe(25);
+    // a resume can count a part twice for a moment
+    expect(downloadPct(download({ bytesDone: 5 * 2 ** 30 }))).toBe(100);
+    expect(downloadPct(download({ bytesTotal: 0 }))).toBe(0);
   });
 });

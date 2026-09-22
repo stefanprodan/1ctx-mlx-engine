@@ -56,7 +56,7 @@
   }
   .dl-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto 64px auto;
+    grid-template-columns: minmax(0, 1fr) auto minmax(80px, auto) auto;
     align-items: center;
     gap: 4px 16px;
     padding: 11px 0;
@@ -97,23 +97,21 @@
   .dl-row.failed .dl-meta {
     color: #ff95a8;
   }
-  .dl-pct {
-    font-family: var(--mono);
-    font-weight: 600;
+  .dl-end {
     color: var(--val);
+    font-variant-numeric: tabular-nums;
     text-align: right;
   }
-  .dl-row.queued .dl-pct,
-  .dl-row.failed .dl-pct,
-  .dl-row.cancelled .dl-pct,
-  .dl-row.done .dl-pct {
-    font-family: var(--sans);
-    font-weight: 400;
+  .dl-row.queued .dl-end,
+  .dl-row.failed .dl-end,
+  .dl-row.cancelled .dl-end,
+  .dl-row.done .dl-end {
     color: var(--faint);
   }
   .dl-act {
     display: flex;
     justify-content: flex-end;
+    justify-self: end;
     width: 64px;
   }
   .dl-row .bar {
@@ -121,7 +119,7 @@
     height: 3px;
     margin-left: 18px;
     border-radius: 2px;
-    background: #1a1e25;
+    background: var(--rule);
     overflow: hidden;
   }
   .dl-row .bar[hidden] {
@@ -197,14 +195,17 @@
     .dl-row {
       grid-template-columns: minmax(0, 1fr) auto;
     }
+    /* the figures and the time left share the second line */
     .dl-meta {
       grid-row: 2;
-      grid-column: 1 / -1;
+      grid-column: 1;
       margin-left: 18px;
       font-size: 12px;
     }
-    .dl-list .dl-row .dl-pct {
-      display: none;
+    .dl-list .dl-row .dl-end {
+      grid-row: 2;
+      grid-column: 2;
+      font-size: 12px;
     }
     .model-foot .grow {
       display: none;

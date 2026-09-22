@@ -3,10 +3,10 @@
 //
 // The copy of a download row in the models table (pure, tested in
 // test/client/download.test.ts): which downloads the table shows, the dot,
-// the bytes and speed, the state word.
+// the bytes and speed, the time left or the state word.
 
 import type { Download } from "../../shared/downloads.ts";
-import { gb } from "../format.ts";
+import { DASH, eta, gb } from "../format.ts";
 
 // A finished download whose model the engine lists is that model's row now;
 // every other download stays until it is removed.
@@ -31,30 +31,30 @@ export function downloadDot(p: Download): string {
   }
 }
 
-export function downloadState(p: Download): string {
-  return p.status === "running" ? "downloading" : p.status;
+// Under a MB/s the speed would read 0 and a time left from a trickle is
+// noise: the bytes say it is moving.
+const fast = (p: Download): p is Download & { speedBps: number } =>
+  p.status === "running" && p.speedBps !== null && p.speedBps >= 1024 ** 2;
+
+// "5 min" while it runs at a speed worth dividing by, else null. Both pages
+// show it where the state word would be: the bar says the share.
+export function timeLeft(p: Download): string | null {
+  if (!fast(p) || p.bytesTotal <= p.bytesDone) return null;
+  return eta((p.bytesTotal - p.bytesDone) / p.speedBps);
 }
 
-// "3.2 / 16.7 GB · 48 MB/s · 5 min left" while running, the size when
-// queued or done, what arrived when it stopped.
+export function downloadState(p: Download): string {
+  return p.status === "running" ? (timeLeft(p) ?? DASH) : p.status;
+}
+
+// "3.2 / 16.7 GB · 48 MB/s" while running, the size when queued or done,
+// what arrived when it stopped.
 export function downloadMeta(p: Download): string {
   const total = `${gb(p.bytesTotal)} GB`;
   if (p.status === "queued" || p.status === "done") return total;
   const parts = [`${gb(p.bytesDone)} / ${total}`];
-  if (p.status === "running" && p.speedBps != null && p.speedBps > 0) {
-    parts.push(`${Math.round(p.speedBps / 1024 ** 2)} MB/s`);
-    const left = (p.bytesTotal - p.bytesDone) / p.speedBps;
-    parts.push(`${eta(left)} left`);
-  }
+  if (fast(p)) parts.push(`${Math.round(p.speedBps / 1024 ** 2)} MB/s`);
   return parts.join(" · ");
-}
-
-export function eta(seconds: number): string {
-  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} s`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours} h ${minutes - hours * 60} min`;
 }
 
 // The share done, for the bar under the id.

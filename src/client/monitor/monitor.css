@@ -217,8 +217,10 @@
   td.state.failed {
     color: #f28b82;
   }
+  /* the time left, the share is the bar's */
   td.state.running {
     color: var(--accent);
+    font-variant-numeric: tabular-nums;
   }
   td.state.cancelled {
     color: var(--amber);
@@ -238,7 +240,7 @@
     height: 3px;
     margin: 6px 0 -3px 22px;
     border-radius: 2px;
-    background: #1a1e25;
+    background: var(--rule);
     overflow: hidden;
   }
   tr.download td.name .bar[hidden] {

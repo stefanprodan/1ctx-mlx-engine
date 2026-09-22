@@ -57,11 +57,12 @@ the rail still opens it.
   shows the estimated engine memory after the load (its footprint now
   plus the model's weights); the rest ask for confirmation. Downloads
   start on the [Models page](models.md); one in progress is also a row at
-  the top of this table with the bytes so far, the speed, the time left,
-  a delete button (asks first; stops the download and removes its files)
-  and a pause button, which becomes resume once it stopped. A finished
-  download becomes the model's own row once the engine lists it. A
-  download that fails says why under the table.
+  the top of this table with the bytes so far, the speed, the time left
+  where the state would be, a delete button (asks first; stops the
+  download and removes its files) and a pause button, which becomes
+  resume once it stopped. A finished download becomes the model's own
+  row once the engine lists it. A download that fails says why under the
+  table.
 - **Runtime**: the engine process (build, pid, RSS, CPU, GPU, weights)
   next to host facts (OS, chip, cores, GPU cores, memory, disk). The
   process probes only work when the engine runs on the same host. The build comes from
