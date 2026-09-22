@@ -327,12 +327,14 @@ src/client/
   benchmark/         Benchmark.tsx (the two pages, Run and Scorecard, and
                      the runs' fetch they share), Run.tsx (the card: what to
                      run, or how far it is), Scorecard.tsx (a model per
-                     row at a preset, scorecard.css), Runs.tsx (the
+                     row at a preset, scorecard.css), Scatter.tsx (the
+                     wait and decode plane under it, SVG), Runs.tsx (the
                      search, the table, the deltas, the opened row),
                      Turns.tsx, benchmark.css; state.ts
                      (the signals and the calls); the pure, tested
-                     report.ts (the cells, the deltas, the text report)
-                     and scorecard.ts (the rows, the bars, the best)
+                     report.ts (the cells, the deltas, the text report),
+                     scorecard.ts (the rows, the bars, the best) and
+                     scatter.ts (the dots, the colour slots, the ticks)
   models/            Models.tsx (the page: the Hub download form and the
                      downloads, the models on the grid, a row opening to
                      its spec and the actions), models.css; state.ts (the
