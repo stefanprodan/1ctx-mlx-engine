@@ -126,7 +126,7 @@ describe("cacheDirSizes", () => {
 
 describe("isLocalUrl", () => {
   const addrs = new Set(["100.100.1.2", "192.168.1.10", "fe80::1"]);
-  const names = new Set(["studio", "studio.local"]);
+  const names = new Set(["staging", "staging.local"]);
   test("loopback always", () => {
     expect(isLocalUrl("http://127.0.0.1:11234", addrs, names)).toBe(true);
     expect(isLocalUrl("http://localhost:11234", addrs, names)).toBe(true);
@@ -134,7 +134,7 @@ describe("isLocalUrl", () => {
   });
   test("own interface address or host name", () => {
     expect(isLocalUrl("http://100.100.1.2:11234", addrs, names)).toBe(true);
-    expect(isLocalUrl("http://STUDIO.local:11234", addrs, names)).toBe(true);
+    expect(isLocalUrl("http://STAGING.local:11234", addrs, names)).toBe(true);
     expect(isLocalUrl("http://[fe80::1]:11234", addrs, names)).toBe(true);
   });
   test("anything else is remote", () => {

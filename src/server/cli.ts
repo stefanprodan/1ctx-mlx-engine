@@ -75,7 +75,7 @@ export const HELP = `\x1b[1m1ctx-mlx-engine\x1b[0m - monitor and control an LLM 
 
 \x1b[1mExamples:\x1b[0m
   1ctx-mlx-engine --engine http://127.0.0.1:11234 --once
-  1ctx-mlx-engine --engine http://studio.tailnet:11234 --listen 127.0.0.1:11235`;
+  1ctx-mlx-engine --engine http://staging.tailnet:11234 --listen 127.0.0.1:11235`;
 
 export interface ListenAddress {
   hostname: string | null;

@@ -5,8 +5,8 @@
 # model directory, ~/models, so development needs no other
 # host: the Engine page installs mlx-serve here, as a real LaunchAgent with a
 # real build under ~/.1ctx-mlx-engine/engine, and a small checkpoint serves
-# requests. PREVIEW_ENGINE=studio watches the Studio named in
-# scripts/studio.env instead (read-only there: managing is local-only); any
+# requests. PREVIEW_ENGINE=staging watches the staging host named in
+# scripts/staging.env instead (read-only there: managing is local-only); any
 # other value is taken as the engine URL. PREVIEW_MODEL_DIR overrides the
 # directory. ONECTX_MLX_DEV=1 turns on Bun's dev server: style.css hot-reloads
 # in the browser, an edit under src/client/ reloads the page; --watch restarts
@@ -35,10 +35,10 @@ stop() {
 start() {
   local engine=${PREVIEW_ENGINE:-http://127.0.0.1:11234}
   local models=${PREVIEW_MODEL_DIR:-$HOME/models}
-  if [ "$engine" = studio ]; then
-    [ -f scripts/studio.env ] || { echo "scripts/studio.env missing; copy studio.env.example" >&2; exit 2; }
-    . scripts/studio.env
-    engine="http://$STUDIO_HOST:11234"
+  if [ "$engine" = staging ]; then
+    [ -f scripts/staging.env ] || { echo "scripts/staging.env missing; copy scripts/staging.env.example" >&2; exit 2; }
+    . scripts/staging.env
+    engine="http://$STAGING_HOST:11234"
     # downloads made while watching a remote engine are scratch
     models=${PREVIEW_MODEL_DIR:-$DIR/models}
   fi

@@ -8,7 +8,7 @@ export PREFIX VERSION
 
 .DEFAULT_GOAL := help
 
-.PHONY: help start dev test build lint clean install-bin uninstall-bin deploy-studio preview preview-stop preview-log preview-clean
+.PHONY: help start dev test build lint clean install-bin uninstall-bin staging-deploy staging-status preview preview-stop preview-log preview-clean
 
 help: ## Show available tasks
 	@grep -hE '^[a-z][a-z-]*:.*## .*$$' $(MAKEFILE_LIST) \
@@ -38,10 +38,13 @@ install-bin: ## Compile and install onto PATH (override PREFIX=...)
 uninstall-bin: ## Remove the installed binary (override PREFIX=...)
 	@bun run uninstall-bin
 
-deploy-studio: ## Build, install on the Mac Studio and restart its agent (docs/internal/studio.md)
-	@bun run deploy-studio
+staging-deploy: ## Build main, install it on staging and restart its agent (docs/internal/staging.md)
+	@bun run staging-deploy
 
-preview: ## (Re)start the local preview on 127.0.0.1:11236 against this machine's engine (hot reload; PREVIEW_ENGINE=studio for the Studio)
+staging-status: ## What the staging service says
+	@bun run staging-status
+
+preview: ## (Re)start the local preview on 127.0.0.1:11236 against this machine's engine (hot reload; PREVIEW_ENGINE=staging for staging)
 	@bun run preview
 
 preview-stop: ## Stop the local preview
