@@ -9,6 +9,7 @@
 import type { Download } from "../../shared/downloads.ts";
 import type { ModelInfo, ModelSpec } from "../../shared/models.ts";
 import { DASH, modelSize, sizeText } from "../format.ts";
+import { timeLeft } from "../monitor/download.ts";
 import type { GridGroup } from "../shell/Grid.tsx";
 
 // a model as the page shows it: the sample's live row, the route's spec
@@ -296,23 +297,23 @@ const ofTotal = (p: Download) =>
     : "";
 
 // A download under the form: the figures while it runs, the error when it
-// failed, what arrived when it stopped; the word at the end.
+// failed, what arrived when it stopped; at the end the time left (the bar
+// says the share), else the word.
 export function downloadLine(p: Download): { meta: string; end: string } {
   switch (p.status) {
     case "running": {
+      // under a MB/s it would read 0: the bytes say it is moving
+      const fast = p.speedBps !== null && p.speedBps >= 1024 ** 2;
       const parts = [
         ofTotal(p),
-        // under a MB/s it would read 0: the bytes say it is moving
-        p.speedBps && p.speedBps >= 1024 ** 2
-          ? `${Math.round(p.speedBps / 1024 ** 2)} MB/s`
-          : "",
+        fast ? `${Math.round((p.speedBps as number) / 1024 ** 2)} MB/s` : "",
         p.filesTotal > 0
           ? `file ${Math.min(p.filesDone + 1, p.filesTotal)} of ${p.filesTotal}`
           : "",
       ];
       return {
         meta: parts.filter(Boolean).join(" · "),
-        end: `${downloadPct(p)}%`,
+        end: timeLeft(p) ?? DASH,
       };
     }
     case "failed":

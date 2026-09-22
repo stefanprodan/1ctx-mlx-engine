@@ -309,11 +309,11 @@ describe("download rows", () => {
     ],
   } as unknown as Snapshot;
 
-  test("a running download is a row with a bar, the bytes and a cancel", () => {
+  test("a running download is a row with a bar, the time left and a cancel", () => {
     downloads.value = [base];
     const html = render(<Models snap={snap} />);
     expect(html).toContain(
-      '<tr class="download running"><td class="name" title="org/new: model.safetensors"><div><span class="dot loading"></span><span class="owner">org/</span><a class="model" href="https://huggingface.co/org/new" target="_blank" rel="noopener">new</a></div><div class="bar"><span class="fill" style="width:25%;"></span></div></td><td class="meta">1.0 / 4.0 GB · 64 MB/s · 48 s left</td><td class="state running">downloading</td><td class="act">',
+      '<tr class="download running"><td class="name" title="org/new: model.safetensors"><div><span class="dot loading"></span><span class="owner">org/</span><a class="model" href="https://huggingface.co/org/new" target="_blank" rel="noopener">new</a></div><div class="bar"><span class="fill" style="width:25%;"></span></div></td><td class="meta">1.0 / 4.0 GB · 64 MB/s</td><td class="state running">48 s</td><td class="act">',
     );
     expect(html).toContain('class="ibtn trash danger" title="Delete"');
     expect(html).toContain('class="ibtn" title="Pause"');

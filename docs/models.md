@@ -11,12 +11,13 @@ huggingface.co URL, goes into `--model-dir` (`~/models` by default) as
 `hf.key`, one already downloading) shows under the field.
 
 The downloads sit under the form, one at a time from a queue: the bytes
-of the total, the speed, the file in flight and the percent while one
-runs, `queued` while it waits, the error when it failed, `paused` when it
-was stopped. Pause keeps the parts on disk and Resume carries on from
-them; Delete removes the files and the record. A finished download leaves
-the list once the engine lists the model, after the rescan it is asked
-for. [The API](api.md#downloads) has the details.
+of the total, the speed and the file in flight with the time left at
+the end while one runs, `queued` while it waits, the error when it
+failed, `paused` when it was stopped. Pause keeps the parts on disk and
+Resume carries on from them; Delete removes the files and the record.
+A finished download leaves the list once the engine lists the model,
+after the rescan it is asked for. [The API](api.md#downloads) has the
+details.
 
 ## The list
 

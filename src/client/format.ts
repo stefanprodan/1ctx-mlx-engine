@@ -54,6 +54,15 @@ export function duration(ms: number): string {
   return `${s}s`;
 }
 
+// The time a download has left, from its bytes to go and its speed.
+export function eta(seconds: number): string {
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} h ${minutes - hours * 60} min`;
+}
+
 // The order of every model list on the page: the daily driver first, then
 // by id. The engine lists resident models first, which moves a row on
 // every load and unload; residency shows in the dot instead.
