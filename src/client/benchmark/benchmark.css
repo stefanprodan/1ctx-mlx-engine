@@ -55,8 +55,8 @@
     content: "";
     width: 8px;
     height: 4px;
-    border-left: 2px solid #0d1a2c;
-    border-bottom: 2px solid #0d1a2c;
+    border-left: 2px solid var(--on-accent);
+    border-bottom: 2px solid var(--on-accent);
     transform: translateY(-1px) rotate(-45deg);
   }
   #benchmarks td.grid-end input:disabled {
@@ -74,7 +74,7 @@
     margin-left: 8px;
     padding: 0 7px;
     border-radius: 999px;
-    background: rgba(138, 180, 248, 0.12);
+    background: var(--accent-select);
     font-size: 11px;
     font-weight: 600;
     line-height: 17px;

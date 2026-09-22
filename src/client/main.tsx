@@ -19,6 +19,7 @@ import { Footer } from "./shell/Footer.tsx";
 import { Head } from "./shell/Head.tsx";
 import { Side } from "./shell/Rail.tsx";
 import { closeDrawer, drawerOpen, narrow, watchWidth } from "./shell/shell.ts";
+import { watchTheme } from "./shell/theme.ts";
 import { connect, type Page, page, pageOf } from "./store.ts";
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -67,6 +68,7 @@ addEventListener("popstate", () => {
   page.value = pageOf(location.pathname);
 });
 watchWidth();
+watchTheme();
 // the page under the open drawer is inert, set as the drawer opens or
 // closes, so a dialog the menu opens after closing it takes the focus
 effect(() => {

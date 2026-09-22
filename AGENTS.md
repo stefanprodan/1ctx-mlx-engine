@@ -300,13 +300,15 @@ src/client/
                      rail's icons
   fonts/             1ctx's IBM Plex Sans and JetBrains Mono, Regular only
   style/tokens.css   the custom properties, the only :root that has any,
-                     and the two @font-face rules
+                     dark and then light under data-theme, and the two
+                     @font-face rules
   style/base.css     what more than one page uses: cards, section heads,
                      pills, buttons, tables, the request bar, facts
   shell/             Rail.tsx (1ctx's rail, its folded strip, the drawer
                      below 720 and the user menu), Head.tsx (the sticky
                      crumb), shell.ts (narrow, folded and drawer signals),
-                     Footer.tsx, Pill.tsx, Confirm.tsx (the dialog with a
+                     theme.ts (light or dark, the system's until the user
+                     menu's switch picks one), Footer.tsx, Pill.tsx, Confirm.tsx (the dialog with a
                      promise API), Select.tsx (the one select, a button and
                      a listbox, never a native one), Grid.tsx (the one
                      design of a list of figures, the Requests history and

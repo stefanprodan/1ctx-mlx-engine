@@ -14,6 +14,7 @@ import { useSignal } from "@preact/signals";
 import { useLayoutEffect, useRef } from "preact/hooks";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
+import { theme } from "../shell/theme.ts";
 import { whole } from "./range.ts";
 import { chipValue } from "./series.ts";
 
@@ -48,11 +49,12 @@ function cursorTime(u: uPlot, secsSinceEpoch: number): string {
 }
 
 // Bars, one per sample, no gap: at 1h that is a bar per second, a solid
-// block per request instead of a jagged line.
+// block per request instead of a jagged line. The colour is read at every
+// draw, so a redraw after a theme flip repaints in the other theme's.
 function line(color: string): uPlot.Series {
   return {
-    stroke: color,
-    fill: `${color}b0`,
+    stroke: () => css(color),
+    fill: () => `${css(color)}b0`,
     width: 0,
     points: { show: false },
     spanGaps: false,
@@ -65,7 +67,7 @@ const floor = (min: number) => (_u: uPlot, _min: number, max: number) =>
 
 export type SparkProps = {
   label: string;
-  color: string; // a CSS custom property, resolved on mount
+  color: string; // a CSS custom property, resolved at every draw
   unit: string;
   t: number[];
   values: (number | null)[];
@@ -85,7 +87,6 @@ export function Spark({ label, color, unit, t, values }: SparkProps) {
 
   useLayoutEffect(() => {
     const el = plotEl.current!;
-    const c = css(color);
     // time label that rides the cursor bar
     const stamp = document.createElement("div");
     stamp.className = "stamp";
@@ -103,7 +104,7 @@ export function Spark({ label, color, unit, t, values }: SparkProps) {
         // sparklines carry no axes at all, like the console's: the head
         // chips hold the numbers
         axes: [{ show: false }, { show: false }],
-        series: [{}, line(c)],
+        series: [{}, line(color)],
         hooks: {
           ready: [(u) => u.over.append(stamp)],
           setCursor: [
@@ -144,6 +145,13 @@ export function Spark({ label, color, unit, t, values }: SparkProps) {
       plot.current = null;
     };
   }, [color]);
+
+  // read in the render, so a theme flip renders this chart again; the
+  // paths are rebuilt, a bar keeps the fill it was built with
+  const shade = theme.value;
+  useLayoutEffect(() => {
+    plot.current?.redraw(true);
+  }, [shade]);
 
   useLayoutEffect(() => {
     const u = plot.current;

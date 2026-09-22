@@ -74,7 +74,7 @@
     height: 10px;
     border-radius: 3px;
     overflow: hidden;
-    background: #1a1e25;
+    background: var(--well);
   }
   .cur-bar .pf {
     background: var(--blue);
@@ -133,16 +133,16 @@
     letter-spacing: 0.02em;
     padding: 2px 9px;
     border-radius: 999px;
-    background: #1a1e25;
-    color: #7d8794;
+    background: var(--well);
+    color: var(--label);
   }
   .pill.live {
-    background: #0f2a17;
+    background: var(--live-wash);
     color: var(--green);
   }
   .pill.err {
-    background: #2a0f14;
-    color: #ff95a8;
+    background: var(--bad-pill);
+    color: var(--bad);
   }
   .hint {
     color: var(--faint);
@@ -163,12 +163,12 @@
     padding: 4px 11px;
     border-radius: 999px;
     border: 1px solid var(--line);
-    background: #26282b;
+    background: var(--control);
     color: var(--fg);
     white-space: nowrap;
   }
   .btn:hover {
-    background: #33373b;
+    background: var(--control-hover);
   }
   .btn > svg {
     width: 13px;
@@ -178,24 +178,35 @@
   .btn.primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: #0d1a2c;
+    color: var(--on-accent);
   }
   .btn.primary:hover {
-    background: #a3c4fa;
+    background: var(--accent-hover);
   }
   .btn.danger:hover {
-    background: #3a1a20;
-    border-color: #5a2630;
-    color: #ff95a8;
+    background: var(--bad-wash);
+    border-color: var(--bad-line);
+    color: var(--bad);
   }
   .btn:disabled {
     opacity: 0.45;
     cursor: default;
   }
   .btn:disabled:hover {
-    background: #26282b;
+    background: var(--control);
     border-color: var(--line);
     color: var(--fg);
+  }
+  /* a faded blue on the light ground is washed out, so a primary one
+     keeps more of its colour there */
+  .btn.primary:disabled {
+    opacity: var(--primary-off);
+  }
+  /* and stays blue under the pointer, not the plain button's grey */
+  .btn.primary:disabled:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
   }
   .btn:focus-visible {
     outline: 2px solid var(--accent);
@@ -301,17 +312,17 @@
   }
 
   .ibtn:hover {
-    background: #26282b;
+    background: var(--control);
     color: var(--fg);
   }
   .ibtn.danger:hover {
-    background: #3a1a20;
-    border-color: #5a2630;
-    color: #ff95a8;
+    background: var(--bad-wash);
+    border-color: var(--bad-line);
+    color: var(--bad);
   }
   .ibtn.on {
     color: var(--amber);
-    border-color: #4a3a12;
+    border-color: var(--fav-line);
   }
   .ibtn.on:hover {
     color: var(--amber);
@@ -347,7 +358,7 @@
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: #7d8794;
+    color: var(--label);
   }
   .facts dd {
     margin: 0;

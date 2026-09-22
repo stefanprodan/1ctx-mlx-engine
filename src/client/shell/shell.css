@@ -14,7 +14,7 @@
 
   .seg {
     display: flex;
-    background: #26282b;
+    background: var(--control);
     border: 1px solid var(--line);
     border-radius: 999px;
     padding: 2px;
@@ -31,13 +31,13 @@
     color: var(--fg);
   }
   .seg button.active {
-    background: #33373b;
+    background: var(--control-hover);
     color: var(--fg);
   }
   .seg .sep {
     width: 1px;
     margin: 4px 5px;
-    background: #45494f;
+    background: var(--control-sep);
   }
   .seg .trash {
     display: inline-flex;
@@ -45,8 +45,8 @@
     padding: 2px 8px;
   }
   .seg .trash:hover {
-    background: #3a1a20;
-    color: #ff95a8;
+    background: var(--bad-wash);
+    color: var(--bad);
   }
   .seg button:focus-visible {
     outline: 2px solid var(--accent);
@@ -62,10 +62,10 @@
     width: min(460px, calc(100vw - 32px));
     font-size: 14px;
     line-height: 1.5;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-dialog);
   }
   dialog::backdrop {
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--backdrop);
   }
   dialog form {
     padding: 28px 28px 24px;
@@ -202,10 +202,10 @@
     overflow-y: auto;
     margin: 0;
     padding: 4px;
-    background: #232527;
+    background: var(--popover);
     border: 1px solid var(--rule);
     border-radius: 10px;
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+    box-shadow: var(--shadow-pop);
   }
   .select [role="option"] {
     display: flex;
@@ -222,7 +222,7 @@
     cursor: default;
   }
   .select [role="option"].active {
-    background: #303336;
+    background: var(--option-on);
     color: var(--val);
   }
   /* the chosen one: a tick, in the place a native list puts it */

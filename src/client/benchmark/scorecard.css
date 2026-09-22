@@ -48,13 +48,13 @@
     height: 4px;
     margin-top: 6px;
     border-radius: 2px;
-    background: #2a2e33;
+    background: var(--track);
   }
   #scorecard td.fig .fill {
     display: block;
     height: 100%;
     border-radius: 2px;
-    background: #56606b;
+    background: var(--track-fill);
   }
   #scorecard td.fig.best .fill {
     background: var(--green);
