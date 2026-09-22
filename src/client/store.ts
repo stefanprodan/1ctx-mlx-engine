@@ -128,6 +128,10 @@ export const version = computed(() => snapshot.value?.version ?? null);
 // engine that is merely down says offline.
 export const engineMode = signal<EngineMode | null>(null);
 export const absent = computed(() => engineMode.value === "absent");
+// The build the engine runs: the snapshot's word, then every engine push
+// while the engine is ours (an upgrade or a rollback, in any tab). Only a
+// snapshot carries an unmanaged engine's, which the sampler reads.
+export const engineVersion = signal<string | null>(null);
 // The newer builds the Server page offers, for the rail's pill: the
 // snapshot's, then every engine push (a check, an upgrade in another tab).
 export const updates = signal<Updates | null>(null);
@@ -220,6 +224,7 @@ function setSnapshot(snap: Snapshot, stale = false) {
   snapshot.value = snap;
   if (!stale) {
     engineMode.value = snap.engine.mode;
+    engineVersion.value = snap.engine.version;
     updates.value = snap.updates;
   }
   // a snapshot taken before this tab's own action registered must not
@@ -245,10 +250,14 @@ const emit = (msg: WsMessage) => {
   for (const fn of listeners) fn(msg);
 };
 
-// an engine push: the mode and the updates, newer than any snapshot in flight
+// an engine push: the mode, the build and the updates, newer than any
+// snapshot in flight
 export function applyEngine(state: EnginePageState) {
   enginePushes++;
   engineMode.value = state.engine.mode;
+  if (state.engine.mode === "managed") {
+    engineVersion.value = state.engine.active?.version ?? null;
+  }
   updates.value = updatesOf(state.engine, state.self.offered);
 }
 

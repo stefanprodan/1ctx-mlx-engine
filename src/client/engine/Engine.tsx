@@ -7,7 +7,7 @@
 // moves without an operation, so the page asks again every few seconds.
 
 import { useEffect } from "preact/hooks";
-import { listen, sample, snapshot } from "../store.ts";
+import { engineVersion, listen, sample, snapshot } from "../store.ts";
 import { Build } from "./Build.tsx";
 import { Config, ConfigHead } from "./Config.tsx";
 import { Self, SelfHead } from "./Self.tsx";
@@ -60,7 +60,7 @@ export function Engine() {
         engine={e}
         s={s}
         url={snap?.engine.url ?? null}
-        sampledVersion={snap?.engine.version ?? null}
+        sampledVersion={engineVersion.value}
       />
       <ConfigHead engine={e} />
       <Config engine={e} />

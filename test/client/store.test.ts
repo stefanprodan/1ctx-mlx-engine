@@ -5,6 +5,7 @@ import { describe, expect, test } from "bun:test";
 import {
   applyEngine,
   engineMode,
+  engineVersion,
   followsInPlace,
   landsOnEngine,
   modelsKeyOf,
@@ -142,6 +143,32 @@ describe("the engine push and a snapshot in flight", () => {
       globalThis.fetch = real;
       updates.value = null;
       engineMode.value = null;
+    }
+  });
+
+  test("an upgrade's push moves the build, an unmanaged one does not", () => {
+    const state = (mode: string, version: string | null) =>
+      ({
+        engine: {
+          mode,
+          active: version ? { version } : null,
+          operation: null,
+          failure: null,
+          offered: null,
+        },
+        self: { offered: null },
+      }) as unknown as EnginePageState;
+    try {
+      engineVersion.value = "26.9.4";
+      applyEngine(state("managed", "26.9.5"));
+      expect(engineVersion.value).toBe("26.9.5");
+      // the sampler's word stays until a snapshot brings a newer one
+      applyEngine(state("unmanaged", null));
+      expect(engineVersion.value).toBe("26.9.5");
+    } finally {
+      engineVersion.value = null;
+      engineMode.value = null;
+      updates.value = null;
     }
   });
 });
