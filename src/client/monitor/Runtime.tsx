@@ -9,7 +9,7 @@
 import type { Sample } from "../../shared/sample.ts";
 import type { Snapshot } from "../../shared/socket.ts";
 import { DASH, diskSize, duration, gb, num, sizeText } from "../format.ts";
-import { absent, connection } from "../store.ts";
+import { absent, connection, engineVersion } from "../store.ts";
 import { engineLocal, engineName } from "./actions.ts";
 
 // a fact with an optional note; the dash carries no note
@@ -89,9 +89,9 @@ export function Runtime({
   const pid = s?.enginePid ?? null;
   const why = s && local && s.engineUp ? "no mlx-serve process found" : "";
   const h = snap?.host ?? null;
-  // the build the engine stated about itself; unknown until a model has
-  // been resident since 1ctx-mlx-engine started
-  const ver = snap?.engine.version ?? null;
+  // the managed build, else the one the engine stated about itself:
+  // unknown until a model has been resident since 1ctx-mlx-engine started
+  const ver = engineVersion.value;
   const cores =
     h && h.perfCores != null && h.effCores != null
       ? `${h.cpuCores} cores (${h.perfCores}P + ${h.effCores}E)`

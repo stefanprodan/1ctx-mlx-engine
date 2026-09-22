@@ -29,6 +29,7 @@ import {
   connection,
   downloads,
   engineMode,
+  engineVersion,
   event,
   sample,
   snapshot,
@@ -401,6 +402,7 @@ describe("runtime facts", () => {
 
   test("the engine row carries the build the engine stated", () => {
     snapshot.value = snap("26.9.5-pre-release.1");
+    engineVersion.value = "26.9.5-pre-release.1";
     const html = render(<Runtime snap={snapshot.value} s={null} />);
     expect(html).toContain(
       "<span>mlx-serve</span><small>26.9.5-pre-release.1</small>",
@@ -409,6 +411,7 @@ describe("runtime facts", () => {
 
   test("an unknown build leaves the engine name alone", () => {
     snapshot.value = snap(null);
+    engineVersion.value = null;
     const html = render(<Runtime snap={snapshot.value} s={null} />);
     expect(html).toContain("<span>mlx-serve</span><small></small>");
   });
