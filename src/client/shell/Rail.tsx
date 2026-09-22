@@ -33,6 +33,7 @@ import {
   railHidden,
   showRail,
 } from "./shell.ts";
+import { theme, toggleTheme } from "./theme.ts";
 import "./shell.css";
 import "./rail.css";
 
@@ -80,9 +81,9 @@ const current = (on: boolean) => (on ? "page" : undefined);
 // that takes its place gets it
 let refocus = false;
 
-// the user row's two items: the engine's restart, with the Runtime
-// head's rule, and the link to the source. The focus moves into the
-// menu as it opens, and the arrows move it between the items
+// the user row's items: the engine's restart, with the Runtime head's
+// rule, the theme's switch and the link to the source. The focus moves
+// into the menu as it opens, and the arrows move it between the items
 export function UserMenu({ close }: { close: () => void }) {
   const blocked = restartBlocked.value;
   const menu = useRef<HTMLDivElement>(null);
@@ -128,6 +129,19 @@ export function UserMenu({ close }: { close: () => void }) {
       >
         <Icon name="redo" size={14} />
         <span>Restart engine</span>
+      </button>
+      <button
+        type="button"
+        class="rail-menu-item"
+        role="menuitemcheckbox"
+        aria-checked={theme.value === "dark"}
+        onClick={toggleTheme}
+      >
+        <Icon name="moon" size={14} />
+        <span>Dark theme</span>
+        <span class={`rail-menu-switch${theme.value === "dark" ? " on" : ""}`}>
+          <span class="rail-menu-knob" />
+        </span>
       </button>
       <a
         class="rail-menu-item"

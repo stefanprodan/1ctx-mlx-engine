@@ -15,7 +15,7 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: #7d8794;
+    color: var(--label);
     text-align: right;
     white-space: nowrap;
   }
@@ -101,7 +101,7 @@
     color: var(--fg);
   }
   .grid-filters button.on {
-    background: #2a2c2f;
+    background: var(--filter-on);
   }
   .grid-filters button:focus-visible {
     outline: 2px solid var(--accent);
@@ -372,6 +372,6 @@
     border-bottom: 0;
   }
   .grid tbody tr:not(.detail):hover td {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--row-hover);
   }
 }

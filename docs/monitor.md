@@ -10,7 +10,10 @@ button at the top left. The head over each page names it and stays put
 while the page scrolls. Server carries a `new` pill (a dot on its icon in
 the strip) while the Server page offers a newer mlx-serve or
 1ctx-mlx-engine; the pill's tooltip names the versions. The Admin menu at
-the rail's foot restarts the engine and links to the source.
+the rail's foot restarts the engine, switches the theme and links to the
+source. The theme follows the system until the switch picks the other
+one; the browser keeps that choice, and a switch back to the system's
+theme forgets it.
 
 ## Overview
 

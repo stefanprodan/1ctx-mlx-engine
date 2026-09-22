@@ -18,7 +18,10 @@
 
   /* Follows the engine's own console: near-black page, one card per section,
      inset tiles and sparkline boxes darker than the card, uppercase 10px
-     labels, bold mono values. Series colours: the console's green and blue. */
+     labels, bold mono values. Series colours: the console's green and blue.
+     The colours come twice, dark here and light under the attribute
+     theme.ts sets, the same names, so no other stylesheet knows which
+     theme it draws. */
   :root {
     color-scheme: dark;
     --bg: #131314;
@@ -63,5 +66,118 @@
     --rail-dim: #b3b3b8;
     --rail-faint: #8b8b91;
     --separator: #35363a;
+    /* the uppercase labels and the quiet pill's words */
+    --label: #7d8794;
+    /* a button, a segmented control and the fill under the pointer */
+    --control: #26282b;
+    --control-hover: #33373b;
+    --control-sep: #45494f;
+    /* a pill, a bar's empty track, the chart's time stamp */
+    --well: #1a1e25;
+    --track: #2a2e33;
+    --track-fill: #56606b;
+    --accent-hover: #a3c4fa;
+    /* the words and the tick on an --accent fill */
+    --on-accent: #0d1a2c;
+    --accent-wash: #12233a;
+    --accent-select: rgba(138, 180, 248, 0.12);
+    --live-wash: #0f2a17;
+    --ready: #10b981;
+    /* a failure: its words, the fills and the borders it takes */
+    --bad: #ff95a8;
+    --bad-wash: #3a1a20;
+    --bad-line: #5a2630;
+    --bad-pill: #2a0f14;
+    --bad-soft: #1a0f12;
+    --bad-line-2: #4a2028;
+    --state-bad: #f28b82;
+    --warn: #f0b429;
+    --warn-wash: #2a2109;
+    --fav-line: #4a3a12;
+    /* what floats over the page: the select's list and the dialog */
+    --popover: #232527;
+    --option-on: #303336;
+    --rail-pop: #232427;
+    --rail-hover: #2d2e31;
+    --filter-on: #2a2c2f;
+    --row-hover: rgba(255, 255, 255, 0.02);
+    --cursor-line: #3a4048;
+    --log-bg: #0b0d10;
+    --cmd-bg: #0a0c0f;
+    --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.5);
+    --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.55);
+    --shadow-head: 0 1px 6px rgba(0, 0, 0, 0.55);
+    --backdrop: rgba(0, 0, 0, 0.6);
+    /* how much of a disabled primary button shows */
+    --primary-off: 0.45;
+  }
+
+  /* 1ctx's light ground: warm paper, near-black words, and every colour
+     that carries meaning darkened until it reads on it */
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f4f2ec;
+    --card: #fbfaf7;
+    --inset: #eeece5;
+    --line: #dfdcd3;
+    --line-2: #e6e3da;
+    --fg: #1a1a1c;
+    --val: #111113;
+    --dim: #4d4c52;
+    --faint: #6f6e75;
+    --faint-2: #77757c;
+    --accent: #1d5fd6;
+    --green: #1b7a3d;
+    --green-2: #1b7a4f;
+    --blue: #2563eb;
+    --amber: #a06800;
+    --red: #c62828;
+    --brand: #6d4fd8;
+    --cap: #5f5e66;
+    --cap-inset: #5c5b63;
+    --rule: #d4d0c6;
+    --series-0: #a8a6ad;
+    --rail: #ebe8e0;
+    --rail-fg: #1a1a1c;
+    --rail-dim: #4d4c52;
+    --rail-faint: #6f6e75;
+    --separator: #cfccc2;
+    --label: #66656c;
+    --control: #efece5;
+    --control-hover: #e4e1d8;
+    --control-sep: #cfccc2;
+    --well: #e9e6de;
+    --track: #e4e1d8;
+    --track-fill: #a8a293;
+    --accent-hover: #174fb3;
+    --on-accent: #fbfaf7;
+    --accent-wash: #e1e9f8;
+    --accent-select: rgba(29, 95, 214, 0.12);
+    --live-wash: #e1f2e6;
+    --ready: #15803d;
+    --bad: #b3261e;
+    --bad-wash: #fbe9e7;
+    --bad-line: #efc4c0;
+    --bad-pill: #f9e3e1;
+    --bad-soft: #fcf1ef;
+    --bad-line-2: #f0cdc9;
+    --state-bad: #b3261e;
+    --warn: #8a5a00;
+    --warn-wash: #f7ecd3;
+    --fav-line: #e5cf9c;
+    --popover: #fbfaf7;
+    --option-on: #ebe8e0;
+    --rail-pop: #fbfaf7;
+    --rail-hover: #e2dfd6;
+    --filter-on: #e9e6de;
+    --row-hover: rgba(19, 19, 20, 0.025);
+    --cursor-line: #aeaaa0;
+    --log-bg: #f1efe9;
+    --cmd-bg: #f1efe9;
+    --shadow-dialog: 0 24px 64px rgba(19, 19, 20, 0.18);
+    --shadow-pop: 0 12px 32px rgba(19, 19, 20, 0.14);
+    --shadow-head: 0 1px 6px rgba(19, 19, 20, 0.12);
+    --backdrop: rgba(19, 19, 20, 0.35);
+    --primary-off: 0.7;
   }
 }

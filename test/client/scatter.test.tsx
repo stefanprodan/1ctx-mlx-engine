@@ -153,7 +153,7 @@ describe("scatter", () => {
       />,
     );
     expect(html).toContain(
-      '<li title="org/Ling-4bit"><i style="background:var(--series-1);"></i><span class="model">Ling-4bit</span><span class="v">2.4 s</span><span class="v">88.4</span><small>tok/s</small></li>',
+      '<li><i style="background:var(--series-1);"></i><span class="model">Ling-4bit</span><span class="v">2.4 s</span><span class="v">88.4</span><small>tok/s</small></li>',
     );
     expect(html).toContain("background:var(--series-0);");
     expect(html).toContain('<span class="v">35.6 s</span>');

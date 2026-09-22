@@ -171,7 +171,7 @@
     margin-left: auto;
     padding: 1px 7px;
     border-radius: 999px;
-    background: #12233a;
+    background: var(--accent-wash);
     color: var(--accent);
     font-family: var(--sans);
     font-size: 10.5px;
@@ -227,10 +227,10 @@
     flex-direction: column;
     gap: 2px;
     padding: 4px;
-    background: #232427;
+    background: var(--rail-pop);
     border: 1px solid var(--separator);
     border-radius: 10px;
-    box-shadow: 0 12px 32px #0000008c;
+    box-shadow: var(--shadow-pop);
   }
   .rail .rail-menu-item {
     display: flex;
@@ -244,7 +244,7 @@
     text-align: left;
   }
   .rail .rail-menu-item:hover:not(:disabled) {
-    background: #2d2e31;
+    background: var(--rail-hover);
   }
   .rail-menu-item svg {
     color: var(--rail-dim);
@@ -252,6 +252,38 @@
   .rail .rail-menu-item:disabled {
     color: var(--rail-faint);
     cursor: default;
+  }
+  /* the theme's switch at the end of its row, 1ctx's */
+  .rail-menu-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 36px;
+    height: 20px;
+    margin-left: auto;
+    border: 1px solid var(--separator);
+    border-radius: 10px;
+    background: var(--inset);
+    transition: background 120ms;
+  }
+  .rail-menu-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--rail-faint);
+    transition:
+      transform 120ms,
+      background 120ms;
+  }
+  .rail-menu-switch.on {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  .rail-menu-switch.on .rail-menu-knob {
+    transform: translateX(16px);
+    background: var(--on-accent);
   }
 
   /* folded: the pages stay one click away, the one on screen lit */
@@ -315,7 +347,7 @@
     background: var(--bg);
   }
   .page-head-stuck {
-    box-shadow: 0 1px 6px #0000008c;
+    box-shadow: var(--shadow-head);
   }
   .page-head-in {
     display: flex;

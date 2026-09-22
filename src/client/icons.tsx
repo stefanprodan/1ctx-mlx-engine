@@ -129,13 +129,14 @@ export function Logo({ height = 26 }: { height?: number }) {
 }
 
 // the rail's icons, 1ctx's 16 box and 1.5 stroke; sidebar, close,
-// chevron and redo are 1ctx's own paths
+// chevron, redo and moon are 1ctx's own paths
 const PATHS = {
   sidebar:
     "M3.5 3h9a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM6 3v10",
   close: "M4 4l8 8M12 4l-8 8",
   chevron: "M5 6.5l3 3 3-3",
   redo: "M14 8a6 6 0 1 1-1.8-4.3M14 2v3.5h-3.5",
+  moon: "M13.5 9.6A5.75 5.75 0 1 1 6.4 2.5a4.6 4.6 0 0 0 7.1 7.1z",
   pulse: "M1.5 8h3l2-5 3 10 2-5h3",
   grid: "M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z",
   swap: "M2.5 5.5h10M10 3l2.5 2.5L10 8M13.5 10.5h-10M6 8l-2.5 2.5L6 13",
