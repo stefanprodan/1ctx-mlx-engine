@@ -17,17 +17,18 @@
     color: var(--cap);
     margin-bottom: 6px;
   }
+  /* the button's height, whatever the text size (16px on a phone) */
   .dl-field input {
     width: 100%;
+    height: 33px;
     box-sizing: border-box;
     font-family: var(--mono);
     font-size: 13px;
-    line-height: 1.5;
     background: var(--inset);
     border: 1px solid var(--line);
     border-radius: 8px;
     color: var(--val);
-    padding: 6px 10px;
+    padding: 0 10px;
   }
   .dl-field input::placeholder {
     color: var(--faint);
