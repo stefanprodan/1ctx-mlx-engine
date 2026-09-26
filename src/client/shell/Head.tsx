@@ -6,7 +6,7 @@
 
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import { PAGES, type Page } from "../store.ts";
+import { follow, PAGES, type Page } from "../store.ts";
 
 export function Head({ page }: { page: Page }) {
   const stuck = useSignal(false);
@@ -23,7 +23,11 @@ export function Head({ page }: { page: Page }) {
     <div class={`page-head${stuck.value ? " page-head-stuck" : ""}`}>
       <div class="page-head-in">
         <div class="crumb">
-          <span>1ctx</span>
+          {/* the root goes home, the Overview; a modified click stays a
+              browser link */}
+          <a class="crumb-home" href="/" onClick={(e) => follow(e, "/")}>
+            1ctx
+          </a>
           <span class="crumb-sep">/</span>
           {p.section && (
             <>

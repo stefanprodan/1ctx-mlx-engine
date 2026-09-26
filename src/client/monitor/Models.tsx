@@ -123,17 +123,17 @@ function Buttons({
           model={m.id}
           cls="on"
         />
-      ) : isChat(m) ? (
-        <IconButton
-          label={m.deleted ? "Deleted" : "Mark as daily driver"}
-          glyph={ICON.star}
-          action="favorite"
-          model={m.id}
-          disabled={m.deleted}
-        />
       ) : (
-        // the daily driver is a chat model; the column keeps its width
-        <span class="ibtn-gap" />
+        // the daily driver is a chat model
+        isChat(m) && (
+          <IconButton
+            label={m.deleted ? "Deleted" : "Mark as daily driver"}
+            glyph={ICON.star}
+            action="favorite"
+            model={m.id}
+            disabled={m.deleted}
+          />
+        )
       )}
       {m.loaded
         ? can("unload") && (
@@ -193,9 +193,13 @@ export function Models({ snap }: { snap: Snapshot | null }) {
                 key={m.id}
                 class={m.loaded ? "ready" : m.deleted ? "deleted" : undefined}
               >
-                <td class="name" title={m.id}>
+                <td class="name" title={kind ? `${m.id}, ${kind} model` : m.id}>
                   <div>
-                    <span class={`dot ${dotFor(m.state)}`} />
+                    {/* a model that is not for chat: a quieter dot, its
+                        kind in the tooltip, the name keeps the width */}
+                    <span
+                      class={`dot ${dotFor(m.state)}${kind ? " aux" : ""}`}
+                    />
                     <span class="owner">
                       {slash > 0 ? `${m.id.slice(0, slash)}/` : ""}
                     </span>
@@ -208,7 +212,6 @@ export function Models({ snap }: { snap: Snapshot | null }) {
                     >
                       {m.id.slice(slash + 1)}
                     </a>
-                    {kind && <span class="kind">{kind}</span>}
                   </div>
                 </td>
                 <td class="meta">{facts.join(" · ")}</td>

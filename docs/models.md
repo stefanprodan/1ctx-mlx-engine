@@ -22,9 +22,9 @@ details.
 ## The list
 
 Every model the engine lists, in the order of the name after the owner.
-The search matches the id and the model type; All, Loaded and Unloaded
-filter by residency, and when the list holds more than one kind of model,
-Chat, Embeddings and Decisions filter by kind. A row is the name, then a
+The search matches the id, the model type and the kind a row shows
+(`embed` finds the embedding models); All, Loaded and Unloaded filter by
+residency. A row is the name, then a
 faint line: the kind for a model that is not for chat, a star for the
 daily driver, the owner, the bits (or the dtype of weights that are not
 quantized), the active parameters of a mixture of experts, and the state

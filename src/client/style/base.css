@@ -413,4 +413,17 @@
       gap: 8px 0;
     }
   }
+
+  /* Under 16px, Safari on iOS zooms the page into a field on focus. One
+     rule for every field, and for the select beside it so a row of them
+     reads as one: important, because an important declaration of an
+     earlier layer beats the page layers' own sizes. */
+  @media (max-width: 600px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    .select > button {
+      /* biome-ignore lint/complexity/noImportantStyles: the one way a base rule beats the pages layer */
+      font-size: 16px !important;
+    }
+  }
 }

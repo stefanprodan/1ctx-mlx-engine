@@ -10,7 +10,6 @@ import {
   downloadLine,
   downloadPct,
   figures,
-  filtersFor,
   joinRows,
   kindTag,
   matchingModels,
@@ -244,25 +243,14 @@ describe("models that are not for chat", () => {
     ]);
   });
 
-  test("a kind filter only when the list holds more than one kind", () => {
+  test("the search finds a model by the kind its row shows", () => {
     const rows = joinRows([...LIST, laya, embed], []);
-    expect(filtersFor(joinRows(LIST, []))).toEqual([
-      "all",
-      "loaded",
-      "unloaded",
-    ]);
-    expect(filtersFor(rows)).toEqual([
-      "all",
-      "loaded",
-      "unloaded",
-      "chat",
-      "embedding",
-      "decision",
-    ]);
-    expect(matchingModels(rows, "", "decision").map((r) => r.info.id)).toEqual([
-      laya.id,
-    ]);
-    expect(matchingModels(rows, "", "chat").length).toBe(LIST.length);
+    const ids = (q: string) =>
+      matchingModels(rows, q, "all").map((r) => r.info.id);
+    expect(ids("embed")).toEqual([embed.id]);
+    expect(ids("decision")).toEqual([laya.id]);
+    // with the residency filter, as ever
+    expect(matchingModels(rows, "embed", "loaded")).toEqual([]);
   });
 
   test("a failed load says the engine's reason", () => {

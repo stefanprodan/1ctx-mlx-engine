@@ -9,7 +9,6 @@
 import type { Download } from "../../shared/downloads.ts";
 import {
   type ModelInfo,
-  type ModelKind,
   type ModelSpec,
   modelKind,
 } from "../../shared/models.ts";
@@ -67,42 +66,10 @@ export function joinRows(models: ModelInfo[], specs: ModelSpec[]): ModelRow[] {
   }));
 }
 
-export const FILTERS = [
-  "all",
-  "loaded",
-  "unloaded",
-  "chat",
-  "embedding",
-  "decision",
-] as const;
+export const FILTERS = ["all", "loaded", "unloaded"] as const;
 export type Filter = (typeof FILTERS)[number];
-const FILTER_LABEL: Record<Filter, string> = {
-  all: "All",
-  loaded: "Loaded",
-  unloaded: "Unloaded",
-  chat: "Chat",
-  embedding: "Embeddings",
-  decision: "Decisions",
-};
-export const filterLabel = (f: Filter) => FILTER_LABEL[f];
-
-// The filters a list offers: residency always, a kind only when the list
-// holds more than one kind, and then only the kinds it holds.
-export function filtersFor(list: { info: ModelInfo }[]): Filter[] {
-  const kinds = new Set(list.map((r) => modelKind(r.info.capabilities)));
-  const offered = FILTERS.filter(
-    (f) => f === "chat" || f === "embedding" || f === "decision",
-  ).filter((k) => kinds.has(k as ModelKind));
-  return ["all", "loaded", "unloaded", ...(kinds.size > 1 ? offered : [])];
-}
-
-const matchesFilter = (info: ModelInfo, filter: Filter) => {
-  if (filter === "all") return true;
-  if (filter === "loaded" || filter === "unloaded") {
-    return info.loaded === (filter === "loaded");
-  }
-  return modelKind(info.capabilities) === filter;
-};
+export const filterLabel = (f: Filter) =>
+  f === "all" ? "All" : f === "loaded" ? "Loaded" : "Unloaded";
 
 // the name after the owner, so one owner's models do not bunch together
 export const modelName = (id: string) => id.slice(id.lastIndexOf("/") + 1);
@@ -125,10 +92,12 @@ export function matchingModels(
   const q = query.trim().toLowerCase();
   return byName(list).filter(
     ({ info, spec }) =>
-      matchesFilter(info, filter) &&
+      (filter === "all" || info.loaded === (filter === "loaded")) &&
       (q === "" ||
         info.id.toLowerCase().includes(q) ||
-        (spec.modelType?.toLowerCase().includes(q) ?? false)),
+        (spec.modelType?.toLowerCase().includes(q) ?? false) ||
+        // the tag a row shows: "embed" finds the embedding models
+        (kindTag(info.capabilities)?.includes(q) ?? false)),
   );
 }
 
