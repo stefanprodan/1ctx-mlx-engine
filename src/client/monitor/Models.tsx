@@ -8,10 +8,15 @@
 
 import type { VNode } from "preact";
 import type { ActionName } from "../../shared/actions.ts";
-import type { Capability, ModelInfo } from "../../shared/models.ts";
+import {
+  type Capability,
+  isChat,
+  type ModelInfo,
+} from "../../shared/models.ts";
 import type { Snapshot } from "../../shared/socket.ts";
 import { modelSize, orderModels } from "../format.ts";
 import { Trash } from "../icons.tsx";
+import { context, kindTag } from "../models/spec.ts";
 import { absent, busy, downloads, follow } from "../store.ts";
 import { runAction } from "./actions.ts";
 import { DownloadRow } from "./Download.tsx";
@@ -118,7 +123,7 @@ function Buttons({
           model={m.id}
           cls="on"
         />
-      ) : (
+      ) : isChat(m) ? (
         <IconButton
           label={m.deleted ? "Deleted" : "Mark as daily driver"}
           glyph={ICON.star}
@@ -126,6 +131,9 @@ function Buttons({
           model={m.id}
           disabled={m.deleted}
         />
+      ) : (
+        // the daily driver is a chat model; the column keeps its width
+        <span class="ibtn-gap" />
       )}
       {m.loaded
         ? can("unload") && (
@@ -176,9 +184,10 @@ export function Models({ snap }: { snap: Snapshot | null }) {
             const facts = [
               modelSize(m.loaded ? m.bytesResident : m.bytesOnDisk),
             ];
-            if (m.contextLength != null) {
-              facts.push(`${Math.round(m.contextLength / 1024)}K ctx`);
-            }
+            // the window the process serves, once /props has said it
+            const ctx = m.runtime?.context ?? m.contextLength;
+            if (ctx != null) facts.push(`${context(ctx)} ctx`);
+            const kind = kindTag(m.capabilities);
             return (
               <tr
                 key={m.id}
@@ -199,6 +208,7 @@ export function Models({ snap }: { snap: Snapshot | null }) {
                     >
                       {m.id.slice(slash + 1)}
                     </a>
+                    {kind && <span class="kind">{kind}</span>}
                   </div>
                 </td>
                 <td class="meta">{facts.join(" · ")}</td>
@@ -207,7 +217,9 @@ export function Models({ snap }: { snap: Snapshot | null }) {
                   title={
                     m.deleted
                       ? "Its files are gone. The engine drops it at the next restart."
-                      : undefined
+                      : m.state === "error" && m.error
+                        ? `Load failed: ${m.error}`
+                        : undefined
                   }
                 >
                   {m.state}

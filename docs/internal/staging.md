@@ -92,16 +92,15 @@ ssh -o BatchMode=yes $STAGING_SSH 'launchctl print gui/$(id -u)/com.stefanprodan
 ```
 
 `/health`, `/v1/models`, `/metrics.json` and `/metrics` answer before the
-model-load path. **`GET /props` only while a model is resident** (check
-`/v1/models` first): on an idle engine it cold-loads the default
-model, undoes API unloads and evicts what a client just loaded. Its body
-is worth knowing, though: `settings.version` is the engine build,
-`settings.prefix_cache` the budgets of the running process, `memory` the
-live headroom, and `model_info` the default model's shape (recorded in
-`test/fixtures/props.json` with Ornith resident). The
-engine's own web console at the server root polls it every 5 s regardless,
-so keep that console closed during measurements. 1ctx-mlx-engine's Overview page is
-the replacement.
+model-load path. `GET /props` is a status read since mlx-serve 26.9.6: it
+loads nothing and does not count as use of a model. Ask it about a
+resident model, `/props?model=<id>`, for the full body: `settings.version`
+is the engine build, `settings.prefix_cache` the budgets of the running
+process, `memory` the live headroom (`max_safe_context`), and
+`model_info` that model's shape (recorded in `test/fixtures/props.json`
+with Ornith resident). About a model that is not resident it answers the
+memory counters only. 1ctx-mlx-engine polls it that way with every model
+list.
 
 ### Controlling the engine
 
@@ -156,8 +155,8 @@ back is one it has to discover.
 - The version: for the managed engine 1ctx-mlx-engine takes it from its own
   install record (and the MLX version from `mlx-serve --version` at
   install time). For an engine it does not manage it is
-  `settings.version` in `/props` (once per engine process, while a model
-  is resident, then stored in its database), and the banner the engine prints
+  `settings.version` in `/props` (about a resident model, with every
+  model list, then stored in its database), and the banner the engine prints
   at every start into its own log and the launchd log (`mlx-serve
   26.9.5-pre-release.1 (MLX 0.32.2)`, the only place the MLX version
   appears), which 1ctx-mlx-engine does not read.

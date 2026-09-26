@@ -18,6 +18,7 @@ import { ExclusiveLock } from "../../../src/server/lib/lock.ts";
 import type { Sample } from "../../../src/shared/sample.ts";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
+import kindsUnloaded from "../../fixtures/models-kinds-unloaded.json";
 import { testLog } from "../log.ts";
 
 const ORNITH = "stefanprodan/Ornith-1.5-35B-A3B-BigBang-oQ4e-mtp";
@@ -124,7 +125,10 @@ function setup(over: Partial<RunnerDeps> = {}) {
         samples.add(fn);
         return () => samples.delete(fn);
       },
-      currentModels: () => parseModels(modelsFixture),
+      currentModels: () => [
+        ...parseModels(modelsFixture),
+        ...parseModels(kindsUnloaded),
+      ],
       refreshModels: async () => parseModels(modelsFixture),
     },
     prepare: {
@@ -228,6 +232,16 @@ test("a start is refused with the status the route answers", async () => {
   expect(() => free.runner.start({ model: "no/such", preset: "20K" })).toThrow(
     "unknown model",
   );
+  // the session is a chat: an embedding model, which the engine lists with
+  // "chat", and a decision model are refused before the lock
+  for (const model of [
+    "mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ",
+    "aac6fef/laya-multilingual-mlx",
+  ]) {
+    expect(() => free.runner.start({ model, preset: "20K" })).toThrow(
+      "is not a chat model",
+    );
+  }
   // an action holds the shared lock
   let release = () => {};
   const held = free.lock.run(

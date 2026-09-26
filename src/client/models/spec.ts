@@ -2,15 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // The Models page's pure half: the join of the live list with the specs,
-// the order, the search and the filters, a row's figures and faint line,
-// the opened row's groups and a download's line. Tested in
-// test/client/models.test.ts.
+// the order, the search and the filters, a row's figures and faint line
+// and a download's line; the opened row's groups are in groups.ts. Tested
+// in test/client/models.test.ts.
 
 import type { Download } from "../../shared/downloads.ts";
-import type { ModelInfo, ModelSpec } from "../../shared/models.ts";
+import {
+  type ModelInfo,
+  type ModelKind,
+  type ModelSpec,
+  modelKind,
+} from "../../shared/models.ts";
 import { DASH, modelSize, sizeText } from "../format.ts";
 import { timeLeft } from "../monitor/download.ts";
-import type { GridGroup } from "../shell/Grid.tsx";
 
 // a model as the page shows it: the sample's live row, the route's spec
 export type ModelRow = { info: ModelInfo; spec: ModelSpec };
@@ -29,6 +33,7 @@ export function blankSpec(info: ModelInfo): ModelSpec {
     activeParams: null,
     layers: null,
     fullAttention: null,
+    restAttention: null,
     hiddenSize: null,
     heads: null,
     kvHeads: null,
@@ -46,6 +51,8 @@ export function blankSpec(info: ModelInfo): ModelSpec {
     temperature: null,
     topP: null,
     topK: null,
+    decision: null,
+    embedding: null,
     license: null,
     revision: null,
     downloadedAt: null,
@@ -60,10 +67,42 @@ export function joinRows(models: ModelInfo[], specs: ModelSpec[]): ModelRow[] {
   }));
 }
 
-export const FILTERS = ["all", "loaded", "unloaded"] as const;
+export const FILTERS = [
+  "all",
+  "loaded",
+  "unloaded",
+  "chat",
+  "embedding",
+  "decision",
+] as const;
 export type Filter = (typeof FILTERS)[number];
-export const filterLabel = (f: Filter) =>
-  f === "all" ? "All" : f === "loaded" ? "Loaded" : "Unloaded";
+const FILTER_LABEL: Record<Filter, string> = {
+  all: "All",
+  loaded: "Loaded",
+  unloaded: "Unloaded",
+  chat: "Chat",
+  embedding: "Embeddings",
+  decision: "Decisions",
+};
+export const filterLabel = (f: Filter) => FILTER_LABEL[f];
+
+// The filters a list offers: residency always, a kind only when the list
+// holds more than one kind, and then only the kinds it holds.
+export function filtersFor(list: { info: ModelInfo }[]): Filter[] {
+  const kinds = new Set(list.map((r) => modelKind(r.info.capabilities)));
+  const offered = FILTERS.filter(
+    (f) => f === "chat" || f === "embedding" || f === "decision",
+  ).filter((k) => kinds.has(k as ModelKind));
+  return ["all", "loaded", "unloaded", ...(kinds.size > 1 ? offered : [])];
+}
+
+const matchesFilter = (info: ModelInfo, filter: Filter) => {
+  if (filter === "all") return true;
+  if (filter === "loaded" || filter === "unloaded") {
+    return info.loaded === (filter === "loaded");
+  }
+  return modelKind(info.capabilities) === filter;
+};
 
 // the name after the owner, so one owner's models do not bunch together
 export const modelName = (id: string) => id.slice(id.lastIndexOf("/") + 1);
@@ -86,7 +125,7 @@ export function matchingModels(
   const q = query.trim().toLowerCase();
   return byName(list).filter(
     ({ info, spec }) =>
-      (filter === "all" || info.loaded === (filter === "loaded")) &&
+      matchesFilter(info, filter) &&
       (q === "" ||
         info.id.toLowerCase().includes(q) ||
         (spec.modelType?.toLowerCase().includes(q) ?? false)),
@@ -102,26 +141,63 @@ export function params(n: number | null): string {
   return `${Math.round(n / 1e6)}M`;
 }
 
-// a context window in K, as the engine's flags and model cards say it
+// a context window in K, as the engine's flags and model cards say it; a
+// window under 1K in tokens (an embedding model's 512 is not 1K)
 export const context = (tokens: number | null) =>
-  tokens === null ? DASH : `${Math.round(tokens / 1024)}K`;
+  tokens === null
+    ? DASH
+    : tokens < 1024
+      ? String(tokens)
+      : `${Math.round(tokens / 1024)}K`;
 
-const thousands = (n: number | null) =>
-  n === null ? DASH : n.toLocaleString("en-US");
-const plain = (n: number | null) => (n === null ? DASH : String(n));
-const fixed = (n: number | null) => (n === null ? DASH : String(+n.toFixed(2)));
+const DTYPE: Record<string, string> = {
+  float16: "FP16",
+  bfloat16: "BF16",
+  float32: "FP32",
+};
 
-// the bits when the checkpoint says, else the engine's word, else nothing
+// the bits when the checkpoint says, else the engine's word, else the
+// dtype of weights that are not quantized, else nothing
 export const quant = (s: ModelSpec) =>
-  s.bits !== null ? `${s.bits}-bit` : s.quantization;
+  s.bits !== null
+    ? `${s.bits}-bit`
+    : (s.quantization ?? (s.dtype ? (DTYPE[s.dtype] ?? s.dtype) : null));
+
+// The window a row's Context column shows: what the engine serves a chat
+// model, the longest input of an embedding model, the window a decision
+// model's state, question and options share.
+export function contextOf(s: ModelSpec): number | null {
+  switch (modelKind(s.capabilities)) {
+    case "decision":
+      return s.decision?.window ?? null;
+    case "embedding":
+      return s.embedding?.maxInput ?? s.contextLength;
+    default:
+      return s.contextLength;
+  }
+}
 
 export function figures(s: ModelSpec) {
   return {
     params: params(s.params),
     size: modelSize(s.bytesOnDisk),
-    context: context(s.contextLength),
+    context: context(contextOf(s)),
   };
 }
+
+// the word a model that is not for chat carries beside its name
+export const kindTag = (capabilities: readonly string[]): string | null => {
+  switch (modelKind(capabilities)) {
+    case "embedding":
+      return "embeddings";
+    case "decision":
+      return "decisions";
+    case "media":
+      return "media";
+    default:
+      return null;
+  }
+};
 
 export type RowState = { word: string; tone: "ok" | "busy" | "bad" };
 
@@ -142,8 +218,9 @@ export function metaLine(row: ModelRow): {
 
 function rowState(info: ModelInfo): RowState | null {
   if (info.deleted) return { word: "deleted", tone: "bad" };
+  // the engine's reason is the word: "MissingWeight" says more than "error"
   if (info.state === "error" || info.state === "failed") {
-    return { word: info.state, tone: "bad" };
+    return { word: info.error ?? info.state, tone: "bad" };
   }
   if (info.loaded) {
     return info.state === "ready"
@@ -161,135 +238,18 @@ const CAPABILITY: Record<string, string> = {
   reasoning: "Reasoning",
   json_schema: "JSON schema",
   embeddings: "Embeddings",
+  decisions: "Decisions",
 };
-// streaming is every model's; it says nothing about this one
-export const capabilityTags = (s: ModelSpec) =>
-  s.capabilities
+// Streaming is every model's, it says nothing about this one. A model that
+// is not for chat has its kind only: the engine lists chat and tools on an
+// embedding model it cannot really chat with.
+export const capabilityTags = (s: ModelSpec) => {
+  const kind = modelKind(s.capabilities);
+  const own = kind === "embedding" ? ["embeddings"] : null;
+  return (own ?? (kind === "decision" ? ["decisions"] : s.capabilities))
     .filter((c) => c !== "streaming")
     .map((c) => CAPABILITY[c] ?? c);
-
-const day = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-
-function headsSpread(s: ModelSpec): string | undefined {
-  const parts = [
-    s.kvHeads !== null ? `${s.kvHeads} KV` : null,
-    s.headDim !== null ? `${s.headDim} dim` : null,
-  ].filter(Boolean);
-  return parts.length ? parts.join(", ") : undefined;
-}
-
-export function modelGroups(s: ModelSpec): GridGroup[] {
-  const linear =
-    s.layers !== null && s.fullAttention !== null && s.fullAttention < s.layers
-      ? `${s.fullAttention} full, ${s.layers - s.fullAttention} linear`
-      : undefined;
-  const groups: GridGroup[] = [
-    {
-      title: "Architecture",
-      rows: [
-        { label: "Type", value: s.modelType ?? DASH },
-        {
-          label: "Parameters",
-          value: params(s.params),
-          spread:
-            s.activeParams === null
-              ? undefined
-              : `${params(s.activeParams)} active`,
-        },
-        { label: "Layers", value: plain(s.layers), spread: linear },
-        { label: "Hidden size", value: thousands(s.hiddenSize) },
-        { label: "Heads", value: plain(s.heads), spread: headsSpread(s) },
-        { label: "Vocabulary", value: thousands(s.vocab) },
-      ],
-    },
-  ];
-  if (s.experts) {
-    groups.push({
-      title: "Experts",
-      rows: [
-        { label: "Routed", value: plain(s.experts.routed) },
-        { label: "Per token", value: plain(s.experts.perToken) },
-        { label: "Shared", value: plain(s.experts.shared) },
-      ],
-    });
-  }
-  const tokens = (n: number | null) => (n === null ? undefined : "tokens");
-  groups.push(
-    {
-      title: "Context",
-      rows: [
-        {
-          label: "Served",
-          value: thousands(s.contextLength),
-          unit: tokens(s.contextLength),
-        },
-        {
-          label: "Model max",
-          value: thousands(s.maxPositions),
-          unit: tokens(s.maxPositions),
-        },
-        {
-          label: "MTP",
-          value: s.mtpLayers ? String(s.mtpLayers) : DASH,
-          unit: !s.mtpLayers
-            ? undefined
-            : s.mtpLayers === 1
-              ? "layer"
-              : "layers",
-          // what the engine runs, said while the model is resident
-          spread:
-            !s.mtpLayers || s.mtpLoaded === null
-              ? undefined
-              : s.mtpLoaded
-                ? "in use"
-                : "off",
-        },
-      ],
-    },
-    {
-      title: "Weights",
-      rows: [
-        {
-          label: "Quantization",
-          value: quant(s) ?? DASH,
-          spread: s.mode ?? undefined,
-        },
-        { label: "Group size", value: plain(s.groupSize) },
-        { label: "Dtype", value: s.dtype ?? DASH },
-        { label: "On disk", value: sizeText(s.bytesOnDisk) },
-        {
-          label: "Files",
-          value: plain(s.files),
-          unit: s.files === null ? undefined : "safetensors",
-        },
-      ],
-    },
-    {
-      title: "Sampling defaults",
-      rows: [
-        { label: "Temperature", value: fixed(s.temperature) },
-        { label: "Top p", value: fixed(s.topP) },
-        { label: "Top k", value: plain(s.topK) },
-      ],
-    },
-    {
-      title: "Source",
-      rows: [
-        { label: "Revision", value: s.revision?.slice(0, 7) ?? DASH },
-        { label: "License", value: s.license ?? DASH },
-        {
-          label: "Downloaded",
-          value: s.downloadedAt === null ? DASH : day.format(s.downloadedAt),
-        },
-      ],
-    },
-  );
-  return groups;
-}
+};
 
 const ofTotal = (p: Download) =>
   p.bytesTotal > 0

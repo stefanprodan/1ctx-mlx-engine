@@ -3,12 +3,14 @@
 //
 // Adapter for mlx-serve (github.com/ddalcu/mlx-serve) in --serve mode.
 //
-// The sampler uses only endpoints that mlx-serve's dispatch answers before
-// its model-load step: /health, /metrics.json, /v1/models and, after a
-// download, /v1/models/rescan (verified in the engine's src/server.zig). GET
-// /props goes through the load path and cold-loads the default model on an
-// idle engine, which is the bug that motivated 1ctx-mlx-engine, so props() is
-// asked only while a model is resident and then only once per engine process.
+// The sampler reads /health, /metrics.json, /v1/models, /props and, after a
+// download, /v1/models/rescan; none of them loads a model (verified in the
+// engine's src/server.zig). GET /props once cold-loaded the default model on
+// an idle engine, the bug that motivated 1ctx-mlx-engine. Since 26.9.6 it is
+// a status read: a model that is not resident gets the memory counters
+// only, and a resident one is not stamped as used, so polling it never
+// holds a model against --idle-evict-secs. props() still names a resident
+// model, which is the only way the answer carries the build and budgets.
 // load/unload are explicit user actions, never called from the sampler.
 // chat() and tokenize() are the benchmark's: /v1/chat/completions and
 // /tokenize, only from a button, only under the shared lock; chat() is the
@@ -17,7 +19,11 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { EngineConfig } from "../../shared/engine.ts";
-import type { Capability, ModelInfo } from "../../shared/models.ts";
+import {
+  type Capability,
+  type ModelInfo,
+  modelKind,
+} from "../../shared/models.ts";
 import type {
   ChatAnswer,
   ChatTimings,
@@ -80,6 +86,21 @@ export function parseMetrics(body: any): EngineMetrics {
   };
 }
 
+const capabilitiesOf = (m: any): string[] =>
+  Array.isArray(m?.capabilities)
+    ? m.capabilities.filter((c: unknown) => typeof c === "string")
+    : [];
+
+// A decision model's entry is a generic stub once it is resident: a 4096
+// context over a 1024 window, hidden size 1, one layer. Its figures come
+// from the checkpoint instead.
+const stub = (m: any) => modelKind(capabilitiesOf(m)) === "decision";
+
+// "0-bit" is the engine's word for a model it did not quantize (a BF16
+// embedding model, an FP16 decision model): no precision, not zero bits.
+const precision = (word: unknown) =>
+  typeof word === "string" && word !== "0-bit" ? word : null;
+
 // Pure: the /v1/models body → ModelInfo[]. Exported for tests. mlx-serve does
 // not say which model is the default, so isDefault stays undefined.
 export function parseModels(body: any): ModelInfo[] {
@@ -91,15 +112,15 @@ export function parseModels(body: any): ModelInfo[] {
       loaded: m.loaded === true,
       state:
         typeof m.state === "string" ? m.state : m.loaded ? "ready" : "unloaded",
+      error: typeof m.error === "string" && m.error !== "" ? m.error : null,
       bytesResident: num(m.bytes_resident),
       bytesOnDisk: num(m.bytes_on_disk),
       contextLength:
-        typeof m.context_length === "number" ? m.context_length : null,
-      quantization:
-        typeof m.meta?.quantization === "string" ? m.meta.quantization : null,
-      capabilities: Array.isArray(m.capabilities)
-        ? m.capabilities.filter((c: unknown) => typeof c === "string")
-        : [],
+        typeof m.context_length === "number" && !stub(m)
+          ? m.context_length
+          : null,
+      quantization: precision(m.meta?.quantization),
+      capabilities: capabilitiesOf(m),
     }));
 }
 
@@ -113,13 +134,14 @@ export function parseModelMeta(body: any): Map<string, EngineModelMeta> {
   for (const m of data) {
     if (typeof m?.id !== "string") continue;
     const meta = typeof m.meta === "object" && m.meta !== null ? m.meta : {};
+    const shape = !stub(m);
     out.set(m.id, {
       architecture:
         typeof meta.architecture === "string" ? meta.architecture : null,
-      layers: numOrNull(meta.num_layers),
-      hiddenSize: numOrNull(meta.hidden_size),
-      vocab: numOrNull(meta.vocab_size),
-      maxTokens: numOrNull(meta.model_max_tokens),
+      layers: shape ? numOrNull(meta.num_layers) : null,
+      hiddenSize: shape ? numOrNull(meta.hidden_size) : null,
+      vocab: shape ? numOrNull(meta.vocab_size) : null,
+      maxTokens: shape ? numOrNull(meta.model_max_tokens) : null,
       isMoe: typeof meta.is_moe === "boolean" ? meta.is_moe : null,
       mtpLoaded: typeof meta.mtp_loaded === "boolean" ? meta.mtp_loaded : null,
       temperature: numOrNull(meta.gen_temperature),
@@ -186,19 +208,34 @@ export function parseOutput(body: any): { prose: string; tools: string } {
 // stored and shown: its message, never a page of it
 const ERROR_BODY_CHARS = 200;
 
-// Pure: the /props body → the facts worth keeping. The engine reports much
-// more (the loaded model's shape, live memory headroom, speculative decoding
-// settings), but only these two are unavailable elsewhere and constant for
-// the life of the process. Exported for tests.
+// Pure: the /props body → the facts worth keeping: the build and the cache
+// budgets of the process, which no other endpoint states, and the asked
+// model's runtime, the window it serves (n_ctx, under --ctx-size) and the
+// longest context that fits in memory now. A body without settings is the
+// engine's answer for a model that is not resident: memory counters only,
+// and nothing here. Exported for tests.
 export function parseProps(body: any): EngineProps {
-  const st = body?.settings ?? {};
+  const st = body?.settings;
+  if (typeof st !== "object" || st === null) {
+    return { version: null, limits: null, runtime: null };
+  }
   const pc = st.prefix_cache ?? {};
   const version = typeof st.version === "string" ? st.version : null;
   const limits =
     typeof pc.mem_bytes === "number" && typeof pc.disk_bytes === "number"
       ? { hotBytes: pc.mem_bytes, diskBytes: pc.disk_bytes }
       : null;
-  return { version, limits };
+  const context = numOrNull(body?.default_generation_settings?.n_ctx);
+  // 0 is the engine's "no model" value, not a context that fits
+  const safe = numOrNull(body?.memory?.max_safe_context);
+  return {
+    version,
+    limits,
+    runtime: {
+      context: context && context > 0 ? context : null,
+      safeContext: safe && safe > 0 ? safe : null,
+    },
+  };
 }
 
 export type MlxServeOptions = {
@@ -277,12 +314,15 @@ export class MlxServe implements Engine {
   }
 
   // The only endpoint that states the engine's build and the budgets of the
-  // running process, and the only source of either for a remote engine. It
-  // also runs the model-load path, so the caller must have seen a model
-  // resident first (rule 1): the engine then has nothing to cold-load.
-  async props(): Promise<EngineProps | null> {
+  // running process, and the only source of either for a remote engine.
+  // Asked about a named model, so the answer is never the default's: a
+  // model the list shows resident gets the full answer, one that was
+  // unloaded since gets the counters, never a load.
+  async props(model: string): Promise<EngineProps | null> {
     try {
-      return parseProps(await this.get("/props"));
+      return parseProps(
+        await this.get(`/props?model=${encodeURIComponent(model)}`),
+      );
     } catch {
       return null;
     }
@@ -327,7 +367,7 @@ export class MlxServe implements Engine {
 
   // Raw text, no chat template. It runs on the default model, so the
   // caller loads its model as the default first (the engine would otherwise
-  // cold-load one, as /props does).
+  // cold-load one).
   async tokenize(content: string, signal: AbortSignal): Promise<number> {
     const res = await fetch(`${this.url}/tokenize`, {
       method: "POST",

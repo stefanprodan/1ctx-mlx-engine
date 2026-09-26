@@ -6,6 +6,7 @@ import {
   BENCHMARK_PRESETS,
   type BenchmarkPreset,
 } from "../../shared/benchmark.ts";
+import { isChat } from "../../shared/models.ts";
 import { orderModels } from "../format.ts";
 import { confirm } from "../shell/Confirm.tsx";
 import { Select } from "../shell/Select.tsx";
@@ -31,7 +32,8 @@ function refusal(): string | null {
 
 // The top card: what to run, or how far the run is.
 export function Run() {
-  const list = orderModels(models.value);
+  // the session is a chat: only a chat model can run it
+  const list = orderModels(models.value).filter(isChat);
   const [chosen, setChosen] = useState<string | null>(null);
   const [preset, setPreset] = useState<BenchmarkPreset>(DEFAULT_PRESET);
   const model = list.find((m) => m.id === chosen)?.id ?? list[0]?.id;

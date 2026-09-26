@@ -2,15 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
+import { DASH } from "../../src/client/format.ts";
+import { modelGroups } from "../../src/client/models/groups.ts";
 import {
   blankSpec,
   capabilityTags,
   downloadLine,
   downloadPct,
+  figures,
+  filtersFor,
   joinRows,
+  kindTag,
   matchingModels,
   metaLine,
-  modelGroups,
   params,
 } from "../../src/client/models/spec.ts";
 import type { Download } from "../../src/shared/downloads.ts";
@@ -47,6 +51,7 @@ const moe: ModelSpec = {
   activeParams: 3.02e9,
   layers: 40,
   fullAttention: 10,
+  restAttention: "linear",
   heads: 16,
   kvHeads: 2,
   headDim: 256,
@@ -146,6 +151,130 @@ describe("models", () => {
 
   test("the capabilities without streaming, which every model has", () => {
     expect(capabilityTags(moe)).toEqual(["Chat", "Tools"]);
+  });
+});
+
+describe("models that are not for chat", () => {
+  const laya = info("aac6fef/laya-multilingual-mlx", {
+    capabilities: ["decisions"],
+    contextLength: null,
+    quantization: null,
+  });
+  const embed = info("mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ", {
+    contextLength: 32768,
+    capabilities: ["chat", "tool_use", "streaming", "embeddings"],
+  });
+  const layaSpec: ModelSpec = {
+    ...blankSpec(laya),
+    modelType: "modernbert",
+    params: 321_908_998,
+    hiddenSize: 768,
+    dtype: "float16",
+    decision: {
+      encoder: "jhu-clsp/mmBERT-base",
+      window: 1024,
+      optionBudget: 256,
+      calibrated: false,
+    },
+  };
+  const embedSpec: ModelSpec = {
+    ...blankSpec(embed),
+    hiddenSize: 1024,
+    embedding: { maxInput: 32768, pooling: null },
+  };
+
+  test("the kind is a tag, and the only capability shown", () => {
+    expect(kindTag(laya.capabilities)).toBe("decisions");
+    expect(kindTag(embed.capabilities)).toBe("embeddings");
+    expect(kindTag(LIST[0]!.capabilities)).toBeNull();
+    // the engine lists chat and tools on an embedding model
+    expect(capabilityTags(embedSpec)).toEqual(["Embeddings"]);
+    expect(capabilityTags(layaSpec)).toEqual(["Decisions"]);
+  });
+
+  test("the Context column: the window, the longest input", () => {
+    expect(figures(layaSpec)).toMatchObject({ params: "322M", context: "1K" });
+    expect(figures(embedSpec).context).toBe("32K");
+    // the dtype stands in for bits that are not there
+    expect(metaLine({ info: laya, spec: layaSpec }).text).toBe(
+      "aac6fef · FP16",
+    );
+  });
+
+  test("their own group, and nothing about generation", () => {
+    const titles = (g: { title: string }[]) => g.map((x) => x.title);
+    const decision = modelGroups(layaSpec);
+    expect(titles(decision)).toEqual([
+      "Architecture",
+      "Decision",
+      "Weights",
+      "Source",
+    ]);
+    expect(decision[1]!.rows.map((r) => r.value)).toEqual([
+      "jhu-clsp/mmBERT-base",
+      "1,024",
+      "256",
+      "no",
+    ]);
+    const embedding = modelGroups(embedSpec);
+    expect(titles(embedding)).toEqual([
+      "Architecture",
+      "Embedding",
+      "Weights",
+      "Source",
+    ]);
+    expect(embedding[1]!.rows.map((r) => r.value)).toEqual([
+      "1,024",
+      "32,768",
+      DASH,
+    ]);
+  });
+
+  test("a resident chat model's runtime: the served window, what fits", () => {
+    const spec = { ...blankSpec(LIST[1]!), maxPositions: 262144 };
+    const context = modelGroups(spec, {
+      context: 65536,
+      safeContext: 40000,
+    }).find((g) => g.title === "Context")!;
+    expect(context.rows.map((r) => [r.label, r.value])).toEqual([
+      ["Served", "65,536"],
+      ["Model max", "262,144"],
+      ["Fits now", "40,000"],
+      ["MTP", DASH],
+    ]);
+  });
+
+  test("a kind filter only when the list holds more than one kind", () => {
+    const rows = joinRows([...LIST, laya, embed], []);
+    expect(filtersFor(joinRows(LIST, []))).toEqual([
+      "all",
+      "loaded",
+      "unloaded",
+    ]);
+    expect(filtersFor(rows)).toEqual([
+      "all",
+      "loaded",
+      "unloaded",
+      "chat",
+      "embedding",
+      "decision",
+    ]);
+    expect(matchingModels(rows, "", "decision").map((r) => r.info.id)).toEqual([
+      laya.id,
+    ]);
+    expect(matchingModels(rows, "", "chat").length).toBe(LIST.length);
+  });
+
+  test("a failed load says the engine's reason", () => {
+    const bge = info("mlx-community/bge-small-en-v1.5-bf16", {
+      state: "error",
+      error: "MissingWeight",
+      capabilities: ["embeddings"],
+    });
+    expect(metaLine({ info: bge, spec: blankSpec(bge) }).state).toEqual({
+      word: "MissingWeight",
+      tone: "bad",
+    });
   });
 });
 

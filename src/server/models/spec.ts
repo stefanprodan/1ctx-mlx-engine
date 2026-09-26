@@ -3,10 +3,17 @@
 //
 // What a checkpoint says of itself, pure: its config.json, its
 // generation_config.json, its model card's front matter and the headers of
-// its safetensors files, then the join with what the engine says. Tested
-// on files recorded from real checkpoints in test/fixtures/spec/.
+// its safetensors files, then the join with what the engine says. A
+// decision checkpoint has no config.json: its encoder's config and
+// rl_agent_config.json stand in. An embedding checkpoint may carry the
+// sentence-transformers files beside config.json. Tested on files recorded
+// from real checkpoints in test/fixtures/spec/.
 
-import type { ModelInfo, ModelSpec } from "../../shared/models.ts";
+import {
+  type ModelInfo,
+  type ModelSpec,
+  modelKind,
+} from "../../shared/models.ts";
 import type { EngineModelMeta } from "../engine/types.ts";
 
 export type Experts = {
@@ -21,6 +28,7 @@ export type DiskConfig = {
   modelType: string | null;
   layers: number | null;
   fullAttention: number | null;
+  restAttention: string | null;
   hiddenSize: number | null;
   heads: number | null;
   kvHeads: number | null;
@@ -51,6 +59,8 @@ export type Header = Record<string, { dtype: string; shape: number[] }>;
 export type DiskSpec = {
   config: DiskConfig;
   generation: Generation | null;
+  decision: ModelSpec["decision"];
+  embedding: ModelSpec["embedding"];
   license: string | null;
   params: number | null;
   activeParams: number | null;
@@ -63,6 +73,7 @@ export type DiskSpec = {
 const n = (v: unknown) =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 const str = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
+const product = (shape: number[]) => shape.reduce((a, b) => a * b, 1);
 const obj = (v: unknown): Record<string, any> | null =>
   typeof v === "object" && v !== null && !Array.isArray(v)
     ? (v as Record<string, any>)
@@ -77,12 +88,21 @@ export function parseConfig(body: unknown): DiskConfig {
   const heads = n(t.num_attention_heads);
   const hiddenSize = n(t.hidden_size);
   let fullAttention: number | null = null;
+  let restAttention: string | null = null;
   if (Array.isArray(t.layer_types)) {
     fullAttention = t.layer_types.filter(
       (l: unknown) => l === "full_attention",
     ).length;
+    // the kind of the other layers, "linear_attention" → "linear"
+    const rest = t.layer_types.find(
+      (l: unknown) => typeof l === "string" && l !== "full_attention",
+    );
+    restAttention =
+      typeof rest === "string" ? rest.replace(/_attention$/, "") : null;
   } else if (layers !== null && n(t.full_attention_interval)) {
     fullAttention = Math.floor(layers / t.full_attention_interval);
+    // the interval is Qwen3-Next's and Qwen3.5's, whose others are linear
+    restAttention = "linear";
   }
   const routed =
     n(t.num_experts) ?? n(t.num_local_experts) ?? n(t.n_routed_experts);
@@ -110,6 +130,7 @@ export function parseConfig(body: unknown): DiskConfig {
     modelType: str(top.model_type) ?? str(t.model_type),
     layers,
     fullAttention,
+    restAttention,
     hiddenSize,
     heads,
     kvHeads: n(t.num_key_value_heads) ?? heads,
@@ -142,6 +163,79 @@ export function parseGeneration(body: unknown): Generation {
   };
 }
 
+// rl_agent_config.json, a Laya decision checkpoint's: the encoder it was
+// trained on, the window the state, question and options share (max_len),
+// the options' part of it (head_max_len) and the calibration temperatures,
+// one per question type. All 1 means none were fitted.
+export function parseDecision(
+  body: unknown,
+): NonNullable<ModelSpec["decision"]> {
+  const a = obj(body) ?? {};
+  const temps = Array.isArray(a.temperature)
+    ? a.temperature.filter((t: unknown) => n(t) !== null)
+    : [];
+  return {
+    encoder: str(a.encoder),
+    window: n(a.max_len),
+    optionBudget: n(a.head_max_len),
+    calibrated: temps.length ? temps.some((t: number) => t !== 1) : null,
+  };
+}
+
+const POOLING: Record<string, string> = {
+  pooling_mode_cls_token: "CLS token",
+  pooling_mode_mean_tokens: "mean",
+  pooling_mode_max_tokens: "max",
+  pooling_mode_lasttoken: "last token",
+  pooling_mode_weightedmean_tokens: "weighted mean",
+  pooling_mode_mean_sqrt_len_tokens: "mean, sqrt length",
+};
+
+// sentence_bert_config.json and 1_Pooling/config.json, a sentence-
+// transformers checkpoint's: the longest input and the pooling. Either may
+// be missing; a checkpoint with neither says nothing here.
+export function parseEmbedding(
+  sbert: unknown,
+  pooling: unknown,
+): ModelSpec["embedding"] {
+  const s = obj(sbert);
+  const p = obj(pooling);
+  if (!s && !p) return null;
+  const modes = Object.entries(POOLING)
+    .filter(([key]) => p?.[key] === true)
+    .map(([, word]) => word);
+  return {
+    maxInput: n(s?.max_seq_length),
+    pooling: modes.length ? modes.join(", ") : null,
+  };
+}
+
+const DTYPE: Record<string, string> = {
+  F16: "float16",
+  BF16: "bfloat16",
+  F32: "float32",
+};
+
+// The weights' dtype from the headers, for a checkpoint whose config does
+// not say it: the float type most parameters are stored in. Null for a
+// quantized one (its packed words say nothing of the activations).
+export function headerDtype(headers: Header[]): string | null {
+  const count = new Map<string, number>();
+  for (const header of headers) {
+    for (const [name, t] of Object.entries(header)) {
+      if (name === "__metadata__" || !Array.isArray(t?.shape)) continue;
+      if (t.dtype === "U32") return null;
+      const word = DTYPE[t.dtype];
+      if (word) count.set(word, (count.get(word) ?? 0) + product(t.shape));
+    }
+  }
+  let best: string | null = null;
+  for (const [word, c] of count) {
+    if (best === null || c > count.get(best)!) best = word;
+  }
+  return best;
+}
+
 // the license in the model card's YAML front matter, null without one
 export function parseLicense(readme: string): string | null {
   const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readme);
@@ -150,8 +244,6 @@ export function parseLicense(readme: string): string | null {
   const value = line?.[1]?.trim().replace(/^["']|["']$/g, "");
   return value ? value : null;
 }
-
-const product = (shape: number[]) => shape.reduce((a, b) => a * b, 1);
 
 // The parameter count from the tensors' shapes, exact. A quantized weight
 // is packed into U32 words with its scales beside it: each row holds
@@ -215,6 +307,7 @@ export function mergeSpec(
 ): ModelSpec {
   const c = disk?.config;
   const g = disk?.generation;
+  const kind = modelKind(info.capabilities);
   return {
     id: info.id,
     bytesOnDisk: info.bytesOnDisk,
@@ -227,6 +320,7 @@ export function mergeSpec(
     activeParams: disk?.activeParams ?? null,
     layers: c?.layers ?? meta?.layers ?? null,
     fullAttention: c?.fullAttention ?? null,
+    restAttention: c?.restAttention ?? null,
     hiddenSize: c?.hiddenSize ?? meta?.hiddenSize ?? null,
     heads: c?.heads ?? null,
     kvHeads: c?.kvHeads ?? null,
@@ -248,6 +342,16 @@ export function mergeSpec(
     temperature: meta?.temperature ?? g?.temperature ?? null,
     topP: meta?.topP ?? g?.topP ?? null,
     topK: meta?.topK ?? g?.topK ?? null,
+    decision: kind === "decision" ? (disk?.decision ?? null) : null,
+    // the engine's window is the longest input when the checkpoint does
+    // not say it
+    embedding:
+      kind === "embedding"
+        ? {
+            maxInput: disk?.embedding?.maxInput ?? info.contextLength,
+            pooling: disk?.embedding?.pooling ?? null,
+          }
+        : null,
     license: disk?.license ?? null,
     revision: download?.revision ?? null,
     downloadedAt: download?.finishedAt ?? disk?.addedAt ?? null,

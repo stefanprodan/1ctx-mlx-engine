@@ -11,7 +11,7 @@ import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { ActionName } from "../../shared/actions.ts";
 import type { Download } from "../../shared/downloads.ts";
-import type { Capability } from "../../shared/models.ts";
+import { type Capability, isChat } from "../../shared/models.ts";
 import { sizeText } from "../format.ts";
 import { DownloadIcon, Trash } from "../icons.tsx";
 import { runAction } from "../monitor/actions.ts";
@@ -34,22 +34,24 @@ import {
   follow,
   listen,
   models,
+  sample,
   snapshot,
 } from "../store.ts";
 import { controlDownload, startDownload } from "./downloads.ts";
+import { modelGroups } from "./groups.ts";
 import {
   capabilityTags,
   downloadLine,
   downloadPct,
-  FILTERS,
   type Filter,
   figures,
   filterLabel,
+  filtersFor,
   joinRows,
+  kindTag,
   type ModelRow,
   matchingModels,
   metaLine,
-  modelGroups,
   modelName,
   modelOwner,
   quant,
@@ -234,15 +236,18 @@ function Foot({ row }: { row: ModelRow }) {
           Delete
         </button>
       )}
-      <button
-        type="button"
-        class={`btn${m.favorite ? " fav" : ""}`}
-        disabled={off || (m.deleted && !m.favorite)}
-        onClick={run("favorite")}
-      >
-        <Glyph d={GLYPH.star} />
-        {m.favorite ? "Daily driver" : "Mark as daily driver"}
-      </button>
+      {/* the daily driver is a chat model; a star set before still comes off */}
+      {(isChat(m) || m.favorite) && (
+        <button
+          type="button"
+          class={`btn${m.favorite ? " fav" : ""}`}
+          disabled={off || (m.deleted && !m.favorite)}
+          onClick={run("favorite")}
+        >
+          <Glyph d={GLYPH.star} />
+          {m.favorite ? "Daily driver" : "Mark as daily driver"}
+        </button>
+      )}
       {m.loaded
         ? can("unload") && (
             <button
@@ -276,12 +281,16 @@ function Foot({ row }: { row: ModelRow }) {
 function Detail({ row }: { row: ModelRow }) {
   const s = row.spec;
   const tags = capabilityTags(s);
+  // the list's rows change only with the residency picture; the runtime
+  // /props states moves with memory, so it is read off the live sample
+  const runtime =
+    sample.value?.models.find((m) => m.id === s.id)?.runtime ?? null;
   return (
     <GridDetail
       span={COLUMNS.length + 1}
       name={s.id}
       tag={quant(s)}
-      groups={modelGroups(s)}
+      groups={modelGroups(s, runtime)}
       foot={<Foot row={row} />}
     >
       {(tags.length > 0 || s.inputs.length > 0) && (
@@ -384,8 +393,8 @@ export function Models() {
           onQuery={(q) => {
             modelQuery.value = q;
           }}
-          filtersLabel="Residency"
-          filters={FILTERS.map((f) => ({
+          filtersLabel="Filters"
+          filters={filtersFor(all).map((f) => ({
             label: filterLabel(f),
             on: f === filter,
             onPick: () => {
@@ -423,6 +432,13 @@ export function Models() {
                         <span class="mfav" title="Daily driver">
                           <Glyph d={GLYPH.star} />
                         </span>
+                      )}
+                      {kindTag(info.capabilities) && (
+                        <>
+                          <span class="mkind">
+                            {kindTag(info.capabilities)}
+                          </span>{" "}
+                        </>
                       )}
                       {meta.text}
                       {meta.state && (

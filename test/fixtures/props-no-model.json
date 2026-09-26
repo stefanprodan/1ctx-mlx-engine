@@ -1,0 +1,14 @@
+{
+  "total_slots": 1,
+  "memory": {
+    "active_bytes": 617562400,
+    "peak_bytes": 1705536754,
+    "available_bytes": 63263260672,
+    "max_safe_context": 0
+  },
+  "batching": {
+    "supported": false,
+    "reason": "no_model",
+    "max_group": 32
+  }
+}

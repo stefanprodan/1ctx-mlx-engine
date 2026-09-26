@@ -17,11 +17,14 @@ import { ACTION_NAMES, type ActionEvent } from "../../src/shared/actions.ts";
 import type { Capability, ModelInfo } from "../../src/shared/models.ts";
 import metricsFixture from "../fixtures/metrics.json";
 import modelsFixture from "../fixtures/models.json";
+import kindsUnloaded from "../fixtures/models-kinds-unloaded.json";
 import { testLog } from "./log.ts";
 
 const QWEN = "Jundot/Qwen3.8-27B-oQ4e-mtp";
 const APODEX = "stefanprodan/Apodex-1.1-mini-oQ4e-mtp";
 const ORNITH = "stefanprodan/Ornith-1.5-35B-A3B-BigBang-oQ4e-mtp";
+const EMBED = "mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ";
+const LAYA = "aac6fef/laya-multilingual-mlx";
 
 // An engine whose load/unload mutate its model list, as mlx-serve does.
 class ControlEngine implements Engine {
@@ -56,7 +59,7 @@ class ControlEngine implements Engine {
     m.state = loaded ? "ready" : "unloaded";
   }
   async props() {
-    return { version: "26.9.5", limits: null };
+    return { version: "26.9.6", limits: null, runtime: null };
   }
   async load(id: string, asDefault: boolean) {
     this.calls.push(`load ${id} ${asDefault}`);
@@ -214,6 +217,50 @@ describe("Actions", () => {
       `load ${APODEX} true`,
       `load ${QWEN} true`,
     ]);
+    s.history.close();
+  });
+
+  test("a model that is not for chat loads beside the default", async () => {
+    const s = await setup();
+    s.engine.list.push(...parseModels(kindsUnloaded).filter((m) => !m.loaded));
+    await s.sampler.refreshModels();
+    const ev = await s.actions.run("load", { model: EMBED });
+    expect(ev.detail).toBe("loaded");
+    await s.actions.run("load", { model: LAYA });
+    expect(s.engine.calls).toEqual([
+      `load ${EMBED} false`,
+      `load ${LAYA} false`,
+    ]);
+    // neither can be the default nor the daily driver
+    await rejects(
+      s.actions.run("default", { model: LAYA }),
+      400,
+      /not a chat model/,
+    );
+    await rejects(
+      s.actions.run("favorite", { model: EMBED }),
+      400,
+      /not a chat model/,
+    );
+    // an unload hands the default to a chat model only: Ornith, though the
+    // embedding model sorts first among the resident ones
+    s.engine.calls = [];
+    await s.actions.run("unload", { model: QWEN });
+    expect(s.engine.calls).toEqual([`unload ${QWEN}`, `load ${ORNITH} true`]);
+    s.engine.calls = [];
+    const last = await s.actions.run("unload", { model: ORNITH });
+    expect(last.detail).toBe("unloaded");
+    expect(s.engine.calls).toEqual([`unload ${ORNITH}`]);
+    s.history.close();
+  });
+
+  test("a star set on a model that is not for chat still comes off", async () => {
+    const s = await setup();
+    s.engine.list.push(...parseModels(kindsUnloaded).filter((m) => !m.loaded));
+    await s.sampler.refreshModels();
+    s.history.toggleFavorite(EMBED); // set before kinds were known
+    const ev = await s.actions.run("favorite", { model: EMBED });
+    expect(ev.detail).toBe("no daily driver");
     s.history.close();
   });
 

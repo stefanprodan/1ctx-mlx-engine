@@ -19,7 +19,7 @@ import {
   type ActionName,
   isActionName,
 } from "../shared/actions.ts";
-import type { Capability } from "../shared/models.ts";
+import { type Capability, isChat } from "../shared/models.ts";
 import type { Engine } from "./engine/types.ts";
 import { ExclusiveLock, LockBusyError } from "./lib/lock.ts";
 import { errorFields, type Log } from "./lib/log.ts";
@@ -237,17 +237,33 @@ export class Actions {
     if (name !== "unload" && known.deleted) {
       throw new ActionError(400, `${id} is deleted`);
     }
+    // only a chat model can take requests that name no model, or be the
+    // daily driver; a star set before is still taken off
+    const unstar = name === "favorite" && this.deps.history.favorite() === id;
+    if ((name === "default" || name === "favorite") && !unstar) {
+      if (!isChat(known)) {
+        throw new ActionError(400, `${id} is not a chat model`);
+      }
+    }
     return id;
   }
 
   private async perform(name: ActionName, model: string | null) {
     switch (name) {
-      // A load makes the model the engine's default, and an unload hands the
-      // default to the model still resident (the favorite first): a request
-      // without a model then goes to what is in memory instead of cold
-      // loading something else.
+      // A load makes a chat model the engine's default, and an unload hands
+      // the default to the chat model still resident (the favorite first): a
+      // request without a model then goes to what is in memory instead of
+      // cold loading something else. An embedding or decision model is
+      // loaded beside the default, never as it: a chat request without a
+      // model would reach it and get noise or an error.
       case "load": {
-        const asDefault = this.deps.engine.capabilities().has("default");
+        const known = this.deps.sampler
+          .currentModels()
+          .find((m) => m.id === model);
+        const asDefault =
+          this.deps.engine.capabilities().has("default") &&
+          known !== undefined &&
+          isChat(known);
         await this.deps.engine.load(model!, asDefault);
         return asDefault ? "loaded as default" : "loaded";
       }
@@ -255,7 +271,7 @@ export class Actions {
         await this.deps.engine.unload(model!);
         if (!this.deps.engine.capabilities().has("default")) return "unloaded";
         const rest = (await this.deps.sampler.refreshModels()).filter(
-          (m) => m.loaded && m.id !== model,
+          (m) => m.loaded && m.id !== model && isChat(m),
         );
         const next = rest.find((m) => m.favorite) ?? rest[0];
         if (!next) return "unloaded";

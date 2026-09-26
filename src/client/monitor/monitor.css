@@ -172,6 +172,24 @@
   td.name .model:hover {
     text-decoration: underline;
   }
+  /* what a model that is not for chat is for, after its name */
+  td.name .kind {
+    flex: none;
+    margin-left: 8px;
+    font-family: var(--sans);
+    font-size: 10.5px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+  /* the star's place in a row that has none, so the buttons line up */
+  td.act .ibtn-gap {
+    display: inline-block;
+    width: 28px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
   .dot.ready {
     background: var(--ready);
   }

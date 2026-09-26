@@ -110,5 +110,6 @@ before changing anything; it is written for humans too.
 `bun test` runs the suites under `test/`, which mirror `src/` (`server/`,
 `client/`, `shared/`). Parsers and rate math are tested
 on fixtures recorded from a live engine (`test/fixtures/`): `/metrics.json`,
-`/v1/models` and `/props` bodies. Record new ones with `curl`, and a
-`/props` body only while a model is resident (AGENTS.md rule 1).
+`/v1/models` and `/props` bodies. Record new ones with `curl`; a `/props`
+body carries the build and budgets only when it names a resident model
+(`/props?model=<id>`).
