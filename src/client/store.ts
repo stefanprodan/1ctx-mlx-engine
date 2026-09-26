@@ -259,6 +259,12 @@ export function applyEngine(state: EnginePageState) {
     engineVersion.value = state.engine.active?.version ?? null;
   }
   updates.value = updatesOf(state.engine, state.self.offered);
+  // A snapshot read during an operation (the new engine's first sample
+  // lands before the upgrade lets go of the lock) set busy to it, and the
+  // push that ends the operation is the only word that it is over.
+  if (!state.engine.operation && busy.value !== null && !localAction) {
+    void refreshSnapshot();
+  }
 }
 
 export function refreshSnapshot(): Promise<Snapshot | null> {
