@@ -21,7 +21,7 @@ import type {
   BenchmarkTurn,
 } from "../../shared/benchmark.ts";
 import { isBenchmarkPreset } from "../../shared/benchmark.ts";
-import type { ModelInfo } from "../../shared/models.ts";
+import { isChat, type ModelInfo } from "../../shared/models.ts";
 import type { Sample } from "../../shared/sample.ts";
 import type { Engine } from "../engine/types.ts";
 import type { ExclusiveLock } from "../lib/lock.ts";
@@ -176,6 +176,10 @@ export class BenchmarkRunner {
     if (refusal) throw new BenchmarkError(403, refusal);
     const known = this.deps.sampler.currentModels().find((m) => m.id === model);
     if (!known) throw new BenchmarkError(400, `unknown model: ${model}`);
+    // the session is a chat: an embedding model answers it with noise
+    if (!isChat(known)) {
+      throw new BenchmarkError(400, `${model} is not a chat model`);
+    }
     const holder = this.deps.lock.running();
     if (holder !== null) {
       throw new BenchmarkError(409, `${holder} is still running`);

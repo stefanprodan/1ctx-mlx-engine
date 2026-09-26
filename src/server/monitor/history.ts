@@ -17,6 +17,9 @@ import type { LastRequest } from "../../shared/requests.ts";
 import type { Sample } from "../../shared/sample.ts";
 import type { EngineCounters, EngineProps } from "../engine/types.ts";
 
+// what outlives an engine process: its build and its budgets
+type ProcessProps = Pick<EngineProps, "version" | "limits">;
+
 export const RING_SIZE = 3600; // one hour at 1 Hz
 export const REQUESTS_KEPT = 50; // finished requests the Requests page lists
 
@@ -242,7 +245,7 @@ export class History {
   // model is resident, so an engine that comes back empty would otherwise
   // show nothing at all: what it said last time is the better answer, even
   // when the engine has been upgraded since. Replaced by the next read.
-  loadEngineProps(): EngineProps | null {
+  loadEngineProps(): ProcessProps | null {
     const row = this.db
       .query("SELECT value FROM meta WHERE key = 'props'")
       .get() as { value: string } | null;
@@ -258,7 +261,7 @@ export class History {
     }
   }
 
-  saveEngineProps(props: EngineProps) {
+  saveEngineProps(props: ProcessProps) {
     this.db
       .query("INSERT OR REPLACE INTO meta (key, value) VALUES ('props', $v)")
       .run({ v: JSON.stringify(props) });

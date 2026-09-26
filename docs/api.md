@@ -24,7 +24,7 @@ from the dashboard's own host. Every JSON response carries
 | `GET /api/snapshot` | the latest sample, the model list, the engine's build, capabilities and cache budgets, host facts, the action log, the downloads, the benchmark in progress, the model directory and the newer builds on offer (`updates`: mlx-serve's when it is managed, 1ctx-mlx-engine's own) |
 | `GET /api/history?range=1h\|6h\|24h\|7d` | columnar series for the charts and the tiles' range totals: rates, cache ratios, TTFT and the token and request counters; 1h is raw seconds, longer ranges are bucket averages |
 | `GET /api/requests` | the last 50 finished or cancelled requests, newest first |
-| `GET /api/models` | every model the engine lists, with its spec: what the engine reports of it, what its checkpoint under `--model-dir` says (local engine only), and the revision and date of the download that brought it (without one, the date of its `config.json`). A figure neither states is null. Asks the engine nothing |
+| `GET /api/models` | every model the engine lists, with its spec: what the engine reports of it, what its checkpoint under `--model-dir` says (local engine only), and the revision and date of the download that brought it (without one, the date of its `config.json`). A decision model has `decision` (`encoder`, `window`, `optionBudget`, `calibrated`), an embedding model `embedding` (`maxInput`, `pooling`), both null otherwise. A figure neither states is null. Asks the engine nothing |
 
 `build` is when this 1ctx-mlx-engine binary was compiled (null when run from
 source). The page remembers the one it loaded with and reloads itself when
@@ -35,10 +35,11 @@ a snapshot carries another: the server was replaced under an open tab, and
 `unmanaged`, `absent` (nothing installed and nothing answering, which the
 pages show as not installed) or `remote`; null when there is no manager.
 
-`engine.version` is the engine's build, which it states only while a model
-is resident; the answer is kept in 1ctx-mlx-engine's database, so after a
-restart with nothing loaded it is the last known build rather than nothing.
-Null until the engine has been asked once. `engine.limits` is the pair of
+`engine.version` is the engine's build, from `/props`, which the sampler
+reads about each resident model with every model list; the answer is kept
+in 1ctx-mlx-engine's database, so after a restart with nothing loaded it
+is the last known build rather than nothing. Null until the engine has
+answered once. `engine.limits` is the pair of
 prefix cache budgets, from `--hot-cache-max`/`--disk-cache-max`, the
 engine's LaunchAgent plist, or the same answer.
 
@@ -46,7 +47,10 @@ A sample carries the engine state, live decode and prefill tok/s, cache hit
 ratios, the memory split (host free, inactive, wired and compressed; engine
 footprint and RSS; weights, estimated RAM cache, MLX pool), the cache tier
 directories, the model list, and the request in flight or the last one
-finished. The engine reports counts, not requests, so with several in
+finished. A model row carries the engine's `error` for a load that failed
+(`state` is `error`) and, while a chat or embedding model is resident,
+its `runtime` from `/props`: `context`, the window the process serves,
+and `safeContext`, the longest context that fits in memory now. The engine reports counts, not requests, so with several in
 flight the numbers describe the engine as a whole. The memory, host and
 disk gauges are live only: the history keeps what the page plots and
 totals, not what a tile shows for the current second.
@@ -60,19 +64,19 @@ detail}`.
 
 | Name | Body | Effect |
 |---|---|---|
-| `load` | `{"model": "<id>"}` | load a model and make it the engine default |
-| `unload` | `{"model": "<id>"}` | unload it; a model still resident becomes the default |
-| `default` | `{"model": "<id>"}` | make a model the default, loading it if needed |
+| `load` | `{"model": "<id>"}` | load a model; a chat model becomes the engine default, an embedding or decision model loads beside it |
+| `unload` | `{"model": "<id>"}` | unload it; a chat model still resident becomes the default |
+| `default` | `{"model": "<id>"}` | make a chat model the default, loading it if needed |
 | `delete` | `{"model": "<id>"}` | delete an unloaded model from `--model-dir` and forget its downloads (local engine only) |
 | `free` | none | restart the engine service to free its RAM (local engine only) |
 | `diskClear` | none | restart, then delete the SSD cache tier contents (local engine only) |
 | `historyClear` | none | wipe 1ctx-mlx-engine's own sample history |
 | `requestsClear` | none | wipe the stored requests and the last request in the bar; samples are kept |
-| `favorite` | `{"model": "<id>"}` | toggle the daily-driver star |
+| `favorite` | `{"model": "<id>"}` | toggle the daily-driver star on a chat model; a star already set comes off any model |
 
 Errors are `{"error": "<sentence>"}` with 400 (bad input, an unknown
-model, a delete of a resident model, or any action but unload on a deleted
-one), 403 (cross-origin, the engine lacks the capability, or the action
+model, a delete of a resident model, any action but unload on a deleted
+one, or default or favorite on a model that is not for chat), 403 (cross-origin, the engine lacks the capability, or the action
 needs a local engine), 404 (unknown action, or a model that is not in
 `--model-dir`) or 409 (another action runs, or a download of the model is in
 flight).
@@ -134,7 +138,7 @@ The model stays loaded at the end.
 | Route | Body | Answer |
 |---|---|---|
 | `GET /api/benchmarks` | | the runs, newest first |
-| `POST /api/benchmarks` | `{model, preset}`: `20K` (5 turns, to about 20k tokens), `40K` (8 turns, to about 40k) or `60K` (10 turns, to about 60k) | 202, the run. 403 unless the engine is on this host, managed by 1ctx-mlx-engine, up and idle, and no download is running; 409 while anything holds the lock |
+| `POST /api/benchmarks` | `{model, preset}`: `20K` (5 turns, to about 20k tokens), `40K` (8 turns, to about 40k) or `60K` (10 turns, to about 60k) | 202, the run. 400 for a model that is not a chat model. 403 unless the engine is on this host, managed by 1ctx-mlx-engine, up and idle, and no download is running; 409 while anything holds the lock |
 | `GET /api/benchmarks/<id>` | | `{benchmark, turns}` |
 | `POST /api/benchmarks/<id>/cancel` | | `{ok: true}`; the request in flight is aborted, which stops the generation in the engine. 409 when it is not running |
 | `DELETE /api/benchmarks/<id>` | | `{ok: true}`, and `{type: "benchmarkRemoved"}` on the socket. 409 for the run in progress |

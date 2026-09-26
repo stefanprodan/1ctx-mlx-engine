@@ -10,17 +10,24 @@
 // numbers (two completions in one tick merge into one entry that says so).
 // With one request in flight, the common case, the picture is exact.
 
+import { isChat } from "../../shared/models.ts";
 import type { InFlight, LastRequest } from "../../shared/requests.ts";
 import type { Reading } from "../engine/types.ts";
 
 // Which resident model served a request. The engine does not say, so the
-// answer is a guess: the only resident one; among several, the user's
+// answer is a guess among the resident chat models, the only ones the
+// engine counts requests for: the only one; among several, the user's
 // favorite (the daily driver), else the first by id, so the guess is at
 // least stable across requests.
 export function attributeModel(
-  models: readonly { id: string; loaded: boolean; favorite?: boolean }[],
+  models: readonly {
+    id: string;
+    loaded: boolean;
+    capabilities: readonly string[];
+    favorite?: boolean;
+  }[],
 ): string | null {
-  const loaded = models.filter((m) => m.loaded);
+  const loaded = models.filter((m) => m.loaded && isChat(m));
   if (loaded.length === 0) return null;
   const fav = loaded.find((m) => m.favorite);
   if (fav) return fav.id;

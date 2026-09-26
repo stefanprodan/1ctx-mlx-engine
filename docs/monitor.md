@@ -45,8 +45,11 @@ the rail still opens it.
 - **Models** (or "No models found." and "Engine unreachable." as one line when
   there are none): every model the engine lists, the daily driver first and
   the rest by id so nothing moves on a load, with its state, size and
-  context, and the buttons: load, unload, make default, delete, plus the
-  daily-driver star (1ctx-mlx-engine's own mark). Delete asks first and then
+  context (the window the process serves once `/props` has said it), and
+  the buttons: load, unload, make default, delete, plus the daily-driver
+  star (1ctx-mlx-engine's own mark, a chat model only). An embedding or
+  decision model carries its kind beside its name, and a load failure's
+  reason shows over its `error` state. Delete asks first and then
   removes the model from the model directory, along with the records of its
   downloads; it is there for an engine on this host and is disabled while
   the model is resident, because the weights are mapped until it is
@@ -69,9 +72,9 @@ the rail still opens it.
 - **Runtime**: the engine process (build, pid, RSS, CPU, GPU, weights)
   next to host facts (OS, chip, cores, GPU cores, memory, disk). The
   process probes only work when the engine runs on the same host. The build comes from
-  the engine itself, asked once while a model is resident (asking an idle
-  engine would make it load one), and kept in the database, so a restarted
-  engine with nothing loaded still shows the build it last reported.
+  the engine itself, from `/props` about a resident model with every model
+  list, and is kept in the database, so a restarted engine with nothing
+  loaded still shows the build it last reported.
 
 The engine reports counts, not requests: with several requests in flight
 the bar and the tiles describe the engine as a whole.
@@ -81,7 +84,8 @@ the bar and the tiles describe the engine as a whole.
 The Requests page moves the live bar over and lists the last 50 finished or
 cancelled requests under it, in the same grid as the benchmark runs. A row
 is the model (the engine does not say which one served it, so it is the
-resident model, the favorite when several are resident) over a faint line
+resident chat model, the favorite when several are resident; the engine
+counts no request to an embedding or decision model) over a faint line
 with the finish time, the prompt size and its cached share, then the time
 to first token and the prefill and decode rates in tok/s. A cancelled
 request says so in amber on that line. The search at the top of the card

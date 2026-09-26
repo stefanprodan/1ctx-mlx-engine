@@ -141,6 +141,15 @@
   #model-list .grid-cell .meta .mstate.bad {
     color: var(--amber);
   }
+  /* what a model that is not for chat is for, first on its faint line */
+  #model-list .mkind {
+    font-size: 10.5px;
+    padding: 1px 7px;
+    margin-right: 2px;
+    border-radius: 999px;
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
   #model-list .mfav svg {
     width: 11px;
     height: 11px;

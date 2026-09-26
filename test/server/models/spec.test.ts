@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, symlink, utimes, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  rm,
+  symlink,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EngineModelMeta } from "../../../src/server/engine/types.ts";
@@ -10,12 +17,19 @@ import { readHeader, SpecReader } from "../../../src/server/models/read.ts";
 import {
   countParams,
   type Header,
+  headerDtype,
   mergeSpec,
   parseConfig,
+  parseDecision,
+  parseEmbedding,
   parseGeneration,
   parseLicense,
 } from "../../../src/server/models/spec.ts";
 import type { ModelInfo } from "../../../src/shared/models.ts";
+import bgeSbert from "../../fixtures/spec/bge-small-sbert.json";
+import layaAgent from "../../fixtures/spec/laya-multilingual-agent.json";
+import layaEncoder from "../../fixtures/spec/laya-multilingual-encoder.json";
+import layaHeader from "../../fixtures/spec/laya-multilingual-header.json";
 import qwenConfig from "../../fixtures/spec/qwen3.5-0.8b-config.json";
 import qwenHeader from "../../fixtures/spec/qwen3.5-0.8b-header.json";
 
@@ -68,6 +82,7 @@ describe("parseConfig", () => {
       modelType: "qwen3_5",
       layers: 24,
       fullAttention: 6,
+      restAttention: "linear",
       hiddenSize: 1024,
       heads: 8,
       kvHeads: 2,
@@ -225,7 +240,101 @@ const META: EngineModelMeta = {
   inputs: ["text"],
 };
 
+describe("a decision checkpoint", () => {
+  test("the agent's config: encoder, window, option budget, calibration", () => {
+    expect(parseDecision(layaAgent)).toEqual({
+      encoder: "jhu-clsp/mmBERT-base",
+      window: 1024,
+      optionBudget: 256,
+      // all three temperatures are 1: none were fitted
+      calibrated: false,
+    });
+    expect(parseDecision({ temperature: [1.2, 1, 0.9] }).calibrated).toBe(true);
+    expect(parseDecision({})).toEqual({
+      encoder: null,
+      window: null,
+      optionBudget: null,
+      calibrated: null,
+    });
+  });
+
+  test("the encoder's shape and the exact count, FP16 from the header", () => {
+    const config = parseConfig(layaEncoder);
+    expect(config).toMatchObject({
+      modelType: "modernbert",
+      layers: 22,
+      // global every third layer, a sliding window in between
+      fullAttention: 8,
+      restAttention: "sliding",
+      hiddenSize: 768,
+      heads: 12,
+      // the base model's word, not the weights': the header says FP16
+      dtype: "float32",
+    });
+    const header = layaHeader as Header;
+    expect(countParams([header], config).params).toBe(321_908_998);
+    expect(headerDtype([header])).toBe("float16");
+  });
+});
+
+describe("an embedding checkpoint", () => {
+  test("the longest input and the pooling, from either file", () => {
+    expect(parseEmbedding(bgeSbert, null)).toEqual({
+      maxInput: 512,
+      pooling: null,
+    });
+    expect(
+      parseEmbedding(null, {
+        pooling_mode_cls_token: true,
+        pooling_mode_mean_tokens: false,
+      }),
+    ).toEqual({ maxInput: null, pooling: "CLS token" });
+    // a checkpoint with neither file says nothing
+    expect(parseEmbedding(null, null)).toBeNull();
+  });
+
+  test("a quantized checkpoint's dtype is not in its headers", () => {
+    expect(
+      headerDtype([
+        {
+          "a.weight": { dtype: "U32", shape: [4, 4] },
+          "a.scales": { dtype: "BF16", shape: [4, 1] },
+        },
+      ]),
+    ).toBeNull();
+  });
+});
+
 describe("mergeSpec", () => {
+  test("a decision model's own group, and no embedding one", () => {
+    const info: ModelInfo = { ...INFO, capabilities: ["decisions"] };
+    const disk = {
+      config: parseConfig(layaEncoder),
+      generation: null,
+      decision: parseDecision(layaAgent),
+      embedding: null,
+      license: "apache-2.0",
+      params: 321_908_998,
+      activeParams: null,
+      files: 1,
+      addedAt: 0,
+    };
+    const s = mergeSpec(info, undefined, disk, null);
+    expect(s.decision?.window).toBe(1024);
+    expect(s.embedding).toBeNull();
+  });
+
+  test("an embedding model's input is the engine's window when unsaid", () => {
+    const info: ModelInfo = {
+      ...INFO,
+      contextLength: 32768,
+      capabilities: ["chat", "embeddings"],
+    };
+    const s = mergeSpec(info, undefined, null, null);
+    expect(s.embedding).toEqual({ maxInput: 32768, pooling: null });
+    expect(s.decision).toBeNull();
+  });
+
   test("a remote engine's model: what the engine said, no files", () => {
     const s = mergeSpec(INFO, META, null, null);
     expect(s).toMatchObject({
@@ -245,6 +354,8 @@ describe("mergeSpec", () => {
     const disk = {
       config: parseConfig(MOE_CONFIG),
       generation: { temperature: 0.6, topP: 0.8, topK: 40 },
+      decision: null,
+      embedding: null,
       license: "mit",
       params: 10,
       activeParams: 5,
@@ -318,7 +429,61 @@ async function modelDir() {
   return { root, dir };
 }
 
+// a decision checkpoint's layout: no config.json, the encoder's in its
+// own directory, the agent's beside the weights
+async function decisionDir() {
+  const root = await mkdtemp(join(tmpdir(), "1ctx-spec-"));
+  const dir = join(root, "org", "laya");
+  await mkdir(join(dir, "encoder"), { recursive: true });
+  await writeFile(
+    join(dir, "encoder", "config.json"),
+    JSON.stringify(layaEncoder),
+  );
+  await writeFile(join(dir, "rl_agent_config.json"), JSON.stringify(layaAgent));
+  await writeFile(join(dir, "README.md"), "---\nlicense: apache-2.0\n---\n");
+  await writeFile(join(dir, "model.safetensors"), safetensors(layaHeader));
+  return { root, dir };
+}
+
 describe("SpecReader", () => {
+  test("a decision checkpoint, from its encoder and agent configs", async () => {
+    const { root } = await decisionDir();
+    const spec = await new SpecReader(root).read("org/laya");
+    expect(spec?.decision).toEqual(parseDecision(layaAgent));
+    expect(spec?.config.hiddenSize).toBe(768);
+    expect(spec?.config.dtype).toBe("float16");
+    expect(spec?.params).toBe(321_908_998);
+    expect(spec?.license).toBe("apache-2.0");
+    expect(spec?.embedding).toBeNull();
+  });
+
+  test("an encoder directory that is a symlink is not followed", async () => {
+    const { root, dir } = await decisionDir();
+    const elsewhere = await mkdtemp(join(tmpdir(), "1ctx-spec-out-"));
+    await writeFile(
+      join(elsewhere, "config.json"),
+      JSON.stringify(layaEncoder),
+    );
+    await rm(join(dir, "encoder"), { recursive: true });
+    await symlink(elsewhere, join(dir, "encoder"));
+    expect(await new SpecReader(root).read("org/laya")).toBeNull();
+  });
+
+  test("an embedding checkpoint's sentence-transformers files", async () => {
+    const { root, dir } = await modelDir();
+    await writeFile(
+      join(dir, "sentence_bert_config.json"),
+      JSON.stringify(bgeSbert),
+    );
+    await mkdir(join(dir, "1_Pooling"));
+    await writeFile(
+      join(dir, "1_Pooling", "config.json"),
+      JSON.stringify({ pooling_mode_mean_tokens: true }),
+    );
+    const spec = await new SpecReader(root).read("org/moe");
+    expect(spec?.embedding).toEqual({ maxInput: 512, pooling: "mean" });
+  });
+
   test("reads the checkpoint once, again when it changes", async () => {
     const { root, dir } = await modelDir();
     const reader = new SpecReader(root);

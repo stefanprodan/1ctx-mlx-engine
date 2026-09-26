@@ -11,7 +11,12 @@ import {
 import chatFixture from "../../fixtures/chat-timings.json";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
+import kindsLoaded from "../../fixtures/models-kinds-loaded.json";
+import kindsUnloaded from "../../fixtures/models-kinds-unloaded.json";
 import propsFixture from "../../fixtures/props.json";
+import propsDecision from "../../fixtures/props-decision.json";
+import propsEmbedding from "../../fixtures/props-embedding.json";
+import propsNoModel from "../../fixtures/props-no-model.json";
 import { testServer } from "../serve.ts";
 
 describe("parseMetrics", () => {
@@ -119,22 +124,73 @@ describe("parseModels", () => {
   });
 });
 
+describe("parseModels, the kinds of model", () => {
+  const byId = (body: unknown) =>
+    new Map(parseModels(body).map((m) => [m.id, m]));
+
+  test("keeps the engine's reason for a failed load", () => {
+    const bge = byId(kindsUnloaded).get("mlx-community/bge-small-en-v1.5-bf16");
+    expect(bge?.state).toBe("error");
+    expect(bge?.error).toBe("MissingWeight");
+    expect(
+      byId(kindsUnloaded).get("aac6fef/laya-multilingual-mlx")?.error,
+    ).toBeNull();
+  });
+
+  test("drops the stub figures of a resident decision model", () => {
+    const laya = byId(kindsLoaded).get("aac6fef/laya-multilingual-mlx");
+    expect(laya?.loaded).toBe(true);
+    // the engine says 4096 over a 1024 window, and 0-bit over FP16
+    expect(laya?.contextLength).toBeNull();
+    expect(laya?.quantization).toBeNull();
+    const meta = parseModelMeta(kindsLoaded).get(
+      "aac6fef/laya-multilingual-mlx",
+    );
+    expect(meta?.layers).toBeNull();
+    expect(meta?.hiddenSize).toBeNull();
+  });
+
+  test("an embedding model keeps its window, never a 0-bit", () => {
+    const models = byId(kindsUnloaded);
+    const bge = models.get("mlx-community/bge-small-en-v1.5-bf16");
+    expect(bge?.contextLength).toBe(512);
+    expect(bge?.quantization).toBeNull();
+    const qwen = models.get("mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ");
+    expect(qwen?.contextLength).toBe(32768);
+    expect(qwen?.quantization).toBe("4-bit");
+  });
+});
+
 describe("parseProps", () => {
   const GiB = 1024 ** 3;
 
-  test("takes the build and the budgets of the running process", () => {
+  const none = { version: null, limits: null, runtime: null };
+
+  test("takes the build, the budgets and the model's runtime", () => {
     expect(parseProps(propsFixture)).toEqual({
       version: "26.9.5-pre-release.1",
       limits: { hotBytes: 16 * GiB, diskBytes: 50 * GiB },
+      runtime: { context: 262144, safeContext: 262144 },
+    });
+    expect(parseProps(propsDecision).version).toBe("26.9.6");
+    // an embedding model's runtime is its own window
+    expect(parseProps(propsEmbedding).runtime).toEqual({
+      context: 32768,
+      safeContext: 32768,
     });
   });
 
+  test("a model that is not resident gets the counters only", () => {
+    expect(parseProps(propsNoModel)).toEqual(none);
+  });
+
   test("tolerates a body without settings", () => {
-    expect(parseProps({})).toEqual({ version: null, limits: null });
-    expect(parseProps(null)).toEqual({ version: null, limits: null });
+    expect(parseProps({})).toEqual(none);
+    expect(parseProps(null)).toEqual(none);
     expect(parseProps({ settings: { version: 7, prefix_cache: {} } })).toEqual({
       version: null,
       limits: null,
+      runtime: { context: null, safeContext: null },
     });
   });
 });
@@ -151,20 +207,29 @@ describe("the adapter over HTTP", () => {
     });
   }
 
-  test("props() asks /props and keeps what matters", async () => {
-    const server = serve({ "/props": propsFixture });
+  test("props() asks /props about the named model", async () => {
+    const asked: (string | null)[] = [];
+    const server = testServer((req) => {
+      const url = new URL(req.url);
+      if (url.pathname !== "/props")
+        return new Response("nope", { status: 404 });
+      asked.push(url.searchParams.get("model"));
+      return Response.json(propsFixture);
+    });
     const engine = new MlxServe(server.url.origin);
-    expect(await engine.props()).toEqual({
+    expect(await engine.props("mlx-community/Qwen3.5-0.8B-4bit")).toEqual({
       version: "26.9.5-pre-release.1",
       limits: { hotBytes: 16 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 },
+      runtime: { context: 262144, safeContext: 262144 },
     });
+    expect(asked).toEqual(["mlx-community/Qwen3.5-0.8B-4bit"]);
     await server.stop(true);
   });
 
   test("props() is null when the engine has no such endpoint", async () => {
     const server = serve({ "/health": { status: "ok" } });
     const engine = new MlxServe(server.url.origin);
-    expect(await engine.props()).toBeNull();
+    expect(await engine.props("a/b")).toBeNull();
     await server.stop(true);
   });
 

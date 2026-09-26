@@ -3,10 +3,13 @@
 //
 // Reading a checkpoint's spec from --model-dir: config.json, the
 // generation config, the model card and the safetensors headers, never a
-// tensor. The directory is found the way a delete finds it (a plain repo
-// id inside the root, no symlinked directory) and only regular files are
-// read. A model is read once, then again only when its config or its file
-// list changes.
+// tensor; for a decision checkpoint, which has no config.json, its encoder's
+// config and rl_agent_config.json; for an embedding one, the
+// sentence-transformers files when present. The directory is found the way
+// a delete finds it (a plain repo id inside the root, no symlinked
+// directory), a subdirectory is read only when it is a real one, and only
+// regular files are read. A model is read once, then again only when one
+// of those files or its file list changes.
 
 import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -16,7 +19,10 @@ import {
   countParams,
   type DiskSpec,
   type Header,
+  headerDtype,
   parseConfig,
+  parseDecision,
+  parseEmbedding,
   parseGeneration,
   parseLicense,
 } from "./spec.ts";
@@ -37,6 +43,13 @@ async function regular(path: string): Promise<Stat | null> {
     (s) => (s.isFile() ? s : null),
     () => null,
   );
+}
+
+// a file in a subdirectory of the checkpoint, null when the subdirectory
+// is a symlink (it could point anywhere) or not there
+async function inSubdir(dir: string, sub: string, name: string) {
+  const st = await lstat(join(dir, sub)).catch(() => null);
+  return st?.isDirectory() ? join(sub, name) : null;
 }
 
 async function json(path: string): Promise<unknown | null> {
@@ -94,9 +107,26 @@ export class SpecReader {
   private async load(id: string): Promise<DiskSpec | null> {
     const dir = await realModelDir(this.modelDir, id);
     if (dir === null) return this.drop(id);
-    const configPath = join(dir, "config.json");
+    // a decision checkpoint: no config.json, the encoder's in its own
+    // directory and the agent's beside it
+    const decision =
+      !(await regular(join(dir, "config.json"))) &&
+      (await regular(join(dir, "rl_agent_config.json"))) !== null;
+    const configName = decision
+      ? await inSubdir(dir, "encoder", "config.json")
+      : "config.json";
+    if (configName === null) return this.drop(id);
+    const configPath = join(dir, configName);
     const config = await regular(configPath);
     if (!config) return this.drop(id);
+    const pooling = await inSubdir(dir, "1_Pooling", "config.json");
+    const extras = [
+      "generation_config.json",
+      "README.md",
+      "rl_agent_config.json",
+      "sentence_bert_config.json",
+      ...(pooling ? [pooling] : []),
+    ];
     const names = (await readdir(dir).catch(() => [] as string[]))
       .filter((f) => f.endsWith(".safetensors") && !f.endsWith(PART_SUFFIX))
       .sort();
@@ -108,9 +138,7 @@ export class SpecReader {
     };
     const key = [
       `${config.size}@${config.mtimeMs}`,
-      ...(await Promise.all(
-        ["generation_config.json", "README.md", ...names].map(stamp),
-      )),
+      ...(await Promise.all([...extras, ...names].map(stamp))),
     ].join(",");
     const hit = this.cache.get(id);
     if (hit?.key === key) return hit.spec;
@@ -118,6 +146,13 @@ export class SpecReader {
     const body = await json(configPath);
     if (body === null) return this.drop(id);
     const parsed = parseConfig(body);
+    const agent = decision
+      ? await json(join(dir, "rl_agent_config.json"))
+      : null;
+    const embedding = parseEmbedding(
+      await json(join(dir, "sentence_bert_config.json")),
+      pooling ? await json(join(dir, pooling)) : null,
+    );
     const generation = await json(join(dir, "generation_config.json"));
     const readme = join(dir, "README.md");
     const license = (await regular(readme))
@@ -141,8 +176,17 @@ export class SpecReader {
     // a count over some of the files would be a wrong number, not a partial one
     const counted = complete ? countParams(headers, parsed) : null;
     const spec: DiskSpec = {
-      config: parsed,
+      // weights that are not quantized say their dtype in the headers, and
+      // a config can be wrong about it: a decision checkpoint's encoder
+      // config is its base model's, a bf16 conversion keeps float32. A
+      // quantized checkpoint's headers say nothing, and its config stands.
+      config: {
+        ...parsed,
+        dtype: (complete ? headerDtype(headers) : null) ?? parsed.dtype,
+      },
       generation: generation === null ? null : parseGeneration(generation),
+      decision: agent === null ? null : parseDecision(agent),
+      embedding,
       license,
       params: counted?.params ?? null,
       activeParams: counted?.activeParams ?? null,

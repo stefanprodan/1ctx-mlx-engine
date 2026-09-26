@@ -68,8 +68,8 @@ make staging-status # what the staging service says
 Staging is the user's Mac Studio on the tailnet: it runs mlx-serve and
 its own 1ctx-mlx-engine as launchd agents. Read `docs/internal/staging.md`
 before any ssh command; it has the paths, the safe commands and the rules
-(never `GET /props`, never start processes by hand over ssh, never touch
-the user's other services). `make staging-deploy` is the only deploy
+(never start processes by hand over ssh, never touch the user's other
+services). `make staging-deploy` is the only deploy
 path: it takes `main` only, unless `ALLOW_BRANCH=1`, and stamps the
 commit into the version. Deploy when asked, then say what is now running
 there.
@@ -81,9 +81,10 @@ there.
   With `--engine http://<staging>:11234` the engine is remote, so
   `enginePid` is null, `procRss` 0 and `disk` empty by design.
 - Parsers and rate math are pure and tested on recorded fixtures in
-  `test/fixtures/`. Record new ones with `curl <engine>/metrics.json` and
-  `curl <engine>/v1/models`, pretty-printed. A `/props` body is recorded
-  the same way, but only while a model is resident (rule 1).
+  `test/fixtures/`. Record new ones with `curl <engine>/metrics.json`,
+  `curl <engine>/v1/models` and `curl '<engine>/props?model=<id>'`,
+  pretty-printed. A `/props` answer about a model that is not resident is
+  the memory counters only.
 - `handle()` in `src/server/web/index.ts` is separate from `serve()`, so
   tests call it with a `Request`.
 - A fake HTTP server in a test comes from `testServer()` in
@@ -94,24 +95,27 @@ there.
 
 ## Rules that protect the engine
 
-1. **`GET /props` only while a model is resident.** It goes through the
-   model-load path, so on an idle engine it cold-loads the default model:
-   it undoes API unloads, evicts the model a client just loaded and halves
-   decode speed during a request. `Sampler.readProps()` is the only caller,
-   once per engine process, and only when the model list it already polls
-   shows something loaded. It is there for the two facts no other endpoint
-   reports, the build and the prefix cache budgets, and it is the only way
-   a remote engine can state either. The answer is stored in the `props`
-   meta row and read back at start, so an engine that comes back empty
-   still shows its last known build: stale by design. Every other call
-   stays on the endpoints answered before the load step: `/health`,
-   `/metrics.json`, `/v1/models` and, once after a download,
-   `/v1/models/rescan`. Anything new is verified the same way in
-   mlx-serve's `src/server.zig` first.
+1. **`GET /props` is a status read, polled with the model list.** Since
+   mlx-serve 26.9.6 it loads nothing: asked about a model that is not
+   resident (or with no default resident) it answers the memory counters
+   only, and a resident model it answers about is not stamped as used, so
+   polling never holds a model against `--idle-evict-secs` (the engine's
+   `releaseStatus` in `src/model_registry.zig`). The sampler's
+   `EngineFacts` (`monitor/props.ts`) asks `/props?model=<id>` about each
+   resident model with every model list: the build and the prefix cache
+   budgets of the process, which no other endpoint states and the only
+   source of either for a remote engine, and each model's runtime (the
+   window it serves, the context that fits now). The build and budgets are
+   stored in the `props` meta row, so an engine that comes back empty
+   still shows its last known build. An engine older than 26.9.6
+   cold-loaded the default model on a `/props` with nothing resident; the
+   poll names only models the list shows resident, which no version loads.
 2. **The sampler is read-only, and no engine endpoint is called outside
-   the four it already uses.** `load`, `unload`, `restart` and
-   `diskClear` run only from an explicit user action through the actions
-   layer, are logged, and are disabled when the engine URL is not local.
+   the five it already uses** (`/health`, `/metrics.json`, `/v1/models`,
+   `/props`, and `/v1/models/rescan` after a download). `load`, `unload`,
+   `restart` and `diskClear` run only from an explicit user action through
+   the actions layer, are logged, and are disabled when the engine URL is
+   not local.
    The benchmark (`src/server/benchmark/`) is the one other caller of the
    engine: `POST /v1/chat/completions`, and `POST /tokenize` to size its
    prompts (on the default model, which it has just loaded, so nothing
@@ -201,6 +205,8 @@ src/server/
                      finished one, from the counter deltas (pure, tested)
   monitor/sampler.ts the 1 Hz loop; carries epoch, counters and the last
                      request across restarts through the history meta table
+  monitor/props.ts   EngineFacts: /props about each resident model with the
+                     list, the build and budgets, each model's runtime
   monitor/history.ts ring buffer (1 h) plus bun:sqlite
                      (~/.1ctx-mlx-engine/engine.db):
                      samples (7 day retention, bucketed series() for uPlot;
@@ -237,8 +243,10 @@ src/server/
   models/remove.ts   pure path work and the delete of a model's checkpoint:
                      the id is checked against --model-dir, never followed
   models/spec.ts     pure: config.json, the generation config, the card's
-                     license, the parameter count from safetensors
-                     headers, the join with the engine's meta
+                     license, the parameter count and dtype from
+                     safetensors headers, a decision checkpoint's agent
+                     config, an embedding one's sentence-transformers
+                     files, the join with the engine's meta
   models/read.ts     SpecReader: a checkpoint's files read under the
                      delete's path rules, headers only, cached by mtime
   service/plist.ts   pure LaunchAgent XML rendering
@@ -249,8 +257,9 @@ src/server/
   engine/types.ts    the Engine interface and the normalised metric types
   engine/mlxserve.ts mlx-serve adapter: parseMetrics/parseModels/parseProps
                      and parseModelMeta (kept from the same /v1/models read)
-                     (pure, tested), the HTTP client, load/unload, cache dir
-                     and log paths, props() under rule 1; the service
+                     (pure, tested; a decision model's stub figures and
+                     "0-bit" are dropped), the HTTP client, load/unload,
+                     cache dir and log paths, props(model); the service
                      label is the managed one only once 1ctx-mlx-engine owns it
   engine/config.ts   pure: DEFAULTS, configToArgs, validateConfig over the
                      effective argv, the size grammar, and the launchd
@@ -346,7 +355,9 @@ src/client/
                      its spec and the actions), models.css; state.ts (the
                      specs and their fetch), downloads.ts (the download
                      calls, the Overview's rows share them); the pure,
-                     tested spec.ts (the join, order, filters, groups)
+                     tested spec.ts (the join, order, filters, figures,
+                     the kind tag) and groups.ts (the opened row's groups,
+                     by kind)
   engine/            Engine.tsx (the Server page), Self.tsx, Service.tsx (the
                      mlx-serve head), Build.tsx (facts and the one row that
                      is a release, an operation or a failure), Progress.tsx,
@@ -419,13 +430,24 @@ tab.
   gauge, so it is estimated as active minus the loaded models'
   `bytes_resident` and labelled as such.
 - The engine's version is in one endpoint only, `/props`
-  (`settings.version`), which is under rule 1. It also prints it in the
+  (`settings.version`, rule 1). It also prints it in the
   banner it writes to its log at every start ("mlx-serve 26.9.5 (MLX
   0.32.2)", the only place the MLX version appears), but 1ctx-mlx-engine
   does not read that log.
 - The engine does not say which model is the default, nor which model served
-  a request; 1ctx-mlx-engine attributes a request to the resident favorite,
-  else the first resident by id.
+  a request; 1ctx-mlx-engine attributes a request to the resident chat
+  favorite, else the first resident chat model by id.
+- A model has a kind, from `modelKind()` in `shared/models.ts` over the
+  engine's capabilities, first match wins: `decisions` (Laya,
+  `POST /v1/decisions`), `embeddings` (`POST /v1/embeddings`), `chat`,
+  then media. mlx-serve lists Qwen3-Embedding with `chat` and answers a
+  chat to it with noise, so `embeddings` beats `chat`. Only a chat model
+  is the default, the daily driver, a benchmark's model or credited with
+  a request; a load of another kind loads it beside the default. Neither
+  decisions nor embeddings move a counter in `/metrics.json`. A resident
+  decision model's `/v1/models` entry and `/props` are a generic stub (a
+  4096 context, hidden size 1, "0-bit"); its facts come from its
+  checkpoint (`rl_agent_config.json`, `encoder/config.json`).
 - Disk tier at `~/.mlx-serve/kv-cache/<fingerprint>/`; server log at
   `~/.mlx-serve/logs/mlx-serve-<port>.log`. The service label is
   `com.ddalcu.mlx-serve`; "free" is a `launchctl kickstart -k` because a

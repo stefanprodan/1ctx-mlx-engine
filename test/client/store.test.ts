@@ -90,6 +90,19 @@ describe("store", () => {
     expect(modelsKeyOf([model({ state: "loading" })])).not.toBe(a);
     expect(modelsKeyOf([model({ bytesResident: 0 })])).not.toBe(a);
     expect(modelsKeyOf([model({ favorite: true })])).not.toBe(a);
+    // the kind, a failed load's reason and the window the process serves
+    expect(
+      modelsKeyOf([model({ capabilities: ["chat", "embeddings"] })]),
+    ).not.toBe(a);
+    expect(modelsKeyOf([model({ error: "MissingWeight" })])).not.toBe(a);
+    const served = modelsKeyOf([
+      model({ runtime: { context: 65536, safeContext: 1000 } }),
+    ]);
+    expect(served).not.toBe(a);
+    // what fits now moves with memory and is read off the live sample
+    expect(
+      modelsKeyOf([model({ runtime: { context: 65536, safeContext: 9 } })]),
+    ).toBe(served);
     expect(modelsKeyOf([model(), model({ id: "org/other" })])).not.toBe(a);
     expect(modelsKeyOf([])).toBe("");
   });

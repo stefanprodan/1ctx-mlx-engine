@@ -1,0 +1,114 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "mlx-community/Qwen3.5-0.8B-4bit",
+      "object": "model",
+      "created": 0,
+      "owned_by": "mlx-serve",
+      "loaded": false,
+      "state": "unloaded",
+      "bytes_resident": 0,
+      "bytes_on_disk": 625229487,
+      "context_length": 262144,
+      "max_model_len": 262144,
+      "capabilities": [
+        "chat",
+        "tool_use",
+        "streaming",
+        "json_schema",
+        "vision"
+      ],
+      "input_modalities": ["text", "image", "video"],
+      "meta": {
+        "architecture": "qwen3_5",
+        "engine": "mlx",
+        "vocab_size": 248320,
+        "hidden_size": 1024,
+        "num_layers": 24,
+        "quantization": "4-bit",
+        "context_length": 262144,
+        "model_max_tokens": 262144,
+        "is_moe": false,
+        "mtp_available": false,
+        "bytes_on_disk": 625229487
+      }
+    },
+    {
+      "id": "mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ",
+      "object": "model",
+      "created": 0,
+      "owned_by": "mlx-serve",
+      "loaded": false,
+      "state": "unloaded",
+      "bytes_resident": 0,
+      "bytes_on_disk": 335296756,
+      "context_length": 32768,
+      "max_model_len": 32768,
+      "capabilities": [
+        "chat",
+        "tool_use",
+        "streaming",
+        "json_schema",
+        "embeddings"
+      ],
+      "input_modalities": ["text"],
+      "meta": {
+        "architecture": "qwen3",
+        "engine": "mlx",
+        "vocab_size": 151669,
+        "hidden_size": 1024,
+        "num_layers": 28,
+        "quantization": "4-bit",
+        "context_length": 32768,
+        "model_max_tokens": 32768,
+        "is_moe": false,
+        "mtp_available": false,
+        "bytes_on_disk": 335296756
+      }
+    },
+    {
+      "id": "aac6fef/laya-multilingual-mlx",
+      "object": "model",
+      "created": 0,
+      "owned_by": "mlx-serve",
+      "loaded": false,
+      "state": "unloaded",
+      "bytes_resident": 0,
+      "bytes_on_disk": 643835426,
+      "capabilities": ["decisions"],
+      "meta": {
+        "architecture": "laya",
+        "engine": "mlx",
+        "bytes_on_disk": 643835426
+      }
+    },
+    {
+      "id": "mlx-community/bge-small-en-v1.5-bf16",
+      "object": "model",
+      "created": 0,
+      "owned_by": "mlx-serve",
+      "loaded": false,
+      "state": "error",
+      "bytes_resident": 0,
+      "bytes_on_disk": 66742096,
+      "error": "MissingWeight",
+      "context_length": 512,
+      "max_model_len": 512,
+      "capabilities": ["embeddings"],
+      "meta": {
+        "architecture": "bert",
+        "engine": "mlx",
+        "vocab_size": 30522,
+        "hidden_size": 384,
+        "num_layers": 12,
+        "quantization": "0-bit",
+        "context_length": 512,
+        "model_max_tokens": 512,
+        "is_moe": false,
+        "mtp_available": false,
+        "bytes_on_disk": 66742096
+      }
+    }
+  ]
+}

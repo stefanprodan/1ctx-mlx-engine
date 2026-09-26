@@ -15,6 +15,7 @@ import { handle, isRange, snapshot } from "../../../src/server/web/index.ts";
 import type { Capability, ModelInfo } from "../../../src/shared/models.ts";
 import metricsFixture from "../../fixtures/metrics.json";
 import modelsFixture from "../../fixtures/models.json";
+import kindsLoaded from "../../fixtures/models-kinds-loaded.json";
 import { testLog } from "../log.ts";
 
 // A scripted engine: each metrics() call pops the next body (a function of
@@ -45,14 +46,16 @@ class FakeEngine implements Engine {
     step(body);
     return parseMetrics(body);
   }
-  // counted, so the tests can show /props is asked only while a model is
-  // resident and only once per engine process
-  propsCalls = 0;
-  async props() {
-    this.propsCalls++;
+  // the models /props was asked about, so the tests can show it is asked
+  // about resident models only, each one, with every list
+  propsAsked: string[] = [];
+  version = "26.9.6";
+  async props(model: string) {
+    this.propsAsked.push(model);
     return {
-      version: `26.9.${this.propsCalls}`,
+      version: this.version,
       limits: { hotBytes: 16 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 },
+      runtime: { context: 32768, safeContext: 20000 },
     };
   }
   async load() {}
@@ -166,32 +169,43 @@ describe("Sampler", () => {
     history.close();
   });
 
-  test("asks the engine about itself once a model is resident", async () => {
-    const engine = new FakeEngine([idle, idle, idle]);
+  test("asks /props about each resident model with the list", async () => {
+    const engine = new FakeEngine(Array(7).fill(idle));
     const history = new History(":memory:");
     const c = clock();
+    const lines: string[] = [];
     const s = new Sampler(engine, history, {
       now: c.now,
       log: testLog((l) => lines.push(l)),
     });
-    const lines: string[] = [];
     await s.tick();
     await s.settle();
-    // the fixture list has two models resident
-    expect(engine.propsCalls).toBe(1);
-    expect(s.currentVersion()).toBe("26.9.1");
+    const resident = engine.list.filter((m) => m.loaded).map((m) => m.id);
+    expect(resident.length).toBe(2);
+    expect(engine.propsAsked).toEqual(resident);
+    expect(s.currentVersion()).toBe("26.9.6");
     expect(s.currentLimits()).toEqual({
       hotBytes: 16 * 1024 ** 3,
       diskBytes: 50 * 1024 ** 3,
     });
-    expect(lines).toContain('level=INFO msg="engine version" version=26.9.1');
-    // the same process is not asked twice
-    c.advance(1000);
-    await s.tick();
-    c.advance(1000);
-    await s.tick();
+    expect(lines).toContain('level=INFO msg="engine version" version=26.9.6');
+    // the runtime rides on the model rows, resident ones only
+    for (const m of s.currentModels()) {
+      expect(m.runtime ?? null).toEqual(
+        m.loaded ? { context: 32768, safeContext: 20000 } : null,
+      );
+    }
+    // a status read that loads nothing: polled with every list, the
+    // version logged once
+    for (let i = 0; i < 5; i++) {
+      c.advance(1000);
+      await s.tick();
+    }
     await s.settle();
-    expect(engine.propsCalls).toBe(1);
+    expect(engine.propsAsked).toEqual([...resident, ...resident]);
+    expect(lines.filter((l) => l.includes('msg="engine version"')).length).toBe(
+      1,
+    );
     history.close();
   });
 
@@ -203,15 +217,28 @@ describe("Sampler", () => {
     const s = new Sampler(engine, history, { now: c.now });
     await s.tick();
     await s.settle();
-    expect(engine.propsCalls).toBe(0);
+    expect(engine.propsAsked).toEqual([]);
     expect(s.currentVersion()).toBeNull();
-    // and asks as soon as one is, without waiting for an action
+    // and asks as soon as one is, with the list an action reads
     engine.list = engine.list.map((m, i) => ({ ...m, loaded: i === 0 }));
     await s.refreshModels();
-    c.advance(1000);
+    await s.settle();
+    expect(engine.propsAsked).toEqual([engine.list[0]!.id]);
+    history.close();
+  });
+
+  test("keeps a decision model's stub runtime off its row", async () => {
+    const engine = new FakeEngine([idle]);
+    engine.list = parseModels(kindsLoaded);
+    const history = new History(":memory:");
+    const s = new Sampler(engine, history, { now: clock().now });
     await s.tick();
     await s.settle();
-    expect(engine.propsCalls).toBe(1);
+    const byId = new Map(s.currentModels().map((m) => [m.id, m]));
+    expect(byId.get("aac6fef/laya-multilingual-mlx")?.runtime).toBeNull();
+    expect(
+      byId.get("mlx-community/Qwen3-Embedding-0.6B-4bit-DWQ")?.runtime,
+    ).toEqual({ context: 32768, safeContext: 20000 });
     history.close();
   });
 
@@ -225,12 +252,12 @@ describe("Sampler", () => {
     engine.list = engine.list.map((m) => ({ ...m, loaded: false }));
     const c = clock();
     const s = new Sampler(engine, history, { now: c.now });
-    // an engine with nothing loaded cannot be asked, and stale facts beat
-    // an empty row
+    // an engine with nothing loaded has nothing to say, and stale facts
+    // beat an empty row
     expect(s.currentVersion()).toBe("26.9.0");
     await s.tick();
     await s.settle();
-    expect(engine.propsCalls).toBe(0);
+    expect(engine.propsAsked).toEqual([]);
     expect(s.currentVersion()).toBe("26.9.0");
     expect(s.currentLimits()).toEqual({
       hotBytes: 8 * 1024 ** 3,
@@ -240,18 +267,16 @@ describe("Sampler", () => {
     // is stored for the next start
     engine.list = engine.list.map((m, i) => ({ ...m, loaded: i === 0 }));
     await s.refreshModels();
-    c.advance(1000);
-    await s.tick();
     await s.settle();
-    expect(s.currentVersion()).toBe("26.9.1");
+    expect(s.currentVersion()).toBe("26.9.6");
     expect(history.loadEngineProps()).toEqual({
-      version: "26.9.1",
+      version: "26.9.6",
       limits: { hotBytes: 16 * 1024 ** 3, diskBytes: 50 * 1024 ** 3 },
     });
     history.close();
   });
 
-  test("asks again after the engine restarted", async () => {
+  test("asks the new process on the tick it restarted", async () => {
     const engine = new FakeEngine([
       idle,
       (b) => {
@@ -264,12 +289,13 @@ describe("Sampler", () => {
     const s = new Sampler(engine, history, { now: c.now });
     await s.tick();
     await s.settle();
-    expect(engine.propsCalls).toBe(1);
+    expect(engine.propsAsked.length).toBe(2);
+    engine.version = "26.9.7";
     c.advance(1000);
     await s.tick(); // the counters went backwards: a new process
     await s.settle();
-    expect(engine.propsCalls).toBe(2);
-    expect(s.currentVersion()).toBe("26.9.2");
+    expect(engine.propsAsked.length).toBe(4);
+    expect(s.currentVersion()).toBe("26.9.7");
     history.close();
   });
 
@@ -581,7 +607,7 @@ describe("web", () => {
       local: false,
       mode: null,
       // the engine stated both once the first tick saw a resident model
-      version: "26.9.1",
+      version: "26.9.6",
       capabilities: [],
       limits: { hotBytes: 17179869184, diskBytes: 53687091200 },
     });

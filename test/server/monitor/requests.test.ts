@@ -365,11 +365,12 @@ describe("trackRequests", () => {
 });
 
 describe("attributeModel", () => {
-  const m = (id: string, loaded: boolean, favorite = false) => ({
-    id,
-    loaded,
-    favorite,
-  });
+  const m = (
+    id: string,
+    loaded: boolean,
+    favorite = false,
+    capabilities = ["chat"],
+  ) => ({ id, loaded, favorite, capabilities });
   test("none resident: unknown", () => {
     expect(attributeModel([])).toBeNull();
     expect(attributeModel([m("b/x", false, true)])).toBeNull();
@@ -384,5 +385,16 @@ describe("attributeModel", () => {
     expect(
       attributeModel([m("b/x", true), m("c/z", true), m("a/y", false, true)]),
     ).toBe("b/x");
+  });
+  test("only a chat model serves the requests the engine counts", () => {
+    // the decision model sorts first and there is no favorite
+    const laya = m("aac6fef/laya", true, false, ["decisions"]);
+    const embed = m("a/embed", true, false, ["chat", "embeddings"]);
+    expect(attributeModel([laya, embed, m("m/qwen", true)])).toBe("m/qwen");
+    // a non-chat favorite is passed over too
+    expect(
+      attributeModel([m("a/e", true, true, ["embeddings"]), m("b/x", true)]),
+    ).toBe("b/x");
+    expect(attributeModel([laya, embed])).toBeNull();
   });
 });

@@ -11,6 +11,7 @@ import type {
   Capability,
   EngineId,
   ModelInfo,
+  ModelRuntime,
 } from "../../shared/models.ts";
 
 // Monotonic counters. All reset to zero when the engine process restarts;
@@ -59,12 +60,14 @@ export type EngineMetrics = {
   histograms: EngineHistograms;
 };
 
-// What the running engine says about itself when asked directly: its build
-// and the budgets the process was started with. Fields are null when the
-// body did not carry them (no model loaded, an older engine).
+// What the running engine says when asked about one resident model: its
+// build and the budgets of the process, then that model's runtime. Fields
+// are null when the body did not carry them: a model that is not resident
+// gets the memory counters only.
 export type EngineProps = {
   version: string | null;
   limits: CacheLimits | null;
+  runtime: ModelRuntime | null;
 };
 
 // What the engine measured for one chat request, from the `timings` of its
@@ -118,11 +121,11 @@ export interface Engine {
   // the meta of the last models() read, by id; nothing new is fetched
   modelMeta?(): ReadonlyMap<string, EngineModelMeta>;
   metrics(): Promise<EngineMetrics>;
-  // Facts only the engine itself can state: its build and the budgets of
-  // the running process. The call may go through the engine's model-load
-  // path, so it is made only while a model is resident, once per engine
-  // process. Null when the engine has no such endpoint.
-  props?(): Promise<EngineProps | null>;
+  // Facts only the engine itself can state: its build, the budgets of the
+  // running process and a resident model's runtime. A status read: it
+  // loads nothing and does not count as use of the model. Null when the
+  // engine has no such endpoint or did not answer.
+  props?(model: string): Promise<EngineProps | null>;
   load(id: string, asDefault: boolean): Promise<void>;
   unload(id: string): Promise<void>;
   // walk the model directory again for checkpoints added since the engine
