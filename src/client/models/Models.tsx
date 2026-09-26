@@ -43,10 +43,10 @@ import {
   capabilityTags,
   downloadLine,
   downloadPct,
+  FILTERS,
   type Filter,
   figures,
   filterLabel,
-  filtersFor,
   joinRows,
   kindTag,
   type ModelRow,
@@ -319,11 +319,7 @@ export function Models() {
   const live = models.value;
   const all = joinRows(live, specs.value);
   const query = modelQuery.value;
-  // a kind filter whose last model went (a delete) falls back to all
-  const offered = filtersFor(all);
-  const filter = offered.includes(modelFilter.value)
-    ? modelFilter.value
-    : "all";
+  const filter = modelFilter.value;
   const shown = matchingModels(all, query, filter);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
@@ -397,8 +393,8 @@ export function Models() {
           onQuery={(q) => {
             modelQuery.value = q;
           }}
-          filtersLabel="Filters"
-          filters={offered.map((f) => ({
+          filtersLabel="Residency"
+          filters={FILTERS.map((f) => ({
             label: filterLabel(f),
             on: f === filter,
             onPick: () => {
