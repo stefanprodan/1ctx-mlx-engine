@@ -319,7 +319,11 @@ export function Models() {
   const live = models.value;
   const all = joinRows(live, specs.value);
   const query = modelQuery.value;
-  const filter = modelFilter.value;
+  // a kind filter whose last model went (a delete) falls back to all
+  const offered = filtersFor(all);
+  const filter = offered.includes(modelFilter.value)
+    ? modelFilter.value
+    : "all";
   const shown = matchingModels(all, query, filter);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
@@ -394,7 +398,7 @@ export function Models() {
             modelQuery.value = q;
           }}
           filtersLabel="Filters"
-          filters={filtersFor(all).map((f) => ({
+          filters={offered.map((f) => ({
             label: filterLabel(f),
             on: f === filter,
             onPick: () => {

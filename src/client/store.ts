@@ -209,11 +209,15 @@ function land(snap: Snapshot) {
   }
 }
 
+// What the rows show that can change: the residency, the marks, the kind
+// (the capabilities), a failed load's reason and the window the process
+// serves. Not the context that fits now, which moves with memory: the
+// Models page reads that off the live sample.
 export const modelsKeyOf = (list: Sample["models"]) =>
   list
     .map(
       (m) =>
-        `${m.id}:${m.state}:${m.bytesResident}:${m.bytesOnDisk}:${m.favorite ? 1 : 0}:${m.deleted ? 1 : 0}`,
+        `${m.id}:${m.state}:${m.bytesResident}:${m.bytesOnDisk}:${m.favorite ? 1 : 0}:${m.deleted ? 1 : 0}:${m.capabilities.join(",")}:${m.error ?? ""}:${m.runtime?.context ?? ""}`,
     )
     .join("|");
 let modelsKey = "";

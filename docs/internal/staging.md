@@ -146,8 +146,6 @@ back is one it has to discover.
 - Never `pkill mlx-serve` or start `mlx-serve --serve` by hand: launchd
   restarts the agent and the two fight over the port, and 1ctx-mlx-engine's
   verification is built to refuse exactly that picture.
-- Never `GET /props` on an idle engine (above); with a model resident it
-  is free, and that is the only time 1ctx-mlx-engine asks.
 - Never download or push checkpoints without an explicit go-ahead.
 
 ### Engine facts 1ctx-mlx-engine depends on
@@ -168,8 +166,9 @@ back is one it has to discover.
   allocator's reclaimable pool, not the prefix cache. The hot prefix cache
   has no gauge.
 - The engine does not say which model served a request, nor which model is
-  the default. 1ctx-mlx-engine attributes a request to the resident favorite, else
-  the first resident by id.
+  the default. 1ctx-mlx-engine attributes a request to the resident chat
+  favorite, else the first resident chat model by id: the engine counts
+  no request to an embedding or decision model.
 - Since 26.9.2 the hot cache evicts per workload, keyed by
   `prompt_cache_key`, else `metadata.user_id`, else the system prompt.
 

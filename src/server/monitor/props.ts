@@ -27,6 +27,13 @@ export class EngineFacts {
   private limits: CacheLimits | null;
   private runtime = new Map<string, ModelRuntime>();
   private scan: Promise<void> | null = null;
+  // a list that arrived while a scan ran: read once that one is done, so
+  // the newest list is never skipped
+  private next: { models: readonly ModelInfo[]; done: () => void } | null =
+    null;
+  // bumped when the engine goes away or restarts: a scan of the old
+  // process must not publish what it read into the new one
+  private process = 0;
 
   constructor(
     private readonly engine: Engine,
@@ -50,25 +57,42 @@ export class EngineFacts {
     return this.runtime.get(id) ?? null;
   }
 
-  // the engine went away or restarted: what it said of its models is gone
+  // the engine went away or restarted: what it said of its models is gone,
+  // and a scan still reading the old process is dropped when it ends
   forgetModels() {
+    this.process++;
     this.runtime.clear();
+    this.next = null;
   }
 
-  // One read per resident model, in turn, off the tick's path; a failure
-  // keeps what was known. `done` runs when the new runtimes are in place.
+  // One read per resident model, in turn, off the tick's path. A list that
+  // arrives while a scan runs waits for it, the latest one wins. A read
+  // that fails keeps the model's last runtime; a model no longer resident
+  // loses it. `done` runs when the new runtimes are in place.
   read(models: readonly ModelInfo[], done: () => void) {
-    if (this.scan || !this.engine.props) return;
+    if (!this.engine.props) return;
+    if (this.scan) {
+      this.next = { models, done };
+      return;
+    }
+    const process = this.process;
     const resident = models.filter((m) => m.loaded && m.state === "ready");
     this.scan = (async () => {
       const runtime = new Map<string, ModelRuntime>();
       for (const m of resident) {
         const p = await this.engine.props!(m.id).catch(() => null);
-        if (!p) continue;
+        if (process !== this.process) return;
+        const known = this.runtime.get(m.id);
+        if (!p) {
+          if (known) runtime.set(m.id, known);
+          continue;
+        }
         this.note(p);
         // a decision model's runtime is the engine's generic stub
         if (p.runtime && modelKind(m.capabilities) !== "decision") {
           runtime.set(m.id, p.runtime);
+        } else if (known) {
+          runtime.set(m.id, known);
         }
       }
       this.runtime = runtime;
@@ -77,11 +101,15 @@ export class EngineFacts {
       .catch(() => {})
       .finally(() => {
         this.scan = null;
+        const next = this.next;
+        this.next = null;
+        if (next) this.read(next.models, next.done);
       });
   }
 
-  settle(): Promise<void> {
-    return this.scan ?? Promise.resolve();
+  // the scan in flight and the one queued behind it
+  async settle(): Promise<void> {
+    while (this.scan) await this.scan;
   }
 
   // The build and the budgets, kept when an answer states them and stored

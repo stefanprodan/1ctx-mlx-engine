@@ -68,8 +68,8 @@ make staging-status # what the staging service says
 Staging is the user's Mac Studio on the tailnet: it runs mlx-serve and
 its own 1ctx-mlx-engine as launchd agents. Read `docs/internal/staging.md`
 before any ssh command; it has the paths, the safe commands and the rules
-(never `GET /props`, never start processes by hand over ssh, never touch
-the user's other services). `make staging-deploy` is the only deploy
+(never start processes by hand over ssh, never touch the user's other
+services). `make staging-deploy` is the only deploy
 path: it takes `main` only, unless `ALLOW_BRANCH=1`, and stamps the
 commit into the version. Deploy when asked, then say what is now running
 there.
