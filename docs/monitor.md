@@ -30,7 +30,8 @@ the rail still opens it.
 
 - **Tiles**: requests served, tokens generated, prefill and decode tok/s,
   cache efficiency, memory, RAM cache and SSD cache. The cache tiles draw
-  a bar against the engine's per-model budgets, read from its launchd
+  a bar against the engine's per-model budgets (the RAM one times the
+  resident chat models, the only ones with a prefix cache), read from its launchd
   plist when the engine is local or given with `--hot-cache-max` and
   `--disk-cache-max`. A value with nothing behind it (no request in the
   range, a probe that needs a local engine) is a dimmed dash; counts stay
@@ -47,9 +48,10 @@ the rail still opens it.
   the rest by id so nothing moves on a load, with its state, size and
   context (the window the process serves once `/props` has said it), and
   the buttons: load, unload, make default, delete, plus the daily-driver
-  star (1ctx-mlx-engine's own mark, a chat model only). An embedding or
-  decision model carries its kind beside its name, and a load failure's
-  reason shows over its `error` state. Delete asks first and then
+  star (1ctx-mlx-engine's own mark, a chat model only). A resident
+  embedding or decision model has a grey dot where a chat model's is
+  green, and its kind in the name's tooltip; a load failure's reason
+  shows over its `error` state. Delete asks first and then
   removes the model from the model directory, along with the records of its
   downloads; it is there for an engine on this host and is disabled while
   the model is resident, because the weights are mapped until it is

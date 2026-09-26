@@ -6,6 +6,7 @@
 // Pure; tested in test/client/tiles.test.ts.
 
 import type { Series } from "../../shared/history.ts";
+import { isChat } from "../../shared/models.ts";
 import type { Sample } from "../../shared/sample.ts";
 import { count, DASH, gb, num, size, sizeText } from "../format.ts";
 import { inView, inViewMean, rangeTotal, whole } from "./range.ts";
@@ -243,9 +244,10 @@ export function tiles(
   const allTok = gen + rangeTotal(series, "promptTokens");
   const decode = whole(m.lastDecode);
   const prefill = whole(m.lastPrefill);
-  // the budget is per resident model, so the tile's ceiling scales with
-  // them; with nothing resident the bar sits at zero against one budget
-  const loaded = s.models.filter((x) => x.loaded).length;
+  // the budget is per resident chat model (an embedding or decision model
+  // has no prefix cache), so the tile's ceiling scales with them; with
+  // none resident the bar sits at zero against one budget
+  const loaded = s.models.filter((x) => x.loaded && isChat(x)).length;
   const hotMax =
     limits && limits.hotBytes > 0 ? limits.hotBytes * Math.max(1, loaded) : 0;
   const cache = s.engineUp ? size(s.mem.hotCacheEst) : null;

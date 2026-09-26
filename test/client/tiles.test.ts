@@ -184,8 +184,8 @@ describe("tiles", () => {
     expect(at(95)).toBe("crit");
   });
 
-  test("RAM cache scales its budget with the resident models", () => {
-    const model = (id: string) => ({
+  test("RAM cache scales its budget with the resident chat models", () => {
+    const model = (id: string, capabilities = ["chat"]) => ({
       id,
       loaded: true,
       state: "ready",
@@ -193,10 +193,16 @@ describe("tiles", () => {
       bytesOnDisk: GB,
       contextLength: null,
       quantization: null,
-      capabilities: [],
+      capabilities,
     });
     const s = sample({
-      models: [model("a/b"), model("c/d")],
+      // a decision or embedding model has no prefix cache
+      models: [
+        model("a/b"),
+        model("c/d"),
+        model("e/laya", ["decisions"]),
+        model("f/embed", ["chat", "embeddings"]),
+      ],
       mem: { ...sample().mem, hotCacheEst: 4 * GB },
     });
     const list = tiles(initialTiles, s, null, limits, true);
