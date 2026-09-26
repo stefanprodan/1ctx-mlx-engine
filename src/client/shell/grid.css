@@ -360,12 +360,6 @@
       margin-top: 12px;
     }
   }
-  @media (max-width: 600px) {
-    /* under 16px, Safari on iOS zooms the page into a field on focus */
-    .grid-find input {
-      font-size: 16px;
-    }
-  }
 
   /* last: the most specific selectors on these cells */
   .grid tr.open td {

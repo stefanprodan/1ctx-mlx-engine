@@ -8,7 +8,7 @@
 
 import { signal } from "@preact/signals";
 import { Fragment } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { ActionName } from "../../shared/actions.ts";
 import type { Download } from "../../shared/downloads.ts";
 import { type Capability, isChat } from "../../shared/models.ts";
@@ -82,13 +82,19 @@ const Glyph = ({ d }: { d: string }) => (
 );
 
 function DownloadForm() {
+  const field = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const submit = async (e: Event) => {
     e.preventDefault();
     const repo = text.trim();
-    if (repo === "" || sending) return;
+    if (sending) return;
+    // the button is never grey: with nothing typed it points at the field
+    if (repo === "") {
+      field.current?.focus();
+      return;
+    }
     setSending(true);
     const refused = await startDownload(repo);
     setSending(false);
@@ -100,6 +106,7 @@ function DownloadForm() {
       <label class="dl-field">
         <span class="lbl">Repository</span>
         <input
+          ref={field}
           type="text"
           name="repo"
           placeholder="owner/name or huggingface.co URL"
@@ -112,11 +119,7 @@ function DownloadForm() {
           }}
         />
       </label>
-      <button
-        type="submit"
-        class="btn primary"
-        disabled={text.trim() === "" || sending}
-      >
+      <button type="submit" class="btn primary" disabled={sending}>
         <DownloadIcon />
         Download
       </button>
