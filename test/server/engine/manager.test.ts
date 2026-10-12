@@ -92,6 +92,8 @@ type HarnessOptions = {
   holdReload?: Promise<void>;
   // the port check waits for this, so a test can act during the preflight
   holdProbe?: Promise<void>;
+  // the lines the manager logs, without time and area
+  lines?: string[];
 };
 
 async function harness(options: HarnessOptions = {}) {
@@ -146,7 +148,7 @@ async function harness(options: HarnessOptions = {}) {
     local: true,
     engineUp: () => job?.state === "running",
     health: async () => options.health ?? true,
-    log,
+    log: options.lines ? testLog((line) => options.lines!.push(line)) : log,
     version: "v1.0.0",
     probes: { processMemory: () => null },
     token: options.token,
@@ -511,7 +513,8 @@ describe("EngineManager upgrade and configuration", () => {
   });
 
   test("a rollback that fails keeps the build it was heading for", async () => {
-    const options: HarnessOptions = {};
+    const lines: string[] = [];
+    const options: HarnessOptions = { lines };
     const value = await installed(options);
     const bytes = await archive();
     const next = assetServer(bytes);
@@ -552,6 +555,12 @@ describe("EngineManager upgrade and configuration", () => {
     expect(value.store.journal()).toBeNull();
     expect(value.manager.state().active?.tag).toBe("v26.9.6");
     expect(value.manager.state().previous?.tag).toBe("v26.9.5");
+    // said once, with the outcome, and never as done
+    const rollback = lines.filter((l) => l.includes("op=rollback"));
+    expect(rollback.filter((l) => l.includes("operation failed"))).toHaveLength(
+      1,
+    );
+    expect(rollback.some((l) => l.includes("operation done"))).toBeFalse();
     value.history.close();
   });
 
@@ -619,6 +628,17 @@ describe("EngineManager upgrade and configuration", () => {
     expect(again.state().service).toBeNull();
     await again.reconcile();
     expect(again.state().service?.state).toBe("running");
+    value.history.close();
+  });
+
+  test("an uninstall says when it is done", async () => {
+    const lines: string[] = [];
+    const value = await installed({ lines });
+    await value.manager.uninstall();
+    expect(lines.filter((l) => l.includes("op=uninstall"))).toEqual([
+      'level=INFO msg="operation start" op=uninstall',
+      'level=INFO msg="operation done" op=uninstall',
+    ]);
     value.history.close();
   });
 

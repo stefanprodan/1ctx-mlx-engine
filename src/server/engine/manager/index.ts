@@ -412,12 +412,25 @@ export class EngineManager {
     try {
       await context.deps.lock.run(kind, operation);
       context.operation = null;
+      context.deps.log.info("operation done", {
+        op: kind,
+        tag: tag ?? undefined,
+      });
       return this.publish();
     } catch (error) {
       context.operation = null;
       this.publish();
-      if (error instanceof EngineManagerError) throw error;
       if (error instanceof LockBusyError) this.busy();
+      // an apply or a rollback that did not come up has said why, with
+      // the outcome, through activationFailure; anything else is said here
+      if (!context.failure) {
+        context.deps.log.error("operation failed", {
+          op: kind,
+          tag: tag ?? undefined,
+          ...errorFields(error),
+        });
+      }
+      if (error instanceof EngineManagerError) throw error;
       throw new EngineManagerError(502, describeError(error));
     }
   }
