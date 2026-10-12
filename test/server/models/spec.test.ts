@@ -23,10 +23,12 @@ import {
   parseDecision,
   parseEmbedding,
   parseGeneration,
+  parseJointHead,
   parseLicense,
 } from "../../../src/server/models/spec.ts";
 import type { ModelInfo } from "../../../src/shared/models.ts";
 import bgeSbert from "../../fixtures/spec/bge-small-sbert.json";
+import clefHead from "../../fixtures/spec/clef-flash-joint-head.json";
 import layaAgent from "../../fixtures/spec/laya-multilingual-agent.json";
 import layaEncoder from "../../fixtures/spec/laya-multilingual-encoder.json";
 import layaHeader from "../../fixtures/spec/laya-multilingual-header.json";
@@ -248,6 +250,7 @@ describe("a decision checkpoint", () => {
       optionBudget: 256,
       // all three temperatures are 1: none were fitted
       calibrated: false,
+      head: null,
     });
     expect(parseDecision({ temperature: [1.2, 1, 0.9] }).calibrated).toBe(true);
     expect(parseDecision({})).toEqual({
@@ -255,7 +258,20 @@ describe("a decision checkpoint", () => {
       window: null,
       optionBudget: null,
       calibrated: null,
+      head: null,
     });
+  });
+
+  test("a Clef's head: its layers and width, the window it reads", () => {
+    expect(parseJointHead(clefHead)).toEqual({
+      encoder: null,
+      // not in any file of the checkpoint: Clef's own limit
+      window: 16_384,
+      optionBudget: null,
+      calibrated: null,
+      head: { layers: 4, width: 1024 },
+    });
+    expect(parseJointHead({}).head).toEqual({ layers: null, width: null });
   });
 
   test("the encoder's shape and the exact count, FP16 from the header", () => {

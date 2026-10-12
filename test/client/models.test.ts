@@ -174,6 +174,7 @@ describe("models that are not for chat", () => {
       window: 1024,
       optionBudget: 256,
       calibrated: false,
+      head: null,
     },
   };
   const embedSpec: ModelSpec = {
@@ -215,6 +216,25 @@ describe("models that are not for chat", () => {
       "256",
       "no",
     ]);
+    // a Clef: its head and the window it reads, no Laya rows as dashes
+    const clefSpec: ModelSpec = {
+      ...layaSpec,
+      modelType: "qwen3_5",
+      decision: {
+        encoder: null,
+        window: 16384,
+        optionBudget: null,
+        calibrated: null,
+        head: { layers: 4, width: 1024 },
+      },
+    };
+    expect(
+      modelGroups(clefSpec)[1]!.rows.map((r) => [r.label, r.value, r.spread]),
+    ).toEqual([
+      ["Head", "4", "layers, 1,024 wide"],
+      ["Window", "16,384", undefined],
+    ]);
+    expect(figures(clefSpec).context).toBe("16K");
     const embedding = modelGroups(embedSpec);
     expect(titles(embedding)).toEqual([
       "Architecture",
