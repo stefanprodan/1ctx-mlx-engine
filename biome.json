@@ -33,6 +33,7 @@
       "!.idea/",
       "!plans",
       "!.preview",
+      "!workspace",
       "!test/fixtures/structure"
     ]
   }

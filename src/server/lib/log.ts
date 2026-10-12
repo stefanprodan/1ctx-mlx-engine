@@ -130,8 +130,11 @@ function stringValue(value: string): string {
   return needsQuote(value) ? quote(value) : value;
 }
 
+// A whole number is what 1ctx logs as an int64, in decimal (a byte count
+// would otherwise read 6.297094764e+09); anything else is Go's %g.
 function numberValue(value: number): string {
   if (Object.is(value, -0)) return "-0";
+  if (Number.isSafeInteger(value)) return String(value);
   const absolute = Math.abs(value);
   if (absolute !== 0 && (absolute >= 1e6 || absolute < 1e-4)) {
     return value.toExponential().replace(/e([+-])(\d)$/, "e$10$2");
