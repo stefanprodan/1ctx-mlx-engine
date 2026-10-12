@@ -77,8 +77,10 @@ A row opens to what is known of the model:
   confidences were calibrated (temperatures fitted). A Clef: the schema
   head's layers and width, and the window, 16,384 tokens of schema and
   state, which no file of the checkpoint states.
-- **Embedding**, for an embedding model: the dimensions, the longest
-  input and the pooling, when the checkpoint says it.
+- **Embedding**, for an embedding model: the dimensions of the vector it
+  returns (the pooled size from `1_Pooling/config.json`, which is larger
+  than the hidden size for a model that projects, else the hidden size),
+  the longest input and the pooling, when the checkpoint says it.
 - **Weights**: the bits and the quantization mode, the group size, the
   dtype, the size on disk, the safetensors file count.
 - **Sampling defaults**, for a chat model: temperature, top p and top k.

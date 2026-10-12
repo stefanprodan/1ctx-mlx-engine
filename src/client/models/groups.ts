@@ -88,7 +88,12 @@ function otherGroups(s: ModelSpec, kind: ModelKind): GridGroup[] {
     groups.push({
       title: "Embedding",
       rows: [
-        { label: "Dimensions", value: thousands(s.hiddenSize) },
+        // the pooled vector's size when the checkpoint says it, else the
+        // width, which is the same for a model that does not project
+        {
+          label: "Dimensions",
+          value: thousands(e?.dimensions ?? s.hiddenSize),
+        },
         {
           label: "Max input",
           value: thousands(e?.maxInput ?? null),

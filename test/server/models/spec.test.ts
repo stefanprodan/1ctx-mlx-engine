@@ -29,6 +29,7 @@ import {
 import type { ModelInfo } from "../../../src/shared/models.ts";
 import bgeSbert from "../../fixtures/spec/bge-small-sbert.json";
 import clefHead from "../../fixtures/spec/clef-flash-joint-head.json";
+import gemmaPooling from "../../fixtures/spec/embeddinggemma-2-pooling.json";
 import layaAgent from "../../fixtures/spec/laya-multilingual-agent.json";
 import layaEncoder from "../../fixtures/spec/laya-multilingual-encoder.json";
 import layaHeader from "../../fixtures/spec/laya-multilingual-header.json";
@@ -296,15 +297,24 @@ describe("a decision checkpoint", () => {
 describe("an embedding checkpoint", () => {
   test("the longest input and the pooling, from either file", () => {
     expect(parseEmbedding(bgeSbert, null)).toEqual({
+      dimensions: null,
       maxInput: 512,
       pooling: null,
     });
     expect(
       parseEmbedding(null, {
+        word_embedding_dimension: 384,
         pooling_mode_cls_token: true,
         pooling_mode_mean_tokens: false,
       }),
-    ).toEqual({ maxInput: null, pooling: "CLS token" });
+    ).toEqual({ dimensions: 384, maxInput: null, pooling: "CLS token" });
+    // sentence-transformers 6: the mode in a string, the pooled size that
+    // a projection makes larger than the width
+    expect(parseEmbedding(null, gemmaPooling)).toEqual({
+      dimensions: 768,
+      maxInput: null,
+      pooling: "mean",
+    });
     // a checkpoint with neither file says nothing
     expect(parseEmbedding(null, null)).toBeNull();
   });
@@ -347,7 +357,11 @@ describe("mergeSpec", () => {
       capabilities: ["chat", "embeddings"],
     };
     const s = mergeSpec(info, undefined, null, null);
-    expect(s.embedding).toEqual({ maxInput: 32768, pooling: null });
+    expect(s.embedding).toEqual({
+      dimensions: null,
+      maxInput: 32768,
+      pooling: null,
+    });
     expect(s.decision).toBeNull();
   });
 
@@ -497,7 +511,11 @@ describe("SpecReader", () => {
       JSON.stringify({ pooling_mode_mean_tokens: true }),
     );
     const spec = await new SpecReader(root).read("org/moe");
-    expect(spec?.embedding).toEqual({ maxInput: 512, pooling: "mean" });
+    expect(spec?.embedding).toEqual({
+      dimensions: null,
+      maxInput: 512,
+      pooling: "mean",
+    });
   });
 
   test("reads the checkpoint once, again when it changes", async () => {
