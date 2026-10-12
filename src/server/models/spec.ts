@@ -216,8 +216,20 @@ const POOLING: Record<string, string> = {
   pooling_mode_mean_sqrt_len_tokens: "mean, sqrt length",
 };
 
+// sentence-transformers 6 names the one mode in a string instead
+const POOLING_MODE: Record<string, string> = {
+  cls: "CLS token",
+  mean: "mean",
+  max: "max",
+  lasttoken: "last token",
+  weightedmean: "weighted mean",
+  mean_sqrt_len_tokens: "mean, sqrt length",
+};
+
 // sentence_bert_config.json and 1_Pooling/config.json, a sentence-
-// transformers checkpoint's: the longest input and the pooling. Either may
+// transformers checkpoint's: the longest input, the pooling and the size of
+// the vector it pools to, which is not the hidden size when the model
+// projects (EmbeddingGemma 2 pools 768 from a width of 512). Either file may
 // be missing; a checkpoint with neither says nothing here.
 export function parseEmbedding(
   sbert: unknown,
@@ -226,10 +238,14 @@ export function parseEmbedding(
   const s = obj(sbert);
   const p = obj(pooling);
   if (!s && !p) return null;
-  const modes = Object.entries(POOLING)
-    .filter(([key]) => p?.[key] === true)
-    .map(([, word]) => word);
+  const mode = str(p?.pooling_mode);
+  const modes = mode
+    ? [POOLING_MODE[mode] ?? mode]
+    : Object.entries(POOLING)
+        .filter(([key]) => p?.[key] === true)
+        .map(([, word]) => word);
   return {
+    dimensions: n(p?.embedding_dimension) ?? n(p?.word_embedding_dimension),
     maxInput: n(s?.max_seq_length),
     pooling: modes.length ? modes.join(", ") : null,
   };
@@ -373,6 +389,7 @@ export function mergeSpec(
     embedding:
       kind === "embedding"
         ? {
+            dimensions: disk?.embedding?.dimensions ?? null,
             maxInput: disk?.embedding?.maxInput ?? info.contextLength,
             pooling: disk?.embedding?.pooling ?? null,
           }

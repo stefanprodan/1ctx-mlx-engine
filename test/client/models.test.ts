@@ -180,7 +180,7 @@ describe("models that are not for chat", () => {
   const embedSpec: ModelSpec = {
     ...blankSpec(embed),
     hiddenSize: 1024,
-    embedding: { maxInput: 32768, pooling: null },
+    embedding: { dimensions: null, maxInput: 32768, pooling: null },
   };
 
   test("the kind is a tag, and the only capability shown", () => {
@@ -246,6 +246,17 @@ describe("models that are not for chat", () => {
       "1,024",
       "32,768",
       DASH,
+    ]);
+    // a model that projects: the vector it returns, not its width
+    const projected = modelGroups({
+      ...embedSpec,
+      hiddenSize: 512,
+      embedding: { dimensions: 768, maxInput: 8192, pooling: "mean" },
+    });
+    expect(projected[1]!.rows.map((r) => r.value)).toEqual([
+      "768",
+      "8,192",
+      "mean",
     ]);
   });
 

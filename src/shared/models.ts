@@ -130,8 +130,10 @@ export type ModelSpec = {
     calibrated: boolean | null;
     head: { layers: number | null; width: number | null } | null;
   } | null;
-  // an embedding model's: the longest input and how tokens become a vector
+  // an embedding model's: the size of the vector it returns, the longest
+  // input and how tokens become a vector
   embedding: {
+    dimensions: number | null;
     maxInput: number | null;
     pooling: string | null;
   } | null;
