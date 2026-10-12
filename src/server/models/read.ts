@@ -3,8 +3,9 @@
 //
 // Reading a checkpoint's spec from --model-dir: config.json, the
 // generation config, the model card and the safetensors headers, never a
-// tensor; for a decision checkpoint, which has no config.json, its encoder's
-// config and rl_agent_config.json; for an embedding one, the
+// tensor; for a Laya decision checkpoint, which has no config.json, its
+// encoder's config and rl_agent_config.json; for a Clef one, its
+// joint_head_config.json beside config.json; for an embedding one, the
 // sentence-transformers files when present. The directory is found the way
 // a delete finds it (a plain repo id inside the root, no symlinked
 // directory), a subdirectory is read only when it is a real one, and only
@@ -24,6 +25,7 @@ import {
   parseDecision,
   parseEmbedding,
   parseGeneration,
+  parseJointHead,
   parseLicense,
 } from "./spec.ts";
 
@@ -123,6 +125,7 @@ export class SpecReader {
     const extras = [
       "generation_config.json",
       "README.md",
+      "joint_head_config.json",
       "rl_agent_config.json",
       "sentence_bert_config.json",
       ...(pooling ? [pooling] : []),
@@ -149,6 +152,10 @@ export class SpecReader {
     const agent = decision
       ? await json(join(dir, "rl_agent_config.json"))
       : null;
+    // a Clef checkpoint: a full backbone with its schema head beside it
+    const head = decision
+      ? null
+      : await json(join(dir, "joint_head_config.json"));
     const embedding = parseEmbedding(
       await json(join(dir, "sentence_bert_config.json")),
       pooling ? await json(join(dir, pooling)) : null,
@@ -185,7 +192,12 @@ export class SpecReader {
         dtype: (complete ? headerDtype(headers) : null) ?? parsed.dtype,
       },
       generation: generation === null ? null : parseGeneration(generation),
-      decision: agent === null ? null : parseDecision(agent),
+      decision:
+        agent !== null
+          ? parseDecision(agent)
+          : head !== null
+            ? parseJointHead(head)
+            : null,
       embedding,
       license,
       params: counted?.params ?? null,

@@ -3,9 +3,10 @@
 //
 // What a checkpoint says of itself, pure: its config.json, its
 // generation_config.json, its model card's front matter and the headers of
-// its safetensors files, then the join with what the engine says. A
+// its safetensors files, then the join with what the engine says. A Laya
 // decision checkpoint has no config.json: its encoder's config and
-// rl_agent_config.json stand in. An embedding checkpoint may carry the
+// rl_agent_config.json stand in. A Clef one has a config.json and a
+// joint_head_config.json beside it. An embedding checkpoint may carry the
 // sentence-transformers files beside config.json. Tested on files recorded
 // from real checkpoints in test/fixtures/spec/.
 
@@ -179,6 +180,30 @@ export function parseDecision(
     window: n(a.max_len),
     optionBudget: n(a.head_max_len),
     calibrated: temps.length ? temps.some((t: number) => t !== 1) : null,
+    head: null,
+  };
+}
+
+// Clef reads at most this many tokens of schema and state together. No
+// file of the checkpoint says it: it is the max_length default of the
+// systemone() in Cloudflare's joint_schema_model.py, and the limit
+// mlx-serve's decisions guide gives for Clef.
+const CLEF_WINDOW = 16_384;
+
+// joint_head_config.json, a Clef decision checkpoint's: the schema head
+// that scores every question in one pass over a full Qwen3.5 backbone,
+// whose config.json is the checkpoint's own. It has no option budget and
+// no calibration temperatures.
+export function parseJointHead(
+  body: unknown,
+): NonNullable<ModelSpec["decision"]> {
+  const h = obj(body) ?? {};
+  return {
+    encoder: null,
+    window: CLEF_WINDOW,
+    optionBudget: null,
+    calibrated: null,
+    head: { layers: n(h.layers), width: n(h.width) },
   };
 }
 

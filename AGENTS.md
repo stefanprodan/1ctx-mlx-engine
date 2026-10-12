@@ -244,9 +244,10 @@ src/server/
                      the id is checked against --model-dir, never followed
   models/spec.ts     pure: config.json, the generation config, the card's
                      license, the parameter count and dtype from
-                     safetensors headers, a decision checkpoint's agent
-                     config, an embedding one's sentence-transformers
-                     files, the join with the engine's meta
+                     safetensors headers, a Laya decision checkpoint's
+                     agent config, a Clef one's joint head, an embedding
+                     one's sentence-transformers files, the join with the
+                     engine's meta
   models/read.ts     SpecReader: a checkpoint's files read under the
                      delete's path rules, headers only, cached by mtime
   service/plist.ts   pure LaunchAgent XML rendering
@@ -447,7 +448,8 @@ tab.
   decisions nor embeddings move a counter in `/metrics.json`. A resident
   decision model's `/v1/models` entry and `/props` are a generic stub (a
   4096 context, hidden size 1, "0-bit"); its facts come from its
-  checkpoint (`rl_agent_config.json`, `encoder/config.json`).
+  checkpoint (a Laya's `rl_agent_config.json` and `encoder/config.json`,
+  a Clef's `config.json` and `joint_head_config.json`).
 - Disk tier at `~/.mlx-serve/kv-cache/<fingerprint>/`; server log at
   `~/.mlx-serve/logs/mlx-serve-<port>.log`. The service label is
   `com.ddalcu.mlx-serve`; "free" is a `launchctl kickstart -k` because a

@@ -38,9 +38,11 @@ models on disk and their size.
 mlx-serve serves more than chat models, and the kind comes from the
 capabilities it lists, first match wins:
 
-- **Decisions** (`decisions`): a Laya encoder with a decision head that
-  answers typed choice, score and yes/no questions about a state on
-  `POST /v1/decisions`, one pass, no text generation.
+- **Decisions** (`decisions`): a model that answers typed choice, score
+  and yes/no questions about a state on `POST /v1/decisions`, no text
+  generation: a Laya (an encoder with a decision head) or a Clef (a
+  Qwen3.5 backbone with a joint schema head that scores every question in
+  one pass).
 - **Embeddings** (`embeddings`): a model for `POST /v1/embeddings`, the
   retrieval half of RAG. The engine lists Qwen3-Embedding with `chat` too
   and answers a chat request to it with noise, so `embeddings` wins.
@@ -70,9 +72,11 @@ A row opens to what is known of the model:
   model's own maximum, and while it is resident the longest context that
   fits in memory now (Fits now, from `/props`), then the MTP layers and
   whether the engine runs them (`in use` or `off`).
-- **Decision**, for a decision model: the encoder it was trained on, the
-  window, the part of it the options share, and whether its confidences
-  were calibrated (temperatures fitted).
+- **Decision**, for a decision model. A Laya: the encoder it was trained
+  on, the window, the part of it the options share, and whether its
+  confidences were calibrated (temperatures fitted). A Clef: the schema
+  head's layers and width, and the window, 16,384 tokens of schema and
+  state, which no file of the checkpoint states.
 - **Embedding**, for an embedding model: the dimensions, the longest
   input and the pooling, when the checkpoint says it.
 - **Weights**: the bits and the quantization mode, the group size, the
@@ -105,8 +109,9 @@ Three sources, none of them a new request to the engine:
 - **The checkpoint**, when the engine is on this host and the model is
   under `--model-dir`: `config.json`, `generation_config.json`, the model
   card's front matter, and the headers of the safetensors files, never
-  the tensors. A decision checkpoint has no `config.json`: its
-  `encoder/config.json` and `rl_agent_config.json` stand in. An embedding
+  the tensors. A Laya decision checkpoint has no `config.json`: its
+  `encoder/config.json` and `rl_agent_config.json` stand in. A Clef one
+  has its backbone's `config.json` and `joint_head_config.json`. An embedding
   checkpoint's `sentence_bert_config.json` and `1_Pooling/config.json`
   are read when present. The dtype of weights that are not quantized is
   the headers', which beat a config that says otherwise. The parameter count is exact, counted from the tensors'

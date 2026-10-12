@@ -45,22 +45,42 @@ function otherGroups(s: ModelSpec, kind: ModelKind): GridGroup[] {
   const groups: GridGroup[] = [architecture(s)];
   if (kind === "decision") {
     const d = s.decision;
+    const window = {
+      label: "Window",
+      value: thousands(d?.window ?? null),
+      unit: tokens(d?.window ?? null),
+    };
+    // a Clef has a schema head over its backbone, and no encoder, option
+    // budget or calibration to show as dashes
+    const head = d?.head;
+    const width = head?.width ?? null;
     groups.push({
       title: "Decision",
-      rows: [
-        { label: "Encoder", value: d?.encoder ?? DASH },
-        {
-          label: "Window",
-          value: thousands(d?.window ?? null),
-          unit: tokens(d?.window ?? null),
-        },
-        {
-          label: "Options",
-          value: thousands(d?.optionBudget ?? null),
-          unit: tokens(d?.optionBudget ?? null),
-        },
-        { label: "Calibrated", value: yesNo(d?.calibrated ?? null) },
-      ],
+      rows: head
+        ? [
+            {
+              label: "Head",
+              value: plain(head.layers),
+              spread:
+                [
+                  head.layers === null ? null : "layers",
+                  width === null ? null : `${thousands(width)} wide`,
+                ]
+                  .filter(Boolean)
+                  .join(", ") || undefined,
+            },
+            window,
+          ]
+        : [
+            { label: "Encoder", value: d?.encoder ?? DASH },
+            window,
+            {
+              label: "Options",
+              value: thousands(d?.optionBudget ?? null),
+              unit: tokens(d?.optionBudget ?? null),
+            },
+            { label: "Calibrated", value: yesNo(d?.calibrated ?? null) },
+          ],
     });
   }
   if (kind === "embedding") {

@@ -119,14 +119,16 @@ export type ModelSpec = {
   temperature: number | null;
   topP: number | null;
   topK: number | null;
-  // a decision model's checkpoint: its encoder, the window the state,
-  // question and options share, the options' part of it, and whether its
-  // confidences were calibrated
+  // a decision model's checkpoint: a Laya's encoder, the window the
+  // state, question and options share, the options' part of it, and
+  // whether its confidences were calibrated; a Clef's joint schema head
+  // (its layers and width) over the backbone the Architecture group shows
   decision: {
     encoder: string | null;
     window: number | null;
     optionBudget: number | null;
     calibrated: boolean | null;
+    head: { layers: number | null; width: number | null } | null;
   } | null;
   // an embedding model's: the longest input and how tokens become a vector
   embedding: {
