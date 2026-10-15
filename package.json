@@ -27,11 +27,11 @@
     "bun": ">=1.4.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.9",
-    "@preact/signals": "2.11.2",
-    "@types/bun": "1.4.0",
-    "preact": "10.29.8",
-    "preact-render-to-string": "6.7.0",
+    "@biomejs/biome": "2.5.15",
+    "@preact/signals": "2.11.3",
+    "@types/bun": "1.4.3",
+    "preact": "11.0.1",
+    "preact-render-to-string": "6.8.0",
     "typescript": "7.0.2",
     "uplot": "1.6.32"
   }
