@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -36,5 +36,10 @@
       "!workspace",
       "!test/fixtures/structure"
     ]
+  },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
   }
 }
