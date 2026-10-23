@@ -41,7 +41,7 @@ function Foot({ engine }: { engine: EngineState }) {
   if (managed) {
     return (
       <div class="apply">
-        <span class={`what${footError.value ? " bad" : ""}`} role="status">
+        <span class={`say${footError.value ? " bad" : ""}`} role="status">
           {footError.value ??
             (dirty ? "Applying restarts mlx-serve." : "No changes.")}
         </span>
@@ -77,7 +77,7 @@ function Foot({ engine }: { engine: EngineState }) {
   return (
     <div class="apply">
       <span
-        class={`what${footError.value ? " bad" : ""}`}
+        class={`say${footError.value ? " bad" : ""}`}
         role="status"
         id="install-why"
       >
