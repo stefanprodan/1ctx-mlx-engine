@@ -161,6 +161,8 @@ export const kindTag = (capabilities: readonly string[]): string | null => {
       return "embeddings";
     case "decision":
       return "decisions";
+    case "transcription":
+      return "transcription";
     case "media":
       return "media";
     default:
@@ -208,6 +210,7 @@ const CAPABILITY: Record<string, string> = {
   json_schema: "JSON schema",
   embeddings: "Embeddings",
   decisions: "Decisions",
+  transcription: "Transcription",
 };
 // Streaming is every model's, it says nothing about this one. A model that
 // is not for chat has its kind only: the engine lists chat and tools on an

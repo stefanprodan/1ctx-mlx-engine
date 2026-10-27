@@ -46,6 +46,8 @@ capabilities it lists, first match wins:
 - **Embeddings** (`embeddings`): a model for `POST /v1/embeddings`, the
   retrieval half of RAG. The engine lists Qwen3-Embedding with `chat` too
   and answers a chat request to it with noise, so `embeddings` wins.
+- **Transcription** (`transcription`): a speech-to-text model for
+  `POST /v1/audio/transcriptions`, such as Qwen3-ASR.
 - **Chat** (`chat`): everything the Overview, the Requests page and the
   benchmark are about.
 - **Media** (`image`, `audio`, `music`, `video`, `3d`): tagged, and kept
@@ -55,7 +57,9 @@ Only a chat model can be the engine's default, the daily driver or a
 benchmark's model, and only a chat model is credited with a request: a
 load of any other kind loads it beside the default. mlx-serve counts
 neither decisions nor embeddings in `/metrics.json`, so they do not show
-as requests anywhere.
+as requests anywhere. It does count a transcription, as a request with
+the audio's tokens, and the engine does not say which model served it,
+so a transcription shows as a request of the resident chat model.
 
 The Context column is the window the engine serves a chat model, the
 longest input of an embedding model and the window a decision model's

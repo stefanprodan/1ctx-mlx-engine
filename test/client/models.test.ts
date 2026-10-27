@@ -186,6 +186,7 @@ describe("models that are not for chat", () => {
   test("the kind is a tag, and the only capability shown", () => {
     expect(kindTag(laya.capabilities)).toBe("decisions");
     expect(kindTag(embed.capabilities)).toBe("embeddings");
+    expect(kindTag(["transcription"])).toBe("transcription");
     expect(kindTag(LIST[0]!.capabilities)).toBeNull();
     // the engine lists chat and tools on an embedding model
     expect(capabilityTags(embedSpec)).toEqual(["Embeddings"]);

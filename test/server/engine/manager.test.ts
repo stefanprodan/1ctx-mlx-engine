@@ -308,6 +308,7 @@ describe("EngineManager install", () => {
     expect(plist).toContain(
       "<key>ThrottleInterval</key>\n  <integer>10</integer>",
     );
+    expect(plist).toContain("<key>ExitTimeOut</key>\n  <integer>50</integer>");
     expect(value.job()?.program).toBe(
       join(value.engineRoot, "versions", value.tag, "mlx-serve"),
     );

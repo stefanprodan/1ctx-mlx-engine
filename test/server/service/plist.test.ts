@@ -30,6 +30,7 @@ const engine: PlistSpec = {
   keepAlive: true,
   processType: "Interactive",
   throttleInterval: 10,
+  exitTimeOut: 50,
   standardOutPath: "/tmp/launchd.log",
   standardErrorPath: "/tmp/launchd.log",
 };
@@ -50,6 +51,7 @@ describe("renderPlist", () => {
     expect(xml).toContain("<key>WorkingDirectory</key>");
     expect(xml).toContain("<key>ProcessType</key>");
     expect(xml).toContain("<integer>10</integer>");
+    expect(xml).toContain("<key>ExitTimeOut</key>\n  <integer>50</integer>");
     expect(xml.match(/<key>Standard(?:Out|Error)Path<\/key>/g)).toHaveLength(2);
   });
 });

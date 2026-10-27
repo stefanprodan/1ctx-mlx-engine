@@ -440,13 +440,15 @@ tab.
   favorite, else the first resident chat model by id.
 - A model has a kind, from `modelKind()` in `shared/models.ts` over the
   engine's capabilities, first match wins: `decisions` (Laya,
-  `POST /v1/decisions`), `embeddings` (`POST /v1/embeddings`), `chat`,
-  then media. mlx-serve lists Qwen3-Embedding with `chat` and answers a
-  chat to it with noise, so `embeddings` beats `chat`. Only a chat model
-  is the default, the daily driver, a benchmark's model or credited with
-  a request; a load of another kind loads it beside the default. Neither
-  decisions nor embeddings move a counter in `/metrics.json`. A resident
-  decision model's `/v1/models` entry and `/props` are a generic stub (a
+  `POST /v1/decisions`), `embeddings` (`POST /v1/embeddings`),
+  `transcription` (`POST /v1/audio/transcriptions`), `chat`, then
+  media. mlx-serve lists Qwen3-Embedding with `chat` and answers a chat
+  to it with noise, so `embeddings` beats `chat`. Only a chat model is
+  the default, the daily driver, a benchmark's model or credited with a
+  request; a load of another kind loads it beside the default. Neither
+  decisions nor embeddings move a counter in `/metrics.json`; a
+  transcription does, and is credited to the resident chat model. A
+  resident decision model's `/v1/models` entry and `/props` are a generic stub (a
   4096 context, hidden size 1, "0-bit"); its facts come from its
   checkpoint (a Laya's `rl_agent_config.json` and `encoder/config.json`,
   a Clef's `config.json` and `joint_head_config.json`).
