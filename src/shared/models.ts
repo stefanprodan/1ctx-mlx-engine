@@ -16,10 +16,16 @@ export type Capability =
   | "benchmark";
 
 // What a model is for. mlx-serve serves more than chat: embeddings for
-// retrieval, typed decisions, media. Every path that is about chat (the
+// retrieval, typed decisions, speech to text, media. Every path that is about chat (the
 // request a sample credits, the engine's default, the daily driver, the
 // benchmark) takes chat models only.
-export type ModelKind = "chat" | "embedding" | "decision" | "media" | "other";
+export type ModelKind =
+  | "chat"
+  | "embedding"
+  | "decision"
+  | "transcription"
+  | "media"
+  | "other";
 
 const MEDIA = ["image", "audio", "music", "video", "3d"];
 
@@ -29,6 +35,7 @@ const MEDIA = ["image", "audio", "music", "video", "3d"];
 export function modelKind(capabilities: readonly string[]): ModelKind {
   if (capabilities.includes("decisions")) return "decision";
   if (capabilities.includes("embeddings")) return "embedding";
+  if (capabilities.includes("transcription")) return "transcription";
   if (capabilities.includes("chat")) return "chat";
   if (capabilities.some((c) => MEDIA.includes(c))) return "media";
   return "other";

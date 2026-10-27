@@ -317,6 +317,12 @@ export async function activationFailure(
   void config;
 }
 
+// mlx-serve saves the prefix cache it owes the SSD tier on SIGTERM, for up
+// to 45 s (--shutdown-persist-secs, since 26.10.3). launchd's default is to
+// SIGKILL an agent 5 s after the SIGTERM, which cuts the save short. 50 s
+// covers the engine's deadline and stays under waitForExit's 60 s.
+export const ENGINE_EXIT_TIMEOUT_S = 50;
+
 export function spec(
   context: ManagerContext,
   record: InstallRecord,
@@ -338,6 +344,7 @@ export function spec(
     runAtLoad: true,
     keepAlive: true,
     throttleInterval: 10,
+    exitTimeOut: ENGINE_EXIT_TIMEOUT_S,
     processType: "Interactive",
     standardOutPath: launchdLog(context),
     standardErrorPath: launchdLog(context),

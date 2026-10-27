@@ -14,7 +14,10 @@ out). Restart exits the process and launchd starts it again.
 
 **mlx-serve** shows the installed build with its MLX version, the
 previous build with Rollback, the listener and the process's memory and
-CPU. The pill in the head is the service state:
+CPU. A stop, a restart or a swap can take up to 45 s: on SIGTERM
+mlx-serve first saves the prompt cache it owes the SSD tier, and the
+agent's `ExitTimeOut` gives it 50 s before launchd kills it. The pill in
+the head is the service state:
 
 | Pill | Meaning |
 |---|---|

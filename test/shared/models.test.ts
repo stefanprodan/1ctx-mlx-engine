@@ -20,6 +20,12 @@ describe("modelKind", () => {
     });
   });
 
+  test("speech to text", () => {
+    // Qwen3-ASR's only capability on mlx-serve 26.10.3
+    expect(modelKind(["transcription"])).toBe("transcription");
+    expect(isChat({ capabilities: ["transcription"] })).toBe(false);
+  });
+
   test("media, and the rest", () => {
     expect(modelKind(["image"])).toBe("media");
     expect(modelKind(["audio", "streaming"])).toBe("media");
