@@ -189,7 +189,9 @@ export function parseVersionOutput(output: string): {
   version: string | null;
   mlx: string | null;
 } {
-  const version = /^mlx-serve\s+(\S+)\s*$/m.exec(output)?.[1] ?? null;
+  // Since 26.11 the line carries a build label: "mlx-serve 26.11.3 (fast)".
+  const version =
+    /^mlx-serve\s+(\S+)(?:\s+\([^)]*\))?\s*$/m.exec(output)?.[1] ?? null;
   const mlx = /^mlx\s+(\S+)\s*$/m.exec(output)?.[1] ?? null;
   return { version, mlx };
 }
