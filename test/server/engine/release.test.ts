@@ -100,6 +100,20 @@ mlx 0.32.2
     );
   });
 
+  test("accepts a build label after the version", () => {
+    const output = `[mem] MLX buffer-pool cap 8192 MB (was 124518 MB)
+mlx-serve 26.11.3 (fast)
+mlx 0.32.5
+mlx-c 56b2d39fc831
+nax on (M5 neural accelerators)
+ggml 0.29.0 (cd959bae9)
+`;
+    expect(parseVersionOutput(output)).toEqual({
+      version: "26.11.3",
+      mlx: "0.32.5",
+    });
+  });
+
   test("fetches with a bounded API request and optional bearer", async () => {
     const calls: Array<{ url: string; auth: string | null }> = [];
     const fakeFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
