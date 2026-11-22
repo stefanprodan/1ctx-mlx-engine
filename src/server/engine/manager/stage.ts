@@ -13,9 +13,10 @@ import {
 import { join } from "node:path";
 import type { InstallRecord } from "../../../shared/engine.ts";
 import {
-  abortPromise,
   DOWNLOAD_DISK_MARGIN,
   fetchRedirected,
+  readBody,
+  StallError,
   sleepWithSignal,
 } from "../../lib/fetch.ts";
 import { errorFields } from "../../lib/log.ts";
@@ -207,42 +208,22 @@ export async function downloadAttempt(
   }
   if (!response.body) throw new Error("download returned an empty body");
   const handle = await open(active.part, have > 0 ? "a" : "w");
-  const stall = new AbortController();
-  const onAbort = () => stall.abort();
-  signal.addEventListener("abort", onAbort, { once: true });
-  let timer = setTimeout(() => stall.abort(), context.stallMs);
-  let cancelRead: () => Promise<void> = async () => {};
   try {
-    const reader = response.body.getReader();
-    // once per download, not per chunk: each call adds a listener that
-    // stays until the signal is collected
-    const stalled = abortPromise(stall.signal);
-    stalled.catch(() => undefined);
-    // whatever ends the loop, a read still pending is let go of
-    cancelRead = () => reader.cancel().catch(() => undefined);
-    while (true) {
-      const next = await Promise.race([reader.read(), stalled]);
-      if (next.done) break;
-      clearTimeout(timer);
-      timer = setTimeout(() => stall.abort(), context.stallMs);
-      if (have + next.value.byteLength > value.assetBytes) {
-        await reader.cancel().catch(() => undefined);
+    await readBody(response.body, signal, context.stallMs, async (chunk) => {
+      if (have + chunk.byteLength > value.assetBytes) {
         throw new Error(`download exceeded ${value.assetBytes} bytes`);
       }
-      await handle.write(next.value);
-      have += next.value.byteLength;
+      await handle.write(chunk);
+      have += chunk.byteLength;
       progress(context, have, value.assetBytes, active);
-    }
+    });
   } catch (error) {
     if (signal.aborted) throw signal.reason ?? error;
-    if (stall.signal.aborted) {
+    if (error instanceof StallError) {
       throw new Error(`download sent no data for ${context.stallMs / 1_000} s`);
     }
     throw error;
   } finally {
-    clearTimeout(timer);
-    await cancelRead();
-    signal.removeEventListener("abort", onAbort);
     await handle.close();
   }
   if (have !== value.assetBytes) {
