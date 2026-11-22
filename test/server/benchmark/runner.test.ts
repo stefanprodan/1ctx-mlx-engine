@@ -407,6 +407,65 @@ test("a request that began after the route's check fails the run before any rest
   expect(t.lock.running()).toBeNull();
 });
 
+// mlx-serve's running gauge lags the answer by up to 2 s: a run that ended
+// on its last answer was refused as busy by the next start
+test("a run is done only once the engine's gauge drops its last turn", async () => {
+  let clock = 0;
+  const slept: number[] = [];
+  const t = setup({
+    now: () => clock,
+    sleep: async (ms) => {
+      slept.push(ms);
+      clock += ms;
+    },
+  });
+  const chat = t.engine.chat;
+  let lag = 0;
+  t.engine.chat = async (body, signal) => {
+    const answer = await chat(body, signal);
+    // the gauge still reads this turn for three metrics reads after the
+    // answer: the run's own request count, then two of the wait's polls
+    t.state.serving = 1;
+    lag = 3;
+    return answer;
+  };
+  const metrics = t.engine.metrics;
+  t.engine.metrics = async () => {
+    if (lag > 0 && --lag === 0) t.state.serving = 0;
+    return metrics();
+  };
+  const started = t.runner.start(body);
+  await t.runner.idle();
+  const { benchmark } = t.runner.detail(started.id);
+  expect(benchmark.status).toBe("done");
+  expect(t.state.serving).toBe(0);
+  // one poll that still sees it, then the sampler's second the route's
+  // check reads
+  expect(slept).toEqual([500, 1_000]);
+});
+
+test("a gauge that stays up does not hold the run past the wait", async () => {
+  let clock = 0;
+  const t = setup({
+    now: () => clock,
+    sleep: async (ms) => {
+      clock += ms;
+    },
+  });
+  const chat = t.engine.chat;
+  let turns = 0;
+  t.engine.chat = async (body, signal) => {
+    const answer = await chat(body, signal);
+    // after the run's last turn somebody else's request starts
+    if (++turns === 12) t.state.serving = 1;
+    return answer;
+  };
+  const started = t.runner.start(body);
+  await t.runner.idle();
+  expect(t.runner.detail(started.id).benchmark.status).toBe("done");
+  expect(t.state.serving).toBe(1);
+});
+
 test("a request during the warmup makes the run suspect too", async () => {
   const t = setup();
   const started = t.runner.start(body);

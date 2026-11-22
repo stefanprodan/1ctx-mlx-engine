@@ -45,6 +45,12 @@ const REPETITIONS = 3;
 const MAX_TOKENS = 256;
 const HEALTH_WAIT_MS = 60_000;
 const HEALTH_POLL_MS = 500;
+// mlx-serve samples its running gauge every 2 s (gaugeSamplerLoop in
+// src/host/http/server.zig), so it reads the run's last turn for up to 2 s
+// after the answer; past this something else is running
+const SETTLE_WAIT_MS = 10_000;
+// the sampler's second: the route's idle check reads its last sample
+const SAMPLE_MS = 1_000;
 
 export const LOCK_LABEL = "benchmark";
 
@@ -333,6 +339,7 @@ export class BenchmarkRunner {
         // engine has answered, so it reads 1 right after our own last turn
         if (served > own) otherRequests = true;
       }
+      await this.settle(signal);
       this.end(progress, "done", null);
     } catch (err) {
       if (signal.aborted || err instanceof Cancelled) {
@@ -387,6 +394,20 @@ export class BenchmarkRunner {
   private async serving(): Promise<boolean> {
     const { gauges } = await this.deps.engine.metrics();
     return gauges.requestsRunning + gauges.requestsWaiting > 0;
+  }
+
+  // A run is done once a new one may start: the engine's gauge and then the
+  // sampler no longer show its last turn, which the start route would
+  // refuse as a request in flight. A request of somebody else's that keeps
+  // the gauge up does not hold the run; the counters already said so.
+  private async settle(signal: AbortSignal) {
+    const deadline = this.now() + SETTLE_WAIT_MS;
+    while (await this.serving()) {
+      if (signal.aborted) throw new Cancelled();
+      if (this.now() >= deadline) return;
+      await this.sleep(HEALTH_POLL_MS);
+    }
+    await this.sleep(SAMPLE_MS);
   }
 
   private async requestCount(): Promise<number> {

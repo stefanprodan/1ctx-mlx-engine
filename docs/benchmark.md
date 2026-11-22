@@ -51,7 +51,9 @@ Each of the three repetitions starts from nothing: restart, delete the
 cache tier, load the model as the default, one discarded request to pay
 for the first Metal compile, then the turns. The first turn of each has a
 unique tag at the start of its prompt, so nothing of it can be cached. The
-model stays loaded at the end.
+model stays loaded at the end. A run ends once the engine no longer counts
+its last turn as running, a few seconds after the answer, so the next one
+can start at once.
 
 ## The numbers
 
