@@ -7,9 +7,9 @@
 
 import { open, rename, rm, stat, truncate } from "node:fs/promises";
 import {
-  abortPromise as aborted,
   describeError as describe,
   fetchRedirected,
+  readBody,
   sleepWithSignal as sleep,
 } from "../lib/fetch.ts";
 import { errorFields, type Log } from "../lib/log.ts";
@@ -109,27 +109,12 @@ async function stream(deps: TransferDeps, job: TransferJob, moved: Moved) {
     }
     if (!res.body) throw new Retryable("empty body");
     const handle = await open(part, "a");
-    // a body that stalls is dropped, and the retry resumes the part
-    const stall = new AbortController();
-    let timer = setTimeout(() => stall.abort(), deps.stallMs);
-    const onAbort = () => stall.abort();
-    signal.addEventListener("abort", onAbort, { once: true });
     try {
-      const reader = res.body.getReader();
-      // once per file, not per chunk: each call adds a listener that
-      // stays until the signal is collected, and a checkpoint is
-      // hundreds of thousands of chunks
-      const stalled = aborted(stall.signal);
-      stalled.catch(() => undefined);
-      while (true) {
-        const next = await Promise.race([reader.read(), stalled]);
-        if (next.done) break;
-        const chunk = next.value;
-        clearTimeout(timer);
-        timer = setTimeout(() => stall.abort(), deps.stallMs);
+      // a body that stalls is dropped, and the retry resumes the part
+      await readBody(res.body, signal, deps.stallMs, async (chunk) => {
         if (have + chunk.byteLength > file.size) {
-          // more than the file: not this file
-          await reader.cancel().catch(() => {});
+          // more than the file: not this file. Truncated here, before an
+          // abort can end the download with the part looking complete
           await handle.close();
           await truncate(part, 0);
           throw new Retryable(`got more than ${file.size} bytes`);
@@ -138,17 +123,11 @@ async function stream(deps: TransferDeps, job: TransferJob, moved: Moved) {
         hasher?.update(chunk);
         have += chunk.byteLength;
         moved(base + have, true);
-      }
+      });
     } catch (err) {
       if (signal.aborted) throw signal.reason;
-      if (stall.signal.aborted) {
-        await res.body.cancel().catch(() => {});
-        throw new Retryable(`no data for ${Math.round(deps.stallMs / 1000)} s`);
-      }
       throw err instanceof Retryable ? err : new Retryable(describe(err));
     } finally {
-      clearTimeout(timer);
-      signal.removeEventListener("abort", onAbort);
       await handle.close().catch(() => {});
     }
   }

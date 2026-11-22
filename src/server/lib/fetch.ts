@@ -42,15 +42,58 @@ export async function fetchRedirected(
   throw new Error("too many redirects");
 }
 
-export function abortPromise(signal: AbortSignal): Promise<never> {
-  return new Promise((_, reject) => {
-    if (signal.aborted) return reject(signal.reason ?? new Error("aborted"));
-    signal.addEventListener(
-      "abort",
-      () => reject(signal.reason ?? new Error("aborted")),
-      { once: true },
-    );
-  });
+// The body sent nothing for the stall timeout and was cancelled.
+export class StallError extends Error {}
+
+// Reads a body to its end, one chunk at a time into `onChunk`. A body that
+// sends nothing for `stallMs` while a read waits is cancelled with a
+// StallError (a slow `onChunk`, a disk write, is not a stall), an abort of
+// `signal` cancels it with the signal's reason, and whatever ends the loop
+// cancels a read still pending. A stall is never a Promise.race of each
+// read against one long-lived promise: every race leaves a reaction on that
+// promise holding its read's chunk until it settles, which kept a whole
+// download in memory (5 GB of footprint for a 5 GB file).
+export async function readBody(
+  body: ReadableStream<Uint8Array>,
+  signal: AbortSignal,
+  stallMs: number,
+  onChunk: (chunk: Uint8Array) => void | Promise<void>,
+): Promise<void> {
+  const reader = body.getReader();
+  let stalled = false;
+  // a cancel resolves the read in flight as done, which ends the loop
+  const cancel = () => void reader.cancel().catch(() => undefined);
+  const onStall = () => {
+    stalled = true;
+    cancel();
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  signal.addEventListener("abort", cancel, { once: true });
+  try {
+    if (signal.aborted) cancel();
+    while (true) {
+      timer = setTimeout(onStall, stallMs);
+      const next = await reader.read();
+      clearTimeout(timer);
+      if (signal.aborted) throw signal.reason ?? new Error("aborted");
+      if (stalled) {
+        throw new StallError(`no data for ${Math.round(stallMs / 1_000)} s`);
+      }
+      if (next.done) return;
+      await onChunk(next.value);
+    }
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", cancel);
+    // not awaited: a stream whose cancel never settles must not hold the
+    // caller, and its file handle, open
+    cancel();
+    try {
+      reader.releaseLock();
+    } catch {
+      // a read still pending on a stream that ignored the cancel
+    }
+  }
 }
 
 export function sleepWithSignal(
