@@ -92,6 +92,10 @@ there.
   where the tests connect. A default bind is the IPv6 wildcard, which
   macOS lets share a port with another program's loopback socket, and the
   test then talks to that program.
+- A temporary directory in a test comes from `tempDirs()` in
+  `test/server/temp.ts`, called once at the file's top: it removes every
+  directory it made after the file's tests, so a run leaves nothing in
+  `$TMPDIR`.
 
 ## Rules that protect the engine
 

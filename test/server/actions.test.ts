@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   ActionError,
@@ -19,6 +18,9 @@ import metricsFixture from "../fixtures/metrics.json";
 import modelsFixture from "../fixtures/models.json";
 import kindsUnloaded from "../fixtures/models-kinds-unloaded.json";
 import { testLog } from "./log.ts";
+import { tempDirs } from "./temp.ts";
+
+const temp = tempDirs();
 
 const QWEN = "Jundot/Qwen3.8-27B-oQ4e-mtp";
 const APODEX = "stefanprodan/Apodex-1.1-mini-oQ4e-mtp";
@@ -100,7 +102,7 @@ async function setup(local = true) {
   const spawned: string[][] = [];
   const cleared: string[] = [];
   // a real model directory: delete works on files, not on an injected fake
-  const modelDir = await mkdtemp(join(tmpdir(), "1ctx-models-"));
+  const modelDir = temp("1ctx-models-");
   for (const id of [QWEN, APODEX, ORNITH]) {
     const dir = join(modelDir, ...id.split("/"));
     await mkdir(dir, { recursive: true });
@@ -662,7 +664,7 @@ describe("Actions", () => {
 
 describe("clearDirContents", () => {
   test("removes children, keeps the root, tolerates a missing root", async () => {
-    const root = await mkdtemp(join(tmpdir(), "1ctx-mlx-engine-cache-"));
+    const root = temp("1ctx-mlx-engine-cache-");
     await writeFile(join(root, "a"), "x");
     await Bun.write(join(root, "fp1", "shard"), "y");
     expect(await clearDirContents(root)).toBe(2);
