@@ -66,10 +66,9 @@ make staging-status # what the staging service says
 ### Staging
 
 Staging is the user's Mac Studio on the tailnet: it runs mlx-serve and
-its own 1ctx-mlx-engine as launchd agents. Read `docs/internal/staging.md`
-before any ssh command; it has the paths, the safe commands and the rules
-(never start processes by hand over ssh, never touch the user's other
-services). `make staging-deploy` is the only deploy
+its own 1ctx-mlx-engine as launchd agents. Never start a process by hand
+over ssh, never touch the user's other services, and never edit a plist
+1ctx-mlx-engine generated. `make staging-deploy` is the only deploy
 path: it takes `main` only, unless `ALLOW_BRANCH=1`, and stamps the
 commit into the version. Deploy when asked, then say what is now running
 there.
@@ -376,8 +375,7 @@ test/                bun test suites: server/, client/ (pure modules and
                      fixtures/ holds recorded engine bodies; structure.ts
                      and structure.test.ts are the layout rules
 docs/                user docs: monitor, models, engine, benchmark, api
-                     (keep in step with src/server/web/), development;
-                     internal/staging.md is the staging guide
+                     (keep in step with src/server/web/), development
 scripts/             preview.sh, install.sh (the one install path: download,
                      verify, place the binary, `service install --restart`),
                      staging.sh (deploy: build main, copy, then the same
@@ -512,8 +510,7 @@ tab.
   with CSS instead. Empty states keep the layout of the filled state so
   nothing jumps when data arrives.
 - **Docs move with the code.** A change to a page updates
-  `docs/monitor.md`; a route change updates `docs/api.md`; a change to the
-  staging setup updates `docs/internal/staging.md`, after it was run there.
+  `docs/monitor.md`; a route change updates `docs/api.md`.
 - **Commit messages are short.** Subject under 72 characters, `Area:
   what changed`. Body optional, at most three short lines saying why,
   never a list of everything in the diff; GitHub truncates the rest.

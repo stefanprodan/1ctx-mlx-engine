@@ -85,6 +85,12 @@ The downloader is tested against a fake Hub in
 `test/server/models/download.test.ts`; a real download of a small repository
 such as `Jundot/gemma-4-E2B-it-oQ4e-mtp` (3.9 GB) is the end-to-end check.
 
+The database is `~/.1ctx-mlx-engine/engine.db`, SQLite in WAL mode. Read
+it with `sqlite3` at any time. Stop the service before an edit: the
+sampler rewrites its `meta` row every second and would overwrite the
+change. Clear history on the page trims the samples; the `models` table
+holds the favorite flags.
+
 ## Layout
 
 The source has three parts. `src/shared/` holds what crosses the wire,
