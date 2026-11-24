@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readdir, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { modelPath, removeModel } from "../../../src/server/models/remove.ts";
+import { tempDirs } from "../temp.ts";
+
+const temp = tempDirs();
 
 const dir = async () => {
-  const root = await mkdtemp(join(tmpdir(), "1ctx-remove-"));
+  const root = temp("1ctx-remove-");
   for (const id of ["owner/one", "owner/two", "other/three"]) {
     const d = join(root, ...id.split("/"));
     await mkdir(d, { recursive: true });

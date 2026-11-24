@@ -2,15 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "bun:test";
-import {
-  mkdir,
-  mkdtemp,
-  rm,
-  symlink,
-  utimes,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EngineModelMeta } from "../../../src/server/engine/types.ts";
 import { readHeader, SpecReader } from "../../../src/server/models/read.ts";
@@ -35,6 +27,9 @@ import layaEncoder from "../../fixtures/spec/laya-multilingual-encoder.json";
 import layaHeader from "../../fixtures/spec/laya-multilingual-header.json";
 import qwenConfig from "../../fixtures/spec/qwen3.5-0.8b-config.json";
 import qwenHeader from "../../fixtures/spec/qwen3.5-0.8b-header.json";
+import { tempDirs } from "../temp.ts";
+
+const temp = tempDirs();
 
 // a small mixture of experts: 4 routed, 2 per token, one shared, its
 // experts quantized at 4 bits in groups of 64 and its gate at 8
@@ -438,7 +433,7 @@ function safetensors(header: unknown): Uint8Array {
 }
 
 async function modelDir() {
-  const root = await mkdtemp(join(tmpdir(), "1ctx-spec-"));
+  const root = temp("1ctx-spec-");
   const dir = join(root, "org", "moe");
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "config.json"), JSON.stringify(MOE_CONFIG));
@@ -462,7 +457,7 @@ async function modelDir() {
 // a decision checkpoint's layout: no config.json, the encoder's in its
 // own directory, the agent's beside the weights
 async function decisionDir() {
-  const root = await mkdtemp(join(tmpdir(), "1ctx-spec-"));
+  const root = temp("1ctx-spec-");
   const dir = join(root, "org", "laya");
   await mkdir(join(dir, "encoder"), { recursive: true });
   await writeFile(
@@ -489,7 +484,7 @@ describe("SpecReader", () => {
 
   test("an encoder directory that is a symlink is not followed", async () => {
     const { root, dir } = await decisionDir();
-    const elsewhere = await mkdtemp(join(tmpdir(), "1ctx-spec-out-"));
+    const elsewhere = temp("1ctx-spec-out-");
     await writeFile(
       join(elsewhere, "config.json"),
       JSON.stringify(layaEncoder),
