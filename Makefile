@@ -38,7 +38,7 @@ install-bin: ## Compile and install onto PATH (override PREFIX=...)
 uninstall-bin: ## Remove the installed binary (override PREFIX=...)
 	@bun run uninstall-bin
 
-staging-deploy: ## Build main, install it on staging and restart its agent (docs/internal/staging.md)
+staging-deploy: ## Build main, install it on staging and restart its agent
 	@bun run staging-deploy
 
 staging-status: ## What the staging service says
